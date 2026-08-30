@@ -506,102 +506,125 @@ final class Account_Render {
 		$used     = Membership::listing_count( $user_id );
 		$expires  = Membership::expires( $user_id );
 
+		$icon = static fn( string $name, int $size = 19 ): string =>
+			function_exists( 'tdh_icon' ) ? tdh_icon( $name, $size ) : '';
+
 		ob_start();
 		?>
 		<div class="account">
 
-			<div class="dash-heading">
-				<div>
-					<p class="overline gold"><?php esc_html_e( 'Landlord dashboard', 'thirtydayhomes' ); ?></p>
-					<h1>
-						<?php
-						printf(
-							/* translators: %s: display name */
-							esc_html__( 'Welcome, %s', 'thirtydayhomes' ),
-							esc_html( $user->display_name )
-						);
-						?>
-					</h1>
-				</div>
-				<a class="secondary" href="<?php echo esc_url( wp_logout_url( home_url( '/' ) ) ); ?>"><?php esc_html_e( 'Sign out', 'thirtydayhomes' ); ?></a>
-			</div>
-
-			<?php self::notices( $notice ); ?>
-
-			<?php if ( Membership::NONE === $status ) : ?>
-				<div class="alert">
-					<?php echo function_exists( 'tdh_icon' ) ? tdh_icon( 'shield-check', 20 ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput ?>
-					<span>
-						<b><?php esc_html_e( 'You do not have a membership yet', 'thirtydayhomes' ); ?></b>
-						<small><?php esc_html_e( 'A membership is required before a listing can go live. Plans are being finalised.', 'thirtydayhomes' ); ?></small>
-					</span>
-					<a class="primary small" href="<?php echo esc_url( Accounts::url( 'pricing' ) ); ?>"><?php esc_html_e( 'See plans', 'thirtydayhomes' ); ?></a>
-				</div>
-			<?php elseif ( Membership::PAST_DUE === $status ) : ?>
-				<div class="alert alert--warn">
-					<?php echo function_exists( 'tdh_icon' ) ? tdh_icon( 'shield-check', 20 ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput ?>
-					<span>
-						<b><?php esc_html_e( 'Your last payment failed', 'thirtydayhomes' ); ?></b>
-						<small><?php esc_html_e( 'Your listings are hidden until payment succeeds. They return automatically once it does — nothing is deleted.', 'thirtydayhomes' ); ?></small>
-					</span>
-				</div>
-			<?php endif; ?>
-
-			<div class="metric-grid">
-				<div class="metric">
-					<i><?php echo function_exists( 'tdh_icon' ) ? tdh_icon( 'shield-check', 19 ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
-					<span>
-						<small><?php esc_html_e( 'Membership', 'thirtydayhomes' ); ?></small>
-						<b class="status <?php echo esc_attr( Membership::badge_class( $status ) ); ?>">
-							<?php echo esc_html( $labels[ $status ] ?? $status ); ?>
-						</b>
-					</span>
-				</div>
-
-				<div class="metric">
-					<i><?php echo function_exists( 'tdh_icon' ) ? tdh_icon( 'key-round', 19 ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
-					<span>
-						<small><?php esc_html_e( 'Plan', 'thirtydayhomes' ); ?></small>
-						<b><?php echo esc_html( Membership::plan( $user_id ) ?: __( '—', 'thirtydayhomes' ) ); ?></b>
-					</span>
-				</div>
-
-				<div class="metric">
-					<i><?php echo function_exists( 'tdh_icon' ) ? tdh_icon( 'map-pinned', 19 ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
-					<span>
-						<small><?php esc_html_e( 'Listings used', 'thirtydayhomes' ); ?></small>
-						<b>
+			<?php
+			/*
+			 * A dark band, so the dashboard opens on the brand rather than
+			 * on a bare white page, and so the greeting is not competing
+			 * with the four cards below it for the eye.
+			 */
+			?>
+			<header class="account-bar">
+				<div class="account-bar-inner">
+					<div>
+						<p class="overline"><?php esc_html_e( 'Landlord dashboard', 'thirtydayhomes' ); ?></p>
+						<h1>
 							<?php
 							printf(
-								/* translators: 1: listings used, 2: listings allowed */
-								esc_html__( '%1$s of %2$s', 'thirtydayhomes' ),
-								esc_html( number_format_i18n( $used ) ),
-								esc_html( number_format_i18n( $quota ) )
+								/* translators: %s: display name */
+								esc_html__( 'Welcome, %s', 'thirtydayhomes' ),
+								esc_html( $user->display_name )
 							);
 							?>
-						</b>
-					</span>
+						</h1>
+					</div>
+
+					<nav class="account-nav" aria-label="<?php esc_attr_e( 'Account', 'thirtydayhomes' ); ?>">
+						<a class="is-current" href="<?php echo esc_url( Accounts::url( 'account' ) ); ?>"><?php esc_html_e( 'Dashboard', 'thirtydayhomes' ); ?></a>
+						<a href="<?php echo esc_url( Accounts::url( 'profile' ) ); ?>"><?php esc_html_e( 'Account details', 'thirtydayhomes' ); ?></a>
+						<a href="<?php echo esc_url( wp_logout_url( home_url( '/' ) ) ); ?>"><?php esc_html_e( 'Sign out', 'thirtydayhomes' ); ?></a>
+					</nav>
+				</div>
+			</header>
+
+			<div class="account-body">
+
+				<?php self::notices( $notice ); ?>
+
+				<?php
+				/*
+				 * One membership panel, not a banner AND a card. The two
+				 * said the same thing directly above one another — "You do
+				 * not have a membership yet" over "No active plan" — which
+				 * read as a layout accident rather than as emphasis.
+				 *
+				 * This is the only thing on the screen a landlord without a
+				 * plan can act on, so it is the anchor and everything else
+				 * is secondary to it.
+				 */
+				$copy = [
+					Membership::NONE      => __( 'Choose a plan to publish your first home. Nothing is charged until you do.', 'thirtydayhomes' ),
+					Membership::ACTIVE    => __( 'Your listings are visible to renters searching Pittsburgh.', 'thirtydayhomes' ),
+					Membership::PAST_DUE  => __( 'Your listings are hidden until payment succeeds. They come back automatically — nothing is deleted.', 'thirtydayhomes' ),
+					Membership::CANCELLED => __( 'Your membership runs to the end of the paid period, then your listings come down.', 'thirtydayhomes' ),
+					Membership::EXPIRED   => __( 'Your membership has ended and your listings are hidden. Restart a plan to bring them back.', 'thirtydayhomes' ),
+				];
+				?>
+				<section class="member-panel member-panel--<?php echo esc_attr( Membership::badge_class( $status ) ); ?>">
+					<div class="member-panel-main">
+						<p class="overline"><?php esc_html_e( 'Membership', 'thirtydayhomes' ); ?></p>
+						<h2><?php echo esc_html( $labels[ $status ] ?? $status ); ?></h2>
+						<p><?php echo esc_html( $copy[ $status ] ?? '' ); ?></p>
+					</div>
+
+					<?php if ( Membership::ACTIVE !== $status ) : ?>
+						<a class="gold-btn" href="<?php echo esc_url( Accounts::url( 'pricing' ) ); ?>">
+							<?php echo Membership::NONE === $status ? esc_html__( 'See plans', 'thirtydayhomes' ) : esc_html__( 'Manage billing', 'thirtydayhomes' ); ?>
+							<?php echo $icon( 'arrow-right', 16 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+						</a>
+					<?php endif; ?>
+				</section>
+
+				<div class="stat-grid">
+
+					<div class="stat">
+						<i><?php echo $icon( 'key-round' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+						<p class="stat-label"><?php esc_html_e( 'Plan', 'thirtydayhomes' ); ?></p>
+						<p class="stat-value"><?php echo esc_html( Membership::plan( $user_id ) ?: __( 'None', 'thirtydayhomes' ) ); ?></p>
+					</div>
+
+					<div class="stat">
+						<i><?php echo $icon( 'map-pinned' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+						<p class="stat-label"><?php esc_html_e( 'Listings', 'thirtydayhomes' ); ?></p>
+						<p class="stat-value">
+							<?php echo esc_html( number_format_i18n( $used ) ); ?><em><?php echo esc_html( '/' . number_format_i18n( $quota ) ); ?></em>
+						</p>
+					</div>
+
+					<div class="stat">
+						<i><?php echo $icon( 'calendar-days' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+						<p class="stat-label"><?php esc_html_e( 'Renews', 'thirtydayhomes' ); ?></p>
+						<p class="stat-value"><?php echo esc_html( $expires ? date_i18n( 'j M Y', $expires ) : __( 'Not yet', 'thirtydayhomes' ) ); ?></p>
+					</div>
+
 				</div>
 
-				<div class="metric">
-					<i><?php echo function_exists( 'tdh_icon' ) ? tdh_icon( 'calendar-days', 19 ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
-					<span>
-						<small><?php esc_html_e( 'Renews', 'thirtydayhomes' ); ?></small>
-						<b><?php echo esc_html( $expires ? date_i18n( 'M j, Y', $expires ) : __( '—', 'thirtydayhomes' ) ); ?></b>
-					</span>
+				<div class="panel">
+					<div class="panel-title">
+						<h3><?php esc_html_e( 'Your listings', 'thirtydayhomes' ); ?></h3>
+						<?php if ( $quota > 0 ) : ?>
+							<span class="panel-note">
+								<?php
+								printf(
+									/* translators: 1: used, 2: allowed */
+									esc_html__( '%1$s of %2$s used', 'thirtydayhomes' ),
+									esc_html( number_format_i18n( $used ) ),
+									esc_html( number_format_i18n( $quota ) )
+								);
+								?>
+							</span>
+						<?php endif; ?>
+					</div>
+					<?php self::listing_rows( $user_id ); ?>
 				</div>
+
 			</div>
-
-			<div class="panel">
-				<div class="panel-title">
-					<h3><?php esc_html_e( 'Your listings', 'thirtydayhomes' ); ?></h3>
-				</div>
-				<?php self::listing_rows( $user_id ); ?>
-			</div>
-
-			<p class="form-actions-inline">
-				<a class="secondary" href="<?php echo esc_url( Accounts::url( 'profile' ) ); ?>"><?php esc_html_e( 'Account details', 'thirtydayhomes' ); ?></a>
-			</p>
 		</div>
 		<?php
 		return (string) ob_get_clean();
@@ -628,9 +651,24 @@ final class Account_Render {
 		);
 
 		if ( ! $query->have_posts() ) {
+
+			// The empty state says what to do next, and what that depends
+			// on. "You have not created a listing yet" in the middle of a
+			// large blank box states a fact and offers no way forward.
+			$has_plan = Membership::quota( $user_id ) > 0;
 			?>
-			<div class="empty">
-				<p><?php esc_html_e( 'You have not created a listing yet.', 'thirtydayhomes' ); ?></p>
+			<div class="empty-state">
+				<i><?php echo function_exists( 'tdh_icon' ) ? tdh_icon( 'map-pinned', 22 ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+				<h4><?php esc_html_e( 'No homes listed yet', 'thirtydayhomes' ); ?></h4>
+
+				<?php if ( $has_plan ) : ?>
+					<p><?php esc_html_e( 'Add your first home and it goes to review before publishing.', 'thirtydayhomes' ); ?></p>
+				<?php else : ?>
+					<p><?php esc_html_e( 'A membership comes first. Once a plan is active you can publish your home here.', 'thirtydayhomes' ); ?></p>
+					<a class="secondary" href="<?php echo esc_url( Accounts::url( 'pricing' ) ); ?>">
+						<?php esc_html_e( 'See plans', 'thirtydayhomes' ); ?>
+					</a>
+				<?php endif; ?>
 			</div>
 			<?php
 			return;
@@ -686,11 +724,24 @@ final class Account_Render {
 
 		ob_start();
 		?>
-		<div class="form-card form-card--narrow">
+		<div class="account">
 
-			<div class="form-intro">
-				<h1><?php esc_html_e( 'Account details', 'thirtydayhomes' ); ?></h1>
-			</div>
+			<header class="account-bar">
+				<div class="account-bar-inner">
+					<div>
+						<p class="overline"><?php esc_html_e( 'Landlord dashboard', 'thirtydayhomes' ); ?></p>
+						<h1><?php esc_html_e( 'Account details', 'thirtydayhomes' ); ?></h1>
+					</div>
+
+					<nav class="account-nav" aria-label="<?php esc_attr_e( 'Account', 'thirtydayhomes' ); ?>">
+						<a href="<?php echo esc_url( Accounts::url( 'account' ) ); ?>"><?php esc_html_e( 'Dashboard', 'thirtydayhomes' ); ?></a>
+						<a class="is-current" href="<?php echo esc_url( Accounts::url( 'profile' ) ); ?>"><?php esc_html_e( 'Account details', 'thirtydayhomes' ); ?></a>
+						<a href="<?php echo esc_url( wp_logout_url( home_url( '/' ) ) ); ?>"><?php esc_html_e( 'Sign out', 'thirtydayhomes' ); ?></a>
+					</nav>
+				</div>
+			</header>
+
+			<div class="account-body account-body--form">
 
 			<?php self::notices( $notice ); ?>
 
@@ -741,9 +792,7 @@ final class Account_Render {
 				<button class="primary full big" type="submit"><?php esc_html_e( 'Save changes', 'thirtydayhomes' ); ?></button>
 			</form>
 
-			<p class="form-alt">
-				<a href="<?php echo esc_url( Accounts::url( 'account' ) ); ?>"><?php esc_html_e( 'Back to dashboard', 'thirtydayhomes' ); ?></a>
-			</p>
+			</div>
 		</div>
 		<?php
 		return (string) ob_get_clean();

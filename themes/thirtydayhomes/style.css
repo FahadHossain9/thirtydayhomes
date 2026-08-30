@@ -1494,19 +1494,70 @@ img, video { max-width: 100%; height: auto; }
 
 /* --- Dashboard -------------------------------------------------------- */
 
-.account { max-width: var( --container ); margin-inline: auto; }
+/* The dashboard opens on a dark band rather than a bare white page, so the
+   greeting is not competing with the four cards below it for the eye, and
+   the account area reads as a place you are signed in to. */
+.account-bar {
+	background: var( --color-navy );
+	color: var( --text-inverse );
+	padding: var( --space-9 ) var( --gutter );
+}
 
-.dash-heading {
+.account-bar-inner {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: flex-end;
 	justify-content: space-between;
-	gap: var( --space-5 );
-	margin-bottom: var( --space-7 );
+	gap: var( --space-6 );
+	max-width: var( --container );
+	margin-inline: auto;
 }
 
-.dash-heading .overline { margin: 0; }
-.dash-heading h1 { font-size: var( --text-h1 ); margin: var( --type-gap ) 0 0; }
+.account-bar .overline { margin: 0; }
+
+.account-bar h1 {
+	font-size: var( --text-h2 );
+	margin: var( --type-gap ) 0 0;
+}
+
+.account-nav {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var( --space-6 );
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+}
+
+.account-nav a {
+	position: relative;
+	padding-bottom: var( --space-2 );
+	color: var( --color-on-dark-muted );
+	text-decoration: none;
+}
+
+.account-nav a:hover { color: var( --text-inverse ); }
+
+/* The current screen is marked with a gold rule, not colour alone. */
+.account-nav a.is-current { color: var( --text-inverse ); }
+
+.account-nav a.is-current::after {
+	content: "";
+	position: absolute;
+	inset-inline: 0;
+	bottom: 0;
+	height: 2px;
+	background: var( --color-gold );
+}
+
+.account-body {
+	max-width: var( --container );
+	margin-inline: auto;
+	padding: var( --space-9 ) var( --gutter ) var( --space-11 );
+}
+
+/* Account details is a form, so it keeps the reading measure rather than
+   stretching its fields across the full grid width. */
+.account-body--form { max-width: 38rem; }
 
 .alert {
 	display: flex;
@@ -1524,6 +1575,172 @@ img, video { max-width: 100%; height: auto; }
 .alert span { display: flex; flex-direction: column; flex: 1; min-width: 12rem; }
 .alert small { color: var( --text-muted ); margin-top: var( --space-1 ); }
 .alert--warn { background: var( --color-warning-bg ); border-color: var( --color-warning ); }
+
+/* --- Membership panel --------------------------------------------------
+   The anchor of the dashboard: the one thing a landlord without a plan can
+   act on. Navy, so it carries weight against the white cards under it.
+   ---------------------------------------------------------------------- */
+
+.member-panel {
+	position: relative;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var( --space-7 );
+	margin-bottom: var( --space-5 );
+	padding: var( --space-8 ) var( --space-9 );
+	background: var( --color-navy );
+	color: var( --text-inverse );
+	border-radius: var( --radius-lg );
+	overflow: hidden;
+}
+
+/* The same warm light as the sign-up panel, so the two screens read as one
+   product rather than two designs. */
+.member-panel::before {
+	content: "";
+	position: absolute;
+	top: -60%;
+	right: -10%;
+	width: 45%;
+	aspect-ratio: 1;
+	background: radial-gradient(
+		circle,
+		rgba( 215, 185, 103, 0.18 ) 0%,
+		rgba( 215, 185, 103, 0.05 ) 45%,
+		transparent 70%
+	);
+	pointer-events: none;
+}
+
+/* A status stripe down the leading edge. The colour repeats what the words
+   already say, so nobody depends on it to know what is going on. */
+.member-panel::after {
+	content: "";
+	position: absolute;
+	inset-block: 0;
+	left: 0;
+	width: 4px;
+	background: var( --color-neutral );
+}
+
+.member-panel--active::after   { background: var( --color-success ); }
+.member-panel--past_due::after { background: var( --color-warning ); }
+.member-panel--pending::after  { background: var( --color-warning ); }
+.member-panel--inactive::after { background: var( --color-gold ); }
+
+.member-panel-main { position: relative; max-width: 34rem; }
+.member-panel .overline { margin: 0; }
+
+.member-panel h2 {
+	font-family: var( --font-heading );
+	font-size: var( --text-h3 );
+	line-height: var( --leading-heading );
+	margin: var( --type-gap ) 0;
+}
+
+.member-panel p:not( .overline ) {
+	margin: 0;
+	color: var( --color-on-dark-muted );
+	line-height: var( --leading-body );
+}
+
+.member-panel .gold-btn { position: relative; flex: none; }
+
+/* --- Stat tiles --------------------------------------------------------- */
+
+.stat-grid {
+	display: grid;
+	grid-template-columns: repeat( 3, 1fr );
+	gap: var( --space-4 );
+	margin-bottom: var( --space-7 );
+}
+
+.stat {
+	padding: var( --space-6 );
+	background: var( --bg-surface );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-lg );
+}
+
+.stat > i {
+	display: grid;
+	place-items: center;
+	width: var( --icon-well );
+	height: var( --icon-well );
+	margin-bottom: var( --space-5 );
+	background: var( --bg-surface-accent );
+	color: var( --text-accent );
+	border-radius: var( --radius-full );
+	font-style: normal;
+}
+
+.stat > i .tdh-icon { width: var( --icon-base ); height: var( --icon-base ); }
+
+.stat-label {
+	margin: 0 0 var( --space-1 );
+	color: var( --text-muted );
+	font-size: var( --text-xs );
+	font-weight: var( --weight-semibold );
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.stat-value {
+	margin: 0;
+	font-family: var( --font-heading );
+	font-size: var( --text-h4 );
+	line-height: var( --leading-heading );
+	font-variant-numeric: tabular-nums;
+}
+
+/* The allowance sits beside the figure, quiet. An <em> rather than a
+   <span>: the surrounding rule that lays these tiles out in a column was
+   catching a bare span and breaking "0 / 3" onto two lines. */
+.stat-value em {
+	color: var( --text-muted );
+	font-family: var( --font-body );
+	font-size: var( --text-lg );
+	font-style: normal;
+	font-weight: var( --weight-normal );
+}
+
+/* --- Empty state -------------------------------------------------------- */
+
+.empty-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var( --space-4 );
+	padding: var( --space-10 ) var( --space-6 );
+	text-align: center;
+}
+
+.empty-state > i {
+	display: grid;
+	place-items: center;
+	width: var( --icon-well-lg );
+	height: var( --icon-well-lg );
+	background: var( --bg-surface-accent );
+	color: var( --text-accent );
+	border-radius: var( --radius-full );
+	font-style: normal;
+}
+
+.empty-state h4 {
+	margin: 0;
+	font-family: var( --font-heading );
+	font-size: var( --text-h5 );
+}
+
+.empty-state p {
+	margin: 0;
+	max-width: 32ch;
+	color: var( --text-muted );
+	font-size: var( --text-sm );
+	line-height: var( --leading-body );
+}
 
 .metric-grid {
 	display: grid;
@@ -1557,9 +1774,54 @@ img, video { max-width: 100%; height: auto; }
 .metric > i .tdh-icon { width: var( --icon-base ); height: var( --icon-base ); }
 
 .metric span { display: flex; flex-direction: column; gap: var( --space-1 ); min-width: 0; }
-.metric small { color: var( --text-muted ); font-size: var( --text-xs ); }
-.metric b { font-size: var( --text-h5 ); }
-.metric b.status { align-self: flex-start; font-size: var( --text-3xs ); }
+
+.metric small {
+	color: var( --text-muted );
+	font-size: var( --text-xs );
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.metric b {
+	font-size: var( --text-h5 );
+	line-height: var( --leading-heading );
+}
+
+/* The figure reads as one number with its allowance beside it, rather than
+   as a sentence: "0" at full weight, "/ 3" quiet next to it. */
+.metric-figure { font-family: var( --font-heading ); font-variant-numeric: tabular-nums; }
+.metric-figure span {
+	color: var( --text-muted );
+	font-family: var( --font-body );
+	font-size: var( --text-base );
+	font-weight: var( --weight-normal );
+}
+
+/* State as a coloured dot beside plain text. The old pill wrapped "No
+   active plan" onto three lines inside a narrow card and looked broken;
+   the dot also means colour is not carrying the meaning on its own. */
+.metric-state {
+	display: flex;
+	align-items: center;
+	gap: var( --space-2 );
+	font-size: var( --text-base );
+}
+
+.metric-state::before {
+	content: "";
+	flex: none;
+	width: 0.5rem;
+	height: 0.5rem;
+	border-radius: var( --radius-full );
+	background: var( --color-neutral );
+}
+
+.metric-state--active::before   { background: var( --color-success ); }
+.metric-state--past_due::before { background: var( --color-warning ); }
+.metric-state--pending::before  { background: var( --color-warning ); }
+.metric-state--inactive::before { background: var( --color-neutral ); }
+
+.panel-note { color: var( --text-muted ); font-size: var( --text-sm ); }
 
 .panel {
 	padding: var( --space-5 );
@@ -1612,8 +1874,12 @@ img, video { max-width: 100%; height: auto; }
 @media ( max-width: 43.75rem ) {
 	.form-card { padding: var( --space-6 ); }
 	.form-grid { grid-template-columns: 1fr; }
-	.metric-grid { grid-template-columns: 1fr; }
-	.dash-heading { align-items: flex-start; }
+	.metric-grid { grid-template-columns: 1fr 1fr; }
+	.stat-grid { grid-template-columns: 1fr 1fr; }
+	.account-bar-inner { align-items: flex-start; }
+	.account-nav { gap: var( --space-5 ); }
+	.member-panel { padding: var( --space-7 ) var( --space-6 ); }
+	.member-panel .gold-btn { width: 100%; }
 }
 
 /* =========================================================================
