@@ -1,0 +1,335 @@
+<?php
+/**
+ * Pages, menus and the front page.
+ *
+ * @package ThirtyDayHomes
+ */
+
+declare( strict_types = 1 );
+
+namespace TDH\Setup;
+
+use TDH\Post_Types;
+
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * Creates the public page set, the navigation menus, and the front page.
+ *
+ * Page COPY here is placeholder scaffolding so the structure is navigable.
+ * Real copy is client-approved, and the legal pages are attorney-supplied.
+ * Every placeholder page says so on its face rather than looking finished.
+ */
+final class Site_Structure {
+
+	public function __construct( private Importer $importer ) {}
+
+	public function run(): void {
+
+		$ids = [];
+
+		foreach ( $this->pages() as $slug => $page ) {
+			$id = $this->upsert_page( $slug, $page['title'], $page['content'] );
+
+			if ( $id ) {
+				$ids[ $slug ] = $id;
+				$this->importer->log( sprintf( 'page #%d %s', $id, $page['title'] ) );
+			}
+		}
+
+		$this->set_front_page( $ids );
+		$this->build_menus( $ids );
+		$this->remove_sample_content();
+		$this->set_site_icon();
+
+		update_option( 'blogdescription', __( 'Furnished 30+ day homes near Pittsburgh’s medical centres', 'thirtydayhomes' ) );
+	}
+
+	/**
+	 * Set the browser-tab icon.
+	 *
+	 * Without one, every page request produces a 404 for /favicon.ico —
+	 * harmless but noisy in the console, and a blank tab icon reads as an
+	 * unfinished site to a client reviewing it.
+	 *
+	 * The source lives in the theme because it is brand artwork, so this
+	 * skips quietly when a different theme is active rather than failing
+	 * the import. WordPress generates the various sizes from the 512px
+	 * square once it is registered as an attachment.
+	 */
+	private function set_site_icon(): void {
+
+		if ( (int) get_option( 'site_icon' ) > 0 ) {
+			return;
+		}
+
+		$source = get_template_directory() . '/assets/site-icon.png';
+
+		if ( ! is_readable( $source ) ) {
+			$this->importer->warn( 'no site icon in the active theme — browser tab will stay blank' );
+			return;
+		}
+
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/media.php';
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+
+		$upload = wp_upload_bits( 'thirtydayhomes-site-icon.png', null, (string) file_get_contents( $source ) );
+
+		if ( ! empty( $upload['error'] ) ) {
+			$this->importer->warn( 'site icon: ' . $upload['error'] );
+			return;
+		}
+
+		$attachment_id = wp_insert_attachment(
+			[
+				'post_mime_type' => 'image/png',
+				'post_title'     => __( 'Site icon', 'thirtydayhomes' ),
+				'post_status'    => 'inherit',
+			],
+			$upload['file']
+		);
+
+		if ( is_wp_error( $attachment_id ) || ! $attachment_id ) {
+			$this->importer->warn( 'site icon: could not create the attachment' );
+			return;
+		}
+
+		wp_update_attachment_metadata(
+			$attachment_id,
+			wp_generate_attachment_metadata( $attachment_id, $upload['file'] )
+		);
+
+		update_option( 'site_icon', $attachment_id );
+
+		$this->importer->log( sprintf( 'site icon #%d', $attachment_id ) );
+	}
+
+	/**
+	 * Create or update a page, found by the meta key we control.
+	 *
+	 * Not by slug: WordPress appends -2 when a slug collides, so a lookup
+	 * that misses silently produces a duplicate rather than an error.
+	 */
+	private function upsert_page( string $slug, string $title, string $content ): int {
+
+		$existing = get_posts(
+			[
+				'post_type'              => 'page',
+				'post_status'            => [ 'publish', 'draft', 'pending', 'private', 'trash' ],
+				'meta_key'               => '_tdh_seed_key', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+				'meta_value'             => $slug,           // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+				'posts_per_page'         => 1,
+				'no_found_rows'          => true,
+				'update_post_term_cache' => false,
+			]
+		);
+
+		$args = [
+			'post_type'    => 'page',
+			'post_name'    => $slug,
+			'post_title'   => $title,
+			'post_status'  => 'publish',
+			'post_content' => $content,
+		];
+
+		if ( $existing ) {
+			$args['ID'] = $existing[0]->ID;
+			$id         = wp_update_post( $args, true );
+		} else {
+			$id = wp_insert_post( $args, true );
+		}
+
+		if ( is_wp_error( $id ) ) {
+			$this->importer->warn( $title . ': ' . $id->get_error_message() );
+			return 0;
+		}
+
+		update_post_meta( (int) $id, '_tdh_seed_key', $slug );
+
+		return (int) $id;
+	}
+
+	/**
+	 * @return array<string,array{title:string,content:string}>
+	 */
+	private function pages(): array {
+
+		$draft = '<p><em>' . esc_html__( 'Draft copy, to be reviewed and approved before launch.', 'thirtydayhomes' ) . '</em></p>';
+
+		return [
+			'home' => [
+				'title'   => __( 'Home', 'thirtydayhomes' ),
+				// Shortcodes, so the page renders correctly even with
+				// Elementor deactivated. The Elementor layout step
+				// overlays a visual version on top of this.
+				'content' => "[tdh_hero_search]\n\n[tdh_audience]\n\n[tdh_property_grid count=\"3\" columns=\"3\" eyebrow=\"Explore Pittsburgh\" heading=\"Homes ready when you are\" show_link=\"yes\"]\n\n[tdh_split_feature]\n\n[tdh_owner_cta]",
+			],
+			'how-it-works' => [
+				'title'   => __( 'How it works', 'thirtydayhomes' ),
+				'content' => '<h2>For renters</h2><p>Search by neighborhood, ZIP code or hospital. Compare homes by distance from where you will be working, review the full cost before you enquire, and contact the owner directly.</p>'
+					. '<h2>For property owners</h2><p>Join as a member, publish your furnished home, and receive enquiries directly from renters. Every listing is reviewed before it goes live.</p>'
+					. '<h2>Frequently asked questions</h2>'
+					. '<h3>How are search results ordered?</h3><p>When you search by location or ZIP code, homes appear closest to farthest.</p>'
+					. '<h3>How do I know a home is available?</h3><p>Each listing shows its available date and any blocked date ranges.</p>'
+					. '<h3>Are there extra fees?</h3><p>Application, pet and refundable deposit amounts are itemised on every listing.</p>'
+					. '<h3>Why is the exact address not shown?</h3><p>Listings show the neighborhood and an approximate map area. The full address is shared by the owner after you make contact — a deliberate choice, because a furnished home that is often empty should not have its address published.</p>',
+			],
+			'pricing' => [
+				'title'   => __( 'Membership', 'thirtydayhomes' ),
+				'content' => '<p>Publish your furnished property to renters searching near Pittsburgh’s medical centres.</p>' . $draft
+					. '<p><strong>Pricing is not yet confirmed.</strong> The membership structure is a client decision still open at kickoff.</p>',
+			],
+			'about' => [
+				'title'   => __( 'About', 'thirtydayhomes' ),
+				'content' => '<h2>A monthly home should still feel like home.</h2>'
+					. '<p>ThirtyDayHomes connects traveling professionals and families with verified furnished homes near the places they need to be — starting in Pittsburgh, and built to expand.</p>' . $draft,
+			],
+			'contact' => [
+				'title'   => __( 'Contact', 'thirtydayhomes' ),
+				'content' => '<p>Questions about a home, membership, or an urgent stay? Get in touch and we will respond within one business day.</p>' . $draft,
+			],
+			'terms' => [
+				'title'   => __( 'Terms of Use', 'thirtydayhomes' ),
+				'content' => '<p><strong>Placeholder.</strong> Final wording is supplied by the owner’s attorney before launch. This page exists so the structure, navigation and footer links are complete and testable.</p>',
+			],
+			'privacy' => [
+				'title'   => __( 'Privacy Policy', 'thirtydayhomes' ),
+				'content' => '<p><strong>Placeholder.</strong> Final wording is supplied by the owner’s attorney before launch.</p>'
+					. '<p>It must cover what the site collects, how enquiry data reaches landlords, and — once the site sends text messages — SMS consent, message frequency, opt-out and data retention.</p>',
+			],
+			'fair-housing' => [
+				'title'   => __( 'Fair Housing', 'thirtydayhomes' ),
+				'content' => '<p>ThirtyDayHomes supports equal access to housing.</p>'
+					. '<p>Listings must describe the property, not the ideal renter. Every landlord acknowledges this before a listing is submitted, and listings are reviewed before publication.</p>' . $draft,
+			],
+		];
+	}
+
+	/**
+	 * @param array<string,int> $ids
+	 */
+	private function set_front_page( array $ids ): void {
+
+		if ( empty( $ids['home'] ) ) {
+			return;
+		}
+
+		update_option( 'show_on_front', 'page' );
+		update_option( 'page_on_front', $ids['home'] );
+		update_post_meta( $ids['home'], '_wp_page_template', 'elementor/tpl-full-width.php' );
+
+		if ( ! empty( $ids['privacy'] ) ) {
+			update_option( 'wp_page_for_privacy_policy', $ids['privacy'] );
+		}
+
+		$this->importer->log( 'front page set' );
+	}
+
+	/**
+	 * @param array<string,int> $ids
+	 */
+	private function build_menus( array $ids ): void {
+
+		$homes = get_post_type_archive_link( Post_Types::LISTING ) ?: home_url( '/homes/' );
+
+		$this->upsert_menu(
+			__( 'Primary', 'thirtydayhomes' ),
+			'primary',
+			[
+				[ 'page', (string) ( $ids['about'] ?? 0 ),        __( 'About', 'thirtydayhomes' ), '' ],
+				[ 'url',  $homes,                                 __( 'Find a home', 'thirtydayhomes' ), '' ],
+				[ 'page', (string) ( $ids['how-it-works'] ?? 0 ), __( 'Renter FAQ', 'thirtydayhomes' ), '' ],
+				[ 'page', (string) ( $ids['pricing'] ?? 0 ),      __( 'List your property', 'thirtydayhomes' ), '' ],
+				[ 'url',  wp_login_url(),                         __( 'Sign in', 'thirtydayhomes' ), '' ],
+				[ 'page', (string) ( $ids['pricing'] ?? 0 ),      __( 'List your home', 'thirtydayhomes' ), 'nav-cta' ],
+			]
+		);
+
+		$this->upsert_menu(
+			__( 'Footer', 'thirtydayhomes' ),
+			'footer',
+			[
+				[ 'url',  $homes,                                 __( 'Find a home', 'thirtydayhomes' ), '' ],
+				[ 'page', (string) ( $ids['how-it-works'] ?? 0 ), __( 'How it works', 'thirtydayhomes' ), '' ],
+				[ 'page', (string) ( $ids['pricing'] ?? 0 ),      __( 'Membership', 'thirtydayhomes' ), '' ],
+				[ 'page', (string) ( $ids['about'] ?? 0 ),        __( 'About', 'thirtydayhomes' ), '' ],
+				[ 'page', (string) ( $ids['contact'] ?? 0 ),      __( 'Contact', 'thirtydayhomes' ), '' ],
+				[ 'page', (string) ( $ids['terms'] ?? 0 ),        __( 'Terms', 'thirtydayhomes' ), '' ],
+				[ 'page', (string) ( $ids['privacy'] ?? 0 ),      __( 'Privacy', 'thirtydayhomes' ), '' ],
+				[ 'page', (string) ( $ids['fair-housing'] ?? 0 ), __( 'Fair Housing', 'thirtydayhomes' ), '' ],
+			]
+		);
+	}
+
+	/**
+	 * Rebuild a menu from scratch.
+	 *
+	 * Deleting and recreating rather than diffing: re-running must never
+	 * leave a menu with every item listed twice, and a menu is cheap to
+	 * rebuild. The cost is that a client's manual reordering is lost on
+	 * re-import, which is why the admin screen says so before you click.
+	 *
+	 * @param array<int,array{0:string,1:string,2:string,3:string}> $items
+	 */
+	private function upsert_menu( string $name, string $location, array $items ): void {
+
+		$existing = wp_get_nav_menu_object( $name );
+
+		if ( $existing ) {
+			wp_delete_nav_menu( $existing->term_id );
+		}
+
+		$menu_id = wp_create_nav_menu( $name );
+
+		if ( is_wp_error( $menu_id ) ) {
+			$this->importer->warn( $name . ': ' . $menu_id->get_error_message() );
+			return;
+		}
+
+		foreach ( $items as [ $type, $value, $label, $class ] ) {
+
+			$args = [
+				'menu-item-title'   => $label,
+				'menu-item-status'  => 'publish',
+				'menu-item-classes' => $class,
+			];
+
+			if ( 'page' === $type ) {
+				if ( ! (int) $value ) {
+					continue;
+				}
+				$args['menu-item-object-id'] = (int) $value;
+				$args['menu-item-object']    = 'page';
+				$args['menu-item-type']      = 'post_type';
+			} else {
+				$args['menu-item-url']  = $value;
+				$args['menu-item-type'] = 'custom';
+			}
+
+			wp_update_nav_menu_item( $menu_id, 0, $args );
+		}
+
+		$locations              = get_theme_mod( 'nav_menu_locations', [] );
+		$locations[ $location ] = $menu_id;
+		set_theme_mod( 'nav_menu_locations', $locations );
+
+		$this->importer->log( sprintf( 'menu #%d %s → %s', $menu_id, $name, $location ) );
+	}
+
+	/**
+	 * Clear WordPress's own sample content.
+	 */
+	private function remove_sample_content(): void {
+
+		foreach ( [ 'hello-world' => 'post', 'sample-page' => 'page' ] as $slug => $type ) {
+
+			$sample = get_page_by_path( $slug, OBJECT, $type );
+
+			if ( $sample ) {
+				wp_delete_post( $sample->ID, true );
+				$this->importer->log( "removed WordPress sample {$type}" );
+			}
+		}
+	}
+}

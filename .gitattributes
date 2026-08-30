@@ -1,0 +1,36 @@
+# Normalise line endings.
+#
+# Without this, Git on Windows converts LF to CRLF on checkout, and every
+# file you have already committed shows as fully modified the next time
+# someone clones the repo. That is the warning GitHub Desktop keeps
+# showing on every file.
+#
+# LF everywhere in the repository; your editor and PHP do not care, and
+# the diffs stay honest.
+
+* text=auto eol=lf
+
+# Explicit, so nothing gets guessed wrong.
+*.php   text eol=lf
+*.css   text eol=lf
+*.js    text eol=lf
+*.md    text eol=lf
+*.json  text eol=lf
+*.txt   text eol=lf
+*.yml   text eol=lf
+*.xml   text eol=lf
+
+# Binary — never touch these.
+*.webp  binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.svg   text eol=lf
+*.ico   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.zip   binary
+*.docx  binary
+*.pdf   binary

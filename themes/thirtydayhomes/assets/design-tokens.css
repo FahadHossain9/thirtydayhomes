@@ -1,0 +1,289 @@
+/* =========================================================================
+   THIRTYDAYHOMES — DESIGN TOKENS
+
+   The single source of truth for every value in this theme. Loaded before
+   style.css and before any component CSS.
+
+   ─── THE RULE ──────────────────────────────────────────────────────────
+
+   Component and section styles draw EXCLUSIVELY from these tokens. No
+   hardcoded font sizes, no one-off margins, no stray hex values inside a
+   section class. If a component needs a value this file does not have,
+   add the token here first — that is the moment to decide whether it is a
+   genuinely new step in the system or a rounding error someone is about to
+   bake in permanently.
+
+   ─── WHY A SEPARATE FILE ───────────────────────────────────────────────
+
+   Tokens change rarely and get read constantly. Keeping them out of the
+   1,000-line stylesheet means a designer can see the whole system on one
+   screen, and a diff on this file is always a system-level decision rather
+   than a component tweak.
+
+   ─── SCALES, NOT PREFERENCES ───────────────────────────────────────────
+
+   Spacing is a 4px-based scale. Type is a fluid scale using clamp(), so
+   there are no breakpoint jumps in the middle of a heading. Where the
+   approved prototype used an off-scale value (13px, 23px, 33px), it has
+   been snapped to the nearest step. That shifts a few measurements by one
+   or two pixels; the consistency is worth more than the drift.
+
+   ========================================================================= */
+
+:root {
+
+	/* =====================================================================
+	   1. COLOUR
+	   ===================================================================== */
+
+	/* --- Brand ------------------------------------------------------- */
+	--color-navy:        #0c192b;  /* primary  — headers, dark grounds     */
+	--color-navy-soft:   #13243a;  /* raised surfaces on navy              */
+	--color-navy-inset:  #101e31;  /* inset wells, the logo tile           */
+	--color-navy-deep:   #091525;  /* footer, deepest ground               */
+
+	--color-gold:        #d7b967;  /* accent   — buttons, active states    */
+	--color-gold-light:  #f0dc9a;  /* accent on dark grounds               */
+	--color-gold-deep:   #a68631;  /* accent as TEXT on light grounds —
+	                                  the only gold that passes contrast   */
+	--color-gold-ink:    #8a7433;  /* icon glyphs on sand                  */
+
+	/* --- Neutral ----------------------------------------------------- */
+	--color-white:       #ffffff;
+	--color-cream:       #faf8f2;  /* page-level tint                      */
+	--color-bone:        #f7f5ef;  /* second tint, one step warmer         */
+	--color-sand:        #f2ead5;  /* gold-tinted fill for icon wells      */
+	--color-sand-soft:   #f1ebdc;
+	--color-ink:         #0c192b;  /* body text — same value as navy,
+	                                  named separately because its ROLE is
+	                                  text, and roles change independently */
+	--color-ink-muted:   #687384;
+	--color-ink-subtle:  #74808b;
+	--color-line:        #e4e5e6;
+	--color-line-soft:   #eeeeee;
+
+	/* --- On dark grounds --------------------------------------------- */
+	--color-on-dark:          #ffffff;
+	--color-on-dark-muted:    #bcc6d1;
+	--color-on-dark-subtle:   #aeb9c5;
+	--color-on-dark-faint:    #778696;
+	--color-on-dark-nav:      #f2f4f7;
+	--color-on-dark-lead:     #dae0e7;
+	--color-on-dark-link:     #cbd3dc;  /* footer navigation              */
+	--color-border-on-dark:   rgba( 255, 255, 255, 0.17 );
+	/* Half the strength of the rule above. The CTA stat dividers sit on
+	   navy and need to read; the footer's legal rule sits on the darkest
+	   ground on the site and only needs to separate, not announce.       */
+	--color-border-on-dark-faint: rgba( 255, 255, 255, 0.09 );
+	--color-surface-on-dark:  rgba( 255, 255, 255, 0.04 );
+
+	/* --- Semantic — deliberately separate from the brand accent ------- */
+	--color-success:      #2e7358;
+	--color-success-bg:   #e3f2e9;
+	--color-warning:      #8b6810;
+	--color-warning-bg:   #fff1cf;
+	--color-danger:       #a94242;
+	--color-danger-bg:    #fae5e5;
+	--color-neutral:      #5d6772;
+	--color-neutral-bg:   #edf0f3;
+
+	/* --- UI roles ----------------------------------------------------- */
+	--bg-page:            var( --color-white );
+	--bg-surface:         var( --color-white );
+	--bg-surface-tint:    var( --color-cream );
+	--bg-surface-warm:    var( --color-bone );
+	--bg-surface-accent:  var( --color-sand );
+	--bg-inverse:         var( --color-navy );
+
+	--text-default:       var( --color-ink );
+	--text-muted:         var( --color-ink-muted );
+	--text-subtle:        var( --color-ink-subtle );
+	--text-inverse:       var( --color-on-dark );
+	--text-accent:        var( --color-gold-deep );
+
+	--border-default:     var( --color-line );
+	--border-soft:        var( --color-line-soft );
+	--border-strong:      #cfd3d6;
+	--border-focus:       var( --color-gold );
+
+	--hover-dim:          brightness( 0.95 );
+	--disabled-opacity:   0.55;
+
+	/* =====================================================================
+	   2. TYPOGRAPHY
+	   ===================================================================== */
+
+	--font-heading: 'Playfair Display', Georgia, 'Times New Roman', Times, serif;
+	--font-body:    'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+	                Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+	/* --- Fluid type scale --------------------------------------------
+	   clamp( floor, preferred, ceiling ). No breakpoint jumps: a heading
+	   grows continuously, so it never lurches one pixel past 700px.       */
+	--text-display: clamp( 2.75rem,   6vw,   4.375rem  );  /*  44 → 70 */
+	--text-h1:      clamp( 2rem,      4.5vw, 2.9375rem );  /*  32 → 47 */
+	--text-h2:      clamp( 2rem,      4vw,   2.6875rem );  /*  32 → 43 */
+	--text-h3:      clamp( 1.3125rem, 2.2vw, 2rem      );  /*  21 → 32 */
+	--text-h4:      1.625rem;                              /*  26      */
+	--text-h5:      1.3125rem;                             /*  21      */
+
+	--text-xl:      1.5625rem;   /* 25 — price figures                    */
+	--text-lg:      1.0625rem;   /* 17 — lead paragraphs                  */
+	--text-base:    1rem;        /* 16 — body                             */
+	--text-sm:      0.8125rem;   /* 13 — dense UI, captions               */
+	--text-xs:      0.75rem;     /* 12 — meta                             */
+	--text-2xs:     0.6875rem;   /* 11 — card facts                       */
+	--text-3xs:     0.625rem;    /* 10 — pills, overlines, field labels   */
+
+	/* --- Line height -------------------------------------------------- */
+	--leading-none:    1;
+	--leading-display: 1.02;   /* hero only — the largest type            */
+	/* h1, h2. The prototype sets no line-height on these, so they render
+	   at the browser default, which for Playfair Display lands near 1.3.
+	   An earlier 1.08 here was tighter than anything that was drawn, and
+	   it showed most on the two-line headings the <br> now forces.
+	   The hero pins --leading-display itself, so it is unaffected.       */
+	--leading-tight:   1.3;
+	--leading-heading: 1.25;   /* h3                                      */
+	--leading-snug:    1.45;
+	--leading-body:    1.6;    /* running text                            */
+	--leading-relaxed: 1.7;
+	--leading-loose:   1.8;    /* long-form prose                         */
+
+	/* --- Letter spacing ----------------------------------------------- */
+	--tracking-tighter: -1px;     /* wordmark                             */
+	--tracking-tight:   -0.7px;   /* display headings                     */
+	--tracking-normal:  0;
+	--tracking-wide:    1px;      /* small caps field labels              */
+	--tracking-wider:   2px;      /* overlines                            */
+
+	/* --- Weight -------------------------------------------------------- */
+	--weight-normal:   400;
+	--weight-medium:   500;
+	--weight-semibold: 600;
+	--weight-bold:     700;
+
+	/* =====================================================================
+	   3. SPACING & RHYTHM
+	   4px base. Use a step, never a raw pixel.
+	   ===================================================================== */
+
+	--space-1:  0.25rem;   /*  4 */
+	--space-2:  0.5rem;    /*  8 */
+	--space-3:  0.75rem;   /* 12 */
+	--space-4:  1rem;      /* 16 */
+	--space-5:  1.25rem;   /* 20 */
+	--space-6:  1.5rem;    /* 24 */
+	--space-7:  2rem;      /* 32 */
+	--space-8:  2.5rem;    /* 40 */
+	--space-9:  3rem;      /* 48 */
+	--space-10: 4rem;      /* 64 */
+	--space-11: 5rem;      /* 80 */
+	--space-12: 6rem;      /* 96 */
+
+	/* --- Section rhythm -----------------------------------------------
+	   Fluid, so there is no mobile padding override to keep in sync.      */
+	--section-gap:         clamp( 4.0625rem, 6vw, 5.625rem );  /* 65 → 90 */
+	--section-gap-tight:   clamp( 3.75rem,   5vw, 5.3125rem ); /* 60 → 85 */
+	/* The optical gap between a heading and the type next to it — off the
+	   4px scale on purpose. That scale governs distance between blocks on
+	   the page; this is the space inside a run of text, and snapping it to
+	   the nearest multiple of four makes every heading in the design sit
+	   2px further from its own copy than it was drawn.                   */
+	--type-gap:            0.625rem;          /* 10 */
+
+	/* Eyebrow → heading → copy, equal above and below. One token, so every
+	   section heading keeps the same rhythm.                             */
+	--section-heading-gap: var( --type-gap );
+	/* Heading block → the content under it. Measured on the page rather
+	   than snapped to the 4px scale, and shared by every section so the
+	   drop into content is the same everywhere.                          */
+	--section-title-gap:   1.875rem;          /* 30 */
+
+	/* Horizontal page gutter. Fluid from 20px to 134px.                   */
+	--gutter:        clamp( 1.25rem, 7vw, 8.375rem );
+	--gutter-narrow: clamp( 1.25rem, 4vw, 4.5rem );
+
+	/* Inner gutter for a full-width tinted band that is itself already
+	   inset from the page edge — the owner CTA is the one case today.
+	   A PERCENTAGE, not a step on the spacing scale, and deliberately so:
+	   it resolves against the band's own width, so the inset stays in
+	   proportion to the block as the viewport grows. A fixed value makes
+	   the content crowd the edges on a wide screen.                      */
+	--band-gutter:    6%;
+	--band-gutter-sm: 8%;  /* a phone needs more of it, proportionally    */
+
+	/* --- Containers ---------------------------------------------------- */
+	--container:        77.5rem;  /* 1240 — standard grid                  */
+	--container-hero:   70rem;    /* 1120                                  */
+	--container-form:   65rem;    /* 1040                                  */
+	--container-text:   45rem;    /*  720 — long-form prose                */
+	--container-head:   43.75rem; /*  700 — page intro                     */
+	--measure:          62ch;     /* comfortable reading width             */
+
+	/* =====================================================================
+	   4. LAYOUT & COMPONENTS
+	   ===================================================================== */
+
+	--header-height:        6rem;      /* 96 */
+	--header-height-sm:     4.5rem;    /* 72 */
+	--hero-min-height:      42.8125rem;/* 685 */
+	--hero-min-height-sm:   40rem;     /* 640 */
+
+	--split-photo-height:   35rem;     /* 560 */
+	--split-photo-height-sm:23.75rem;  /* 380 */
+	--card-image-height:    15rem;     /* 240 */
+	--card-min-height:      24.375rem; /* 390 */
+
+	/* --- Control padding ------------------------------------------------
+	   Deliberately NOT on the 4px spacing scale. That scale governs the
+	   rhythm between blocks on the page; a button's padding is tuned to
+	   the text inside it, and snapping it to the nearest multiple of four
+	   makes every control in the design 2–4px chunkier than drawn. These
+	   are the approved prototype's values, kept exactly.                 */
+	--btn-pad-y:            0.75rem;   /* 12 */
+	--btn-pad-x:            1.0625rem; /* 17 */
+	--btn-pad-y-lg:         0.875rem;  /* 14 — the gold CTA              */
+	--btn-pad-x-lg:         1.1875rem; /* 19 */
+	--btn-pad-y-sm:         0.625rem;  /* 10 */
+	--btn-pad-x-sm:         0.9375rem; /* 15 */
+
+	--icon-well:            2.625rem;  /* 42 — benefit rows               */
+	--icon-well-lg:         3.75rem;   /* 60 — audience cards             */
+
+	/* Glyph size INSIDE a well — not the well itself.
+	   The approved prototype draws these small against a large circle;
+	   a bigger glyph fills the well and loses the refinement. */
+	--icon-sm:              0.875rem;  /* 14 — inline, beside text        */
+	--icon-base:            1.1875rem; /* 19 — the prototype's default    */
+	--icon-lg:              1.375rem;  /* 22 — badges                     */
+	--logo-tile:            4.0625rem; /* 65 */
+	--logo-tile-sm:         3rem;      /* 48 */
+
+	--sidebar-width:        21.25rem;  /* 340 — listing inquiry column    */
+
+	/* --- Radius --------------------------------------------------------- */
+	--radius-xs:   3px;
+	--radius-sm:   4px;
+	--radius-md:   5px;
+	--radius-lg:   10px;
+	--radius-pill: 30px;
+	--radius-full: 50%;
+
+	/* --- Elevation ------------------------------------------------------ */
+	--shadow-sm: 0 2px 8px rgba( 12, 25, 43, 0.06 );
+	--shadow-md: 0 18px 50px rgba( 12, 25, 43, 0.09 );
+	--shadow-lg: 0 24px 70px rgba( 0, 0, 0, 0.44 );
+
+	/* --- Motion ---------------------------------------------------------
+	   Durations are honoured only when the visitor has not asked for
+	   reduced motion; style.css zeroes them under that media query.       */
+	--duration-fast: 0.2s;
+	--duration-base: 0.25s;
+	--duration-slow: 0.4s;
+	--ease:          cubic-bezier( 0.4, 0, 0.2, 1 );
+
+	--z-header: 10;
+	--z-overlay: 50;
+	--z-skip:   999;
+}

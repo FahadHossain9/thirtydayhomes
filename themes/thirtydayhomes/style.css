@@ -1,0 +1,1252 @@
+/*
+Theme Name:   ThirtyDayHomes
+Theme URI:    https://github.com/FahadHossain9/thirtydayhomes
+Author:       Instaquirk
+Author URI:   https://instaquirk.com
+Description:  Presentation layer for the ThirtyDayHomes marketplace. Owns global design tokens, header, footer, navigation, responsive framework and Elementor integration. Holds NO marketplace business rules — those live in the ThirtyDayHomes Core plugin, so replacing this theme never costs a listing, membership, inquiry or facility.
+Version:      0.5.0
+Requires at least: 6.5
+Tested up to: 7.1
+Requires PHP: 8.1
+License:      GNU General Public License v2 or later
+License URI:  http://www.gnu.org/licenses/gpl-2.0.html
+Text Domain:  thirtydayhomes
+Tags:         custom-menu, featured-images, translation-ready
+*/
+
+/* =========================================================================
+   EVERY VALUE BELOW COMES FROM assets/design-tokens.css
+
+   That file is loaded first and holds the whole system: colour, type
+   scale, spacing scale, containers, radii, shadows, motion.
+
+   Do not introduce a raw px value, hex colour or font size in this file.
+   If something needs a value the tokens do not have, add the token first.
+   A one-off here is how a design system quietly stops being one.
+
+   Class names match the client-approved prototype so the two can be
+   diffed directly. Keep it that way.
+   ========================================================================= */
+
+/* =========================================================================
+   BASE
+   ========================================================================= */
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+@media ( prefers-reduced-motion: reduce ) {
+	html { scroll-behavior: auto; }
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
+}
+
+body {
+	margin: 0;
+	background: var( --bg-page );
+	color: var( --text-default );
+	font-family: var( --font-body );
+	font-size: var( --text-base );
+	line-height: var( --leading-body );
+	-webkit-font-smoothing: antialiased;
+}
+
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+
+h1, h2, h3, p { margin-top: 0; }
+
+/*
+ * Headings carry their own line-height.
+ *
+ * body sets --leading-body for running text. Without an explicit value the
+ * display faces inherit it, and at 70px that is a 112px line box — which
+ * reads as broken rather than airy.
+ */
+h1, h2 {
+	font-family: var( --font-heading );
+	letter-spacing: var( --tracking-tight );
+	line-height: var( --leading-tight );
+	text-wrap: balance;
+}
+
+h3 {
+	line-height: var( --leading-heading );
+	text-wrap: balance;
+}
+
+h4, h5, h6 { line-height: var( --leading-heading ); }
+
+a { color: inherit; }
+
+img, video { max-width: 100%; height: auto; }
+
+/* A visible focus ring is not optional. Elementor suppresses this in
+   several widgets, so it is asserted here at the theme level. */
+:focus-visible {
+	outline: 2px solid var( --border-focus );
+	outline-offset: 2px;
+}
+
+.screen-reader-text {
+	position: absolute !important;
+	width: 1px; height: 1px;
+	padding: 0; margin: -1px;
+	overflow: hidden;
+	clip: rect( 0, 0, 0, 0 );
+	white-space: nowrap;
+	border: 0;
+}
+
+.skip-link {
+	position: absolute;
+	left: -9999px;
+	z-index: var( --z-skip );
+	padding: var( --space-3 ) var( --space-4 );
+	background: var( --bg-inverse );
+	color: var( --text-inverse );
+	text-decoration: none;
+}
+
+.skip-link:focus { left: var( --space-4 ); top: var( --space-4 ); }
+
+/* =========================================================================
+   BUTTONS
+   ========================================================================= */
+
+.primary, .secondary, .gold-btn, .danger {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: var( --space-2 );
+	padding: var( --btn-pad-y ) var( --btn-pad-x );
+	border: 1px solid transparent;
+	border-radius: var( --radius-sm );
+	font-weight: var( --weight-bold );
+	text-decoration: none;
+	transition: filter var( --duration-fast ) var( --ease );
+}
+
+.primary   { background: var( --color-navy ); color: var( --text-inverse ); }
+.secondary { background: var( --bg-surface ); color: var( --color-navy ); border-color: var( --border-strong ); }
+.gold-btn  { background: var( --color-gold ); color: var( --color-navy ); border: 0; padding: var( --btn-pad-y-lg ) var( --btn-pad-x-lg ); }
+.danger    { background: var( --color-danger ); color: var( --text-inverse ); }
+
+.primary:hover, .gold-btn:hover, .secondary:hover, .danger:hover { filter: var( --hover-dim ); }
+
+/* Buttons shrink to their content, so an icon must not be allowed to
+   compress when the label is long. */
+.primary .tdh-icon,
+.secondary .tdh-icon,
+.gold-btn .tdh-icon,
+.danger .tdh-icon { flex: none; }
+
+.text-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: var( --space-2 );
+	background: none;
+	border: 0;
+	color: var( --color-navy );
+	font-weight: var( --weight-bold );
+	text-decoration: none;
+}
+
+.full { width: 100%; }
+.muted { color: var( --text-muted ); }
+.center { text-align: center; }
+
+/* =========================================================================
+   LOGO
+   ========================================================================= */
+
+.logo {
+	display: flex;
+	align-items: center;
+	gap: var( --space-3 );
+	color: var( --text-inverse );
+	white-space: nowrap;
+	text-align: left;
+	text-decoration: none;
+}
+
+.logo > i {
+	display: grid;
+	place-items: center;
+	width: var( --logo-tile );
+	height: calc( var( --logo-tile ) * 1.15 );
+	background: var( --color-navy-inset );
+	border-radius: var( --radius-sm );
+	font-style: normal;
+	flex: none;
+}
+
+.logo > i img {
+	width: 78%;
+	height: 78%;
+	object-fit: contain;
+}
+
+.logo > span {
+	display: flex;
+	flex-direction: row;
+	align-items: baseline;
+	line-height: var( --leading-none );
+}
+
+.logo b,
+.logo strong {
+	font-family: var( --font-body );
+	font-size: var( --text-h5 );
+	letter-spacing: var( --tracking-tighter );
+	font-weight: var( --weight-bold );
+}
+
+.logo b      { color: var( --text-inverse ); }
+.logo strong { color: var( --color-gold ); }
+
+/* =========================================================================
+   HEADER
+   ========================================================================= */
+
+.site-header {
+	position: relative;
+	z-index: var( --z-header );
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	height: var( --header-height );
+	padding-inline: var( --gutter-narrow );
+	background: var( --bg-inverse );
+	color: var( --text-inverse );
+}
+
+.site-header > .logo-link {
+	background: none;
+	border: 0;
+	color: inherit;
+	padding: 0;
+	text-decoration: none;
+}
+
+.site-nav ul {
+	display: flex;
+	align-items: center;
+	gap: var( --space-7 );
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.site-nav a {
+	color: var( --color-on-dark-nav );
+	font-size: var( --text-base );
+	font-weight: var( --weight-medium );
+	text-decoration: none;
+}
+
+.site-nav a:hover { color: var( --color-gold-light ); }
+
+/* The gold call to action is driven by a `nav-cta` menu class the client
+   can move in Appearance → Menus, not hardcoded to a position. */
+.site-nav .nav-cta > a {
+	display: inline-flex;
+	align-items: center;
+	background: var( --color-gold );
+	color: var( --color-navy );
+	border-radius: var( --radius-sm );
+	padding: var( --space-4 ) var( --space-6 );
+	font-weight: var( --weight-bold );
+}
+
+.site-nav .nav-cta > a:hover { color: var( --color-navy ); filter: var( --hover-dim ); }
+
+.nav-toggle {
+	display: none;
+	background: none;
+	border: 0;
+	color: var( --text-inverse );
+	padding: var( --space-2 );
+}
+
+/* =========================================================================
+   HERO
+   ========================================================================= */
+
+.hero {
+	position: relative;
+	display: flex;
+	align-items: center;
+	min-height: var( --hero-min-height );
+	padding: var( --space-12 ) var( --gutter ) var( --space-10 );
+	background: var( --bg-inverse );
+	color: var( --text-inverse );
+}
+
+.hero-bg {
+	position: absolute;
+	inset: 0;
+	background-image:
+		linear-gradient( 90deg,
+			rgba( 7, 20, 38, 0.95 ) 0%,
+			rgba( 11, 29, 51, 0.77 ) 48%,
+			rgba( 11, 29, 51, 0.19 ) 78% ),
+		var( --hero-image, none );
+	background-position: center;
+	background-size: cover;
+}
+
+.hero-inner {
+	position: relative;
+	width: 100%;
+	max-width: var( --container-hero );
+}
+
+.overline {
+	margin: 0;
+	font-size: var( --text-2xs );
+	font-weight: var( --weight-bold );
+	letter-spacing: var( --tracking-wider );
+	text-transform: uppercase;
+	color: var( --color-gold-light );
+}
+
+.overline.gold { color: var( --text-accent ); }
+
+.hero h1 {
+	font-size: var( --text-display );
+	line-height: var( --leading-display );
+	margin: var( --space-5 ) 0;
+}
+
+.hero h1 em { color: var( --color-gold-light ); font-style: italic; }
+
+.lead {
+	max-width: var( --measure );
+	margin: 0;
+	font-size: var( --text-lg );
+	line-height: var( --leading-relaxed );
+	color: var( --color-on-dark-lead );
+}
+
+.hero-search {
+	display: grid;
+	grid-template-columns: 1.5fr 1fr 1fr auto;
+	max-width: var( --container-form );
+	margin-top: var( --space-8 );
+	padding: var( --space-2 );
+	background: var( --bg-surface );
+	color: var( --text-default );
+	border-radius: var( --radius-md );
+	box-shadow: var( --shadow-md );
+}
+
+/* The date-led variant: "Where" gives up width to the two date pickers,
+   which need room for a full mm/dd/yyyy. */
+.hero-search.date-search { grid-template-columns: 1.35fr 1fr 1fr auto; }
+
+.hero-search label {
+	display: flex;
+	align-items: center;
+	gap: var( --space-3 );
+	padding: var( --space-2 ) var( --space-4 );
+	border-right: 1px solid var( --border-default );
+}
+
+.hero-search label > .tdh-icon { color: var( --text-accent ); flex: none; }
+
+.hero-search label > span {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	min-width: 0;
+}
+
+.hero-search label b {
+	font-size: var( --text-3xs );
+	text-transform: uppercase;
+	letter-spacing: var( --tracking-wide );
+}
+
+.hero-search input {
+	width: 100%;
+	padding: var( --space-1 ) 0;
+	border: 0;
+	outline: 0;
+	background: none;
+	color: var( --text-muted );
+	font-size: var( --text-sm );
+}
+
+.hero-search button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var( --space-2 );
+	padding-inline: var( --space-6 );
+	background: var( --color-gold );
+	color: var( --color-navy );
+	border: 0;
+	border-radius: var( --radius-xs );
+	font-weight: var( --weight-bold );
+}
+
+.hero-search button:disabled { opacity: var( --disabled-opacity ); cursor: not-allowed; }
+
+.hero-hint {
+	margin: var( --space-3 ) 0 0;
+	font-size: var( --text-xs );
+	color: var( --color-on-dark-muted );
+}
+
+.hero-trust {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var( --space-6 );
+	margin: var( --space-5 ) 0 0;
+	padding: 0;
+	list-style: none;
+	font-size: var( --text-xs );
+	color: var( --color-on-dark-lead );
+}
+
+.hero-trust li {
+	display: flex;
+	align-items: center;
+	gap: var( --space-1 );
+}
+
+.hero-trust .tdh-icon { color: var( --color-gold ); flex: none; }
+
+/* =========================================================================
+   SECTION SHELL
+   ========================================================================= */
+
+.section,
+.page-shell,
+.detail { padding: var( --section-gap ) var( --gutter ); }
+
+.page-shell.narrow { max-width: var( --container-form ); margin-inline: auto; }
+
+.section-title {
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: var( --space-6 );
+	flex-wrap: wrap;
+	margin-bottom: var( --section-title-gap );
+}
+
+/* -------------------------------------------------------------------------
+   SHARED SECTION HEADING RHYTHM
+
+   One rule for every section heading on the site. The eyebrow sits tight
+   above, the heading carries an equal margin top and bottom, and the copy
+   below adds nothing of its own — so the gap above the heading and the gap
+   below it are the same measurement, in every section.
+
+   Add a new section? Add its selector here. Do not restyle its h2 locally.
+   ---------------------------------------------------------------------- */
+
+.section-title h2,
+.audience-head h2,
+.split h2,
+.owner-cta h2 {
+	font-size: var( --text-h2 );
+	margin: var( --section-heading-gap ) 0;
+}
+
+.section-title .overline,
+.audience-head .overline,
+.split .overline,
+.owner-cta .overline { margin: 0; }
+
+.section-title h2 + p,
+.audience-head h2 + p,
+.split h2 + p,
+.owner-cta h2 + p { margin: 0; }
+
+.section-title > div > p:last-child { color: var( --text-muted ); margin: 0; }
+
+.page-head { max-width: var( --container-head ); margin-bottom: var( --space-8 ); }
+.page-head.center { text-align: center; margin-inline: auto; }
+.page-head h1 { font-size: var( --text-h1 ); margin: var( --space-2 ) 0; }
+.page-head > p:last-child { color: var( --text-muted ); margin: 0; }
+
+.prose { max-width: var( --container-text ); }
+.prose h2 { font-size: var( --text-h4 ); margin-top: var( --space-8 ); }
+.prose h3 { font-size: var( --text-h5 ); margin-top: var( --space-6 ); }
+.prose p  { line-height: var( --leading-loose ); color: var( --text-muted ); }
+
+/* =========================================================================
+   PROPERTY CARDS
+   ========================================================================= */
+
+.property-grid {
+	display: grid;
+	/* Column count is a widget setting; 3 when nothing sets it. */
+	grid-template-columns: repeat( var( --grid-columns, 3 ), 1fr );
+	gap: var( --space-6 );
+}
+
+.property-card {
+	display: flex;
+	flex-direction: column;
+	background: var( --bg-surface );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-md );
+	overflow: hidden;
+	transition:
+		transform var( --duration-base ) var( --ease ),
+		box-shadow var( --duration-base ) var( --ease );
+}
+
+.property-card:hover { transform: translateY( -4px ); box-shadow: var( --shadow-md ); }
+
+.property-img {
+	position: relative;
+	display: block;
+	height: var( --card-image-height );
+	background: var( --bg-surface-accent );
+	overflow: hidden;
+}
+
+.property-img > img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	transition: transform var( --duration-slow ) var( --ease );
+}
+
+.property-card:hover .property-img > img { transform: scale( 1.035 ); }
+
+.property-img .placeholder {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	color: var( --color-gold-ink );
+	font-size: var( --text-sm );
+}
+
+.tag {
+	position: absolute;
+	top: var( --space-3 );
+	left: var( --space-3 );
+	padding: var( --space-1 ) var( --space-2 );
+	background: var( --bg-surface );
+	border-radius: var( --radius-xs );
+	font-size: var( --text-3xs );
+	font-weight: var( --weight-bold );
+}
+
+.property-body {
+	display: flex;
+	flex-direction: column;
+	padding: var( --space-5 );
+	flex: 1;
+}
+
+.location {
+	display: flex;
+	justify-content: space-between;
+	margin: 0;
+	font-size: var( --text-2xs );
+	color: var( --text-subtle );
+}
+
+/* Icon and label sit on one line and share a gap, so a long neighbourhood
+   name wraps under itself rather than under the pin. */
+.location span,
+.facts li {
+	display: inline-flex;
+	align-items: center;
+	gap: var( --space-2 );
+}
+
+.location .tdh-icon,
+.facts .tdh-icon {
+	flex: none;
+	color: var( --text-subtle );
+}
+
+.location .tdh-icon--map-pin { color: var( --text-accent ); }
+
+.location .rating {
+	flex: none;
+	color: var( --text-default );
+	font-weight: var( --weight-bold );
+}
+
+.location .rating .tdh-icon { color: var( --color-gold ); }
+
+/* The photo is a positioning context for the badge and the save button.
+   Both sit above the image, so the anchor fills the box beneath them
+   rather than wrapping them — a link cannot contain a button. */
+.property-img > a {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+.tag {
+	position: absolute;
+	top: var( --space-3 );
+	left: var( --space-3 );
+	padding: var( --space-2 ) var( --space-3 );
+	background: var( --bg-surface );
+	border-radius: var( --radius-xs );
+	font-size: var( --text-3xs );
+	font-weight: var( --weight-bold );
+	box-shadow: var( --shadow-sm );
+}
+
+.heart {
+	position: absolute;
+	top: var( --space-3 );
+	right: var( --space-3 );
+	display: grid;
+	place-items: center;
+	width: 2.25rem;
+	height: 2.25rem;
+	padding: 0;
+	background: var( --bg-surface );
+	border: 0;
+	border-radius: var( --radius-full );
+	color: var( --color-navy );
+	cursor: pointer;
+	box-shadow: var( --shadow-sm );
+	transition: color var( --duration-fast ) var( --ease ),
+	            transform var( --duration-fast ) var( --ease );
+}
+
+.heart:hover { transform: scale( 1.08 ); }
+
+/* Saved. The heart fills rather than only changing colour, because a
+   colour-only change is invisible to anyone with red-green colour
+   blindness — aria-pressed carries the same state for screen readers. */
+.heart.liked {
+	color: var( --color-danger );
+}
+
+.heart.liked .tdh-icon {
+	fill: currentColor;
+}
+
+.property-body h3 {
+	font-family: var( --font-heading );
+	font-size: var( --text-h5 );
+	margin: var( --type-gap ) 0;
+}
+
+.property-body h3 a { text-decoration: none; }
+.property-body h3 a:hover { color: var( --text-accent ); }
+
+.facts {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var( --space-3 );
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	font-size: var( --text-2xs );
+	color: var( --text-muted );
+}
+
+.hospital {
+	display: flex;
+	align-items: center;
+	gap: var( --space-2 );
+	margin: var( --space-4 ) 0;
+	padding: var( --space-3 );
+	background: var( --bg-surface-accent );
+	font-size: var( --text-2xs );
+}
+
+.hospital .tdh-icon {
+	flex: none;
+	color: var( --text-accent );
+}
+
+.hospital b { font-weight: var( --weight-bold ); }
+
+.card-foot {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var( --space-3 );
+	flex-wrap: wrap;
+	margin-top: auto;
+	padding-top: var( --space-4 );
+	border-top: 1px solid var( --border-soft );
+	font-size: var( --text-2xs );
+	color: var( --text-muted );
+}
+
+.card-foot p { margin: 0; }
+.card-foot b { font-size: var( --text-h5 ); color: var( --color-navy ); }
+
+.card-price {
+	display: flex;
+	flex-direction: column;
+	gap: var( --space-1 );
+}
+
+/* A 40px target. The prototype's arrow was a bare glyph with no hit area
+   worth the name; anything a thumb is meant to reach needs one. */
+.card-go {
+	display: grid;
+	place-items: center;
+	flex: none;
+	width: var( --icon-well );
+	height: var( --icon-well );
+	border-radius: var( --radius-full );
+	background: var( --bg-surface-tint );
+	color: var( --color-navy );
+	text-decoration: none;
+	transition: background var( --duration-fast ) var( --ease ),
+	            color var( --duration-fast ) var( --ease );
+}
+
+.card-go:hover,
+.card-go:focus-visible {
+	background: var( --color-navy );
+	color: var( --color-on-dark );
+}
+
+.card-go .tdh-icon { flex: none; }
+
+.result-top {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: var( --space-4 );
+	flex-wrap: wrap;
+	margin: var( --space-7 ) 0 var( --space-5 );
+}
+
+/* =========================================================================
+   SPLIT FEATURE
+   ========================================================================= */
+
+.split {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	align-items: center;
+	gap: var( --gutter );
+	padding: var( --section-gap ) var( --gutter );
+	background: var( --bg-surface-tint );
+}
+
+.split-photo { position: relative; }
+
+/* Height comes from a token, not the img{height:auto} base rule further
+   up. Both selectors are (0,0,1,1), so order decides — the theme
+   stylesheet is enqueued after Elementor's for exactly this reason. */
+.split-photo > img {
+	display: block;
+	width: 100%;
+	height: var( --split-photo-height );
+	object-fit: cover;
+}
+
+.verified {
+	position: absolute;
+	bottom: var( --space-7 );
+	right: calc( var( --space-7 ) * -1 );
+	display: flex;
+	align-items: center;
+	gap: var( --space-3 );
+	padding: var( --space-4 ) var( --space-5 );
+	background: var( --bg-surface );
+	box-shadow: var( --shadow-md );
+}
+
+.verified .tdh-icon { color: var( --text-accent ); flex: none; }
+.verified span { display: flex; flex-direction: column; }
+.verified small { color: var( --text-muted ); margin-top: var( --space-1 ); }
+
+.benefit {
+	display: flex;
+	gap: var( --space-3 );
+	margin-top: var( --space-6 );
+}
+
+.benefit > i {
+	display: grid;
+	place-items: center;
+	width: var( --icon-well );
+	height: var( --icon-well );
+	background: var( --bg-surface-accent );
+	border-radius: var( --radius-full );
+	color: var( --text-accent );
+	flex: none;
+	font-style: normal;
+}
+
+.benefit span { display: flex; flex-direction: column; }
+.benefit small {
+	color: var( --text-muted );
+	margin-top: var( --space-1 );
+	line-height: var( --leading-snug );
+}
+
+/* =========================================================================
+   AUDIENCE
+   ========================================================================= */
+
+.audience {
+	background: var( --bg-surface-warm );
+	padding: var( --section-gap-tight ) var( --gutter-narrow );
+}
+
+.audience-head {
+	display: grid;
+	grid-template-columns: 1.15fr 1fr;
+	align-items: center;
+	/* The full gutter, not the narrow one: the drawn gap between the
+	   heading and the intro paragraph is 7vw, and --gutter-narrow caps at
+	   72px, which pulls the two columns together on a wide screen. */
+	gap: var( --gutter );
+	margin-bottom: var( --section-title-gap );
+}
+
+/* Heading size and margins come from the shared section rule above. */
+.audience-head > p {
+	margin: 0;
+	color: var( --text-muted );
+	font-size: var( --text-lg );
+	line-height: var( --leading-relaxed );
+}
+
+.audience-grid {
+	display: grid;
+	grid-template-columns: repeat( 4, 1fr );
+	gap: var( --space-6 );
+}
+
+.audience-grid article {
+	display: flex;
+	flex-direction: column;
+	min-height: var( --card-min-height );
+	padding: var( --space-8 );
+	background: var( --bg-surface );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-lg );
+}
+
+.audience-grid article > i {
+	display: grid;
+	place-items: center;
+	width: var( --icon-well-lg );
+	height: var( --icon-well-lg );
+	margin-bottom: var( --space-6 );
+	background: var( --color-sand-soft );
+	color: var( --text-accent );
+	border-radius: var( --radius-full );
+	font-style: normal;
+}
+
+/* Glyph size comes from CSS, overriding the width/height attributes the
+   icon helper prints. One token controls every well glyph on the site
+   rather than a number repeated at each call site. */
+.audience-grid article > i .tdh-icon,
+.benefit > i .tdh-icon {
+	width: var( --icon-base );
+	height: var( --icon-base );
+}
+
+.audience-grid h3 {
+	font-family: var( --font-heading );
+	font-size: var( --text-h3 );
+	margin: var( --space-2 ) 0 var( --space-4 );
+}
+
+.audience-grid article > p:not( .overline ) {
+	color: var( --text-muted );
+	line-height: var( --leading-snug );
+}
+
+/* margin-top:auto pins the link to the bottom of the card. This is why the
+   cards carry a min-height: it aligns every link across the row regardless
+   of how long the copy runs. Remove the link and that min-height becomes
+   dead space. */
+.audience-grid .audience-link {
+	display: flex;
+	align-items: center;
+	gap: var( --space-2 );
+	margin-top: auto;
+	padding-top: var( --space-4 );
+	font-weight: var( --weight-bold );
+	text-decoration: none;
+	color: var( --text-default );
+}
+
+.audience-grid .audience-link:hover { color: var( --text-accent ); }
+
+/* The 2px nudge is an optical correction, not a spacing value, so it is
+   deliberately a raw pixel rather than a token. align-items:center centres
+   the arrow against the full line box; the eye reads it against the cap
+   height of the label, which sits higher. Two pixels down resolves the
+   difference. It is tied to this glyph's geometry and belongs to no scale. */
+.audience-grid .audience-link .tdh-icon {
+	flex: none;
+	width: var( --icon-sm );
+	height: var( --icon-sm );
+	position: relative;
+	top: 2px;
+}
+
+/* Designed line breaks in section headings are composition decisions made
+   at the width the heading was drawn for. On a phone the column is narrow
+   enough that forcing one leaves a short orphan line, so breaks are dropped
+   below 768px and the heading wraps on its own. One rule for every heading
+   that takes a <br>, so a new section does not need its own copy. */
+.audience-head h2 br,
+.owner-cta h2 br,
+.split h2 br,
+.section-title h2 br { display: none; }
+
+@media ( min-width: 48rem ) {
+	.audience-head h2 br,
+	.owner-cta h2 br,
+	.split h2 br,
+	.section-title h2 br { display: inline; }
+}
+
+/* =========================================================================
+   OWNER CTA
+   ========================================================================= */
+
+.owner-cta {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var( --space-8 );
+	flex-wrap: wrap;
+	margin: var( --section-gap ) var( --gutter );
+	padding: var( --space-10 ) var( --band-gutter );
+	background: var( --bg-inverse );
+	color: var( --text-inverse );
+}
+
+/* Heading size and margins come from the shared section rule above. */
+.owner-cta p:not( .overline ) { color: var( --color-on-dark-muted ); }
+
+/* The shared rule zeroes this paragraph's margins to keep the eyebrow →
+   heading → copy rhythm even, which also removes the space below it. The
+   button needs that space back, so it is put on the button — putting it
+   back on the paragraph would unbalance the heading rhythm again. */
+.owner-cta .gold-btn { margin-top: var( --space-4 ); }
+
+.cta-stats { display: flex; gap: var( --space-7 ); flex-wrap: wrap; }
+
+.cta-stats > div {
+	display: flex;
+	flex-direction: column;
+	padding-left: var( --space-5 );
+	border-left: 1px solid var( --color-border-on-dark );
+}
+
+.cta-stats b {
+	font-family: var( --font-heading );
+	font-size: var( --text-h4 );
+	color: var( --color-gold-light );
+}
+
+.cta-stats small { color: var( --color-on-dark-subtle ); max-width: 12ch; }
+
+/* =========================================================================
+   LISTING DETAIL
+   ========================================================================= */
+
+.back {
+	display: inline-flex;
+	align-items: center;
+	gap: var( --space-2 );
+	margin-bottom: var( --space-7 );
+	background: none;
+	border: 0;
+	text-decoration: none;
+	font-weight: var( --weight-semibold );
+}
+
+.detail-title {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-end;
+	gap: var( --space-5 );
+	flex-wrap: wrap;
+}
+
+.detail-title h1 { font-size: var( --text-h1 ); margin: var( --space-2 ) 0; }
+.detail-title p { color: var( --text-muted ); margin: 0; }
+
+.detail-media { margin: var( --space-6 ) 0 var( --space-9 ); }
+.detail-media img { display: block; width: 100%; border-radius: var( --radius-md ); }
+
+.detail-grid {
+	display: grid;
+	grid-template-columns: minmax( 0, 1fr ) var( --sidebar-width );
+	gap: var( --space-10 );
+	align-items: start;
+}
+
+.quick-facts {
+	display: grid;
+	grid-template-columns: repeat( 4, 1fr );
+	padding: var( --space-5 ) 0;
+	margin: 0 0 var( --space-3 );
+	list-style: none;
+	border-block: 1px solid var( --border-default );
+}
+
+.quick-facts li {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var( --space-1 );
+	border-right: 1px solid var( --border-default );
+}
+
+.quick-facts li:last-child { border-right: 0; }
+.quick-facts b { font-family: var( --font-heading ); font-size: var( --text-h5 ); }
+.quick-facts small { color: var( --text-muted ); }
+
+.detail-section { padding: var( --space-7 ) 0; border-bottom: 1px solid var( --border-default ); }
+.detail-section h2 { font-size: var( --text-h4 ); }
+.detail-section p { color: var( --text-muted ); line-height: var( --leading-relaxed ); }
+
+.amenities {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: var( --space-4 );
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.amenities li { position: relative; padding-left: var( --space-6 ); }
+.amenities li::before { content: "✓"; position: absolute; left: 0; color: var( --text-accent ); }
+
+.map-box {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	gap: var( --space-2 );
+	padding: var( --space-8 ) var( --space-5 );
+	background: var( --bg-surface-accent );
+	color: var( --color-gold-deep );
+	text-align: center;
+}
+
+.map-box b { font-size: var( --text-base ); }
+.map-box small {
+	color: var( --text-muted );
+	max-width: var( --measure );
+	line-height: var( --leading-body );
+}
+
+.availability {
+	display: flex;
+	align-items: center;
+	gap: var( --space-4 );
+	padding: var( --space-5 );
+	background: var( --bg-surface-accent );
+}
+
+.availability span { display: flex; flex-direction: column; gap: var( --space-1 ); }
+.availability small { color: var( --text-muted ); }
+
+.inquiry-box {
+	position: sticky;
+	top: var( --space-5 );
+	height: max-content;
+	padding: var( --space-6 );
+	border: 1px solid var( --border-default );
+	box-shadow: var( --shadow-md );
+}
+
+.inquiry-box > p:first-child { margin-bottom: var( --space-1 ); }
+.inquiry-box > p:first-child b { font-size: var( --text-xl ); }
+.inquiry-box > small { color: var( --text-muted ); }
+.inquiry-box hr { border: 0; border-top: 1px solid var( --border-default ); margin: var( --space-5 ) 0; }
+.inquiry-box dl { margin: 0; display: flex; flex-direction: column; gap: var( --space-4 ); }
+.inquiry-box dl > div { display: flex; justify-content: space-between; gap: var( --space-3 ); font-size: var( --text-sm ); }
+.inquiry-box dt { color: var( --text-muted ); margin: 0; }
+.inquiry-box dd { margin: 0; font-weight: var( --weight-semibold ); }
+.inquiry-box > button,
+.inquiry-box > a.primary,
+.inquiry-box > a.secondary { width: 100%; margin-top: var( --space-2 ); }
+
+.fine {
+	display: flex;
+	gap: var( --space-1 );
+	margin-top: var( --space-4 );
+	font-size: var( --text-3xs );
+	color: var( --text-muted );
+	line-height: var( --leading-body );
+}
+
+/* =========================================================================
+   STATES
+   ========================================================================= */
+
+.empty {
+	text-align: center;
+	padding: var( --space-11 ) var( --space-5 );
+	color: var( --text-muted );
+}
+
+.empty h3 {
+	font-family: var( --font-heading );
+	font-size: var( --text-h4 );
+	color: var( --text-default );
+	margin: 0 0 var( --space-2 );
+}
+
+.notice {
+	padding: var( --space-4 ) var( --space-5 );
+	background: var( --bg-surface-tint );
+	border: 1px solid var( --border-default );
+	border-left: 3px solid var( --color-gold );
+	border-radius: 0 var( --radius-sm ) var( --radius-sm ) 0;
+	font-size: var( --text-sm );
+}
+
+.notice.error   { background: var( --color-danger-bg );  border-left-color: var( --color-danger ); }
+.notice.success { background: var( --color-success-bg ); border-left-color: var( --color-success ); }
+
+.status {
+	display: inline-flex;
+	padding: var( --space-1 ) var( --space-3 );
+	background: var( --color-neutral-bg );
+	color: var( --color-neutral );
+	border-radius: var( --radius-pill );
+	font-size: var( --text-3xs );
+	font-weight: var( --weight-bold );
+	text-transform: capitalize;
+}
+
+.status.publish          { background: var( --color-success-bg ); color: var( --color-success ); }
+.status.pending          { background: var( --color-warning-bg ); color: var( --color-warning ); }
+.status.tdh_rejected     { background: var( --color-danger-bg );  color: var( --color-danger ); }
+.status.tdh_paused       { background: var( --color-neutral-bg ); color: var( --color-neutral ); }
+.status.tdh_billing_hold { background: var( --color-warning-bg ); color: var( --color-warning ); }
+
+/* =========================================================================
+   FOOTER
+   ========================================================================= */
+
+.site-footer {
+	background: var( --color-navy-deep );
+	color: var( --text-inverse );
+	text-align: center;
+	padding: var( --space-9 ) var( --gutter ) var( --space-6 );
+}
+
+.site-footer .logo { justify-content: center; }
+.site-footer .logo > i { background: var( --color-surface-on-dark ); }
+.site-footer > p { color: var( --color-on-dark-subtle ); }
+
+.site-footer nav ul {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: var( --space-6 );
+	margin: var( --space-7 ) 0;
+	padding: 0;
+	list-style: none;
+}
+
+.site-footer nav a { color: var( --color-on-dark-link ); text-decoration: none; }
+.site-footer nav a:hover { color: var( --color-gold-light ); }
+
+.footer-legal {
+	display: block;
+	padding-top: var( --space-5 );
+	border-top: 1px solid var( --color-border-on-dark-faint );
+	color: var( --color-on-dark-faint );
+	font-size: var( --text-sm );
+	line-height: var( --leading-relaxed );
+}
+
+/* =========================================================================
+   RESPONSIVE
+
+   Far fewer overrides than before: the fluid tokens (--section-gap,
+   --gutter, and the clamp() type scale) already handle size. What remains
+   is genuine LAYOUT change — grids collapsing, the nav becoming a drawer.
+   ========================================================================= */
+
+@media ( max-width: 1050px ) {
+	.audience-grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media ( max-width: 950px ) {
+	.split { grid-template-columns: 1fr; gap: var( --space-8 ); }
+	.verified { right: var( --space-2 ); }
+	.property-grid { grid-template-columns: 1fr 1fr; }
+	.hero-search { grid-template-columns: 1fr 1fr; }
+	.hero-search button { height: var( --space-12 ); }
+	.detail-grid { grid-template-columns: 1fr; gap: var( --space-7 ); }
+	.inquiry-box { position: static; }
+	.owner-cta { flex-direction: column; align-items: flex-start; gap: var( --space-7 ); }
+}
+
+@media ( max-width: 700px ) {
+	.site-header { height: var( --header-height-sm ); }
+
+	.site-nav {
+		display: none;
+		position: absolute;
+		top: var( --header-height-sm );
+		left: var( --space-3 );
+		right: var( --space-3 );
+		padding: var( --space-5 );
+		background: var( --bg-inverse );
+		box-shadow: var( --shadow-md );
+	}
+
+	.site-nav.open { display: block; }
+	.site-nav ul { flex-direction: column; align-items: stretch; gap: var( --space-4 ); }
+	.site-nav a { color: var( --text-inverse ); }
+	.nav-toggle { display: block; }
+
+	.logo > i { width: var( --logo-tile-sm ); height: calc( var( --logo-tile-sm ) * 1.15 ); }
+	.logo b, .logo strong { font-size: var( --text-xl ); }
+
+	.hero { min-height: var( --hero-min-height-sm ); }
+	.hero-search { grid-template-columns: 1fr; }
+	.hero-search label {
+		border-right: 0;
+		border-bottom: 1px solid var( --border-default );
+		padding: var( --space-3 );
+	}
+
+	.split-photo > img { height: var( --split-photo-height-sm ); }
+	.section-title { align-items: flex-start; }
+	.property-grid { grid-template-columns: 1fr; }
+
+	.audience-head { grid-template-columns: 1fr; gap: var( --space-5 ); }
+	.audience-grid { grid-template-columns: 1fr; }
+	.audience-grid article { min-height: 0; }
+
+	/* 64px of vertical padding is a lot of dead space on a phone. */
+	.owner-cta { padding: var( --space-9 ) var( --band-gutter-sm ); }
+
+	.cta-stats { flex-direction: column; }
+
+	.quick-facts { grid-template-columns: 1fr 1fr; gap: var( --space-5 ); }
+	.quick-facts li:nth-child( 2 ) { border-right: 0; }
+	.amenities { grid-template-columns: 1fr; }
+}

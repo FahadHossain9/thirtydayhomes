@@ -1,0 +1,69 @@
+<?php
+/**
+ * Document head and site header.
+ *
+ * Markup mirrors the approved prototype: a boxed brand mark beside a
+ * two-tone wordmark, primary navigation, and a gold call to action.
+ *
+ * The prototype used <button> elements for navigation because it was a
+ * single-page React demo with no URLs. These are real links here — a nav
+ * item that cannot be opened in a new tab, bookmarked or crawled would
+ * fail the spec's own "clean URLs, indexable" requirement.
+ *
+ * @package ThirtyDayHomes
+ */
+
+defined( 'ABSPATH' ) || exit;
+?>
+<!DOCTYPE html>
+<html <?php language_attributes(); ?>>
+<head>
+	<meta charset="<?php bloginfo( 'charset' ); ?>">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="profile" href="https://gmpg.org/xfn/11">
+	<?php wp_head(); ?>
+</head>
+
+<body <?php body_class(); ?>>
+<?php wp_body_open(); ?>
+
+<a class="skip-link" href="#content"><?php esc_html_e( 'Skip to content', 'thirtydayhomes' ); ?></a>
+
+<?php if ( ! tdh_elementor_location( 'header' ) ) : ?>
+
+	<header class="site-header">
+
+		<a class="logo-link" href="<?php echo esc_url( home_url( '/' ) ); ?>" rel="home">
+			<?php tdh_the_logo(); ?>
+		</a>
+
+		<nav class="site-nav" id="site-nav" aria-label="<?php esc_attr_e( 'Primary', 'thirtydayhomes' ); ?>">
+			<?php
+			wp_nav_menu(
+				[
+					'theme_location' => 'primary',
+					'container'      => false,
+					'depth'          => 1,
+					'fallback_cb'    => false,
+				]
+			);
+			?>
+		</nav>
+
+		<button
+			class="nav-toggle"
+			type="button"
+			aria-controls="site-nav"
+			aria-expanded="false"
+			aria-label="<?php esc_attr_e( 'Open menu', 'thirtydayhomes' ); ?>"
+		>
+			<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+				<path d="M4 5h16"></path><path d="M4 12h16"></path><path d="M4 19h16"></path>
+			</svg>
+		</button>
+
+	</header>
+
+<?php endif; ?>
+
+<main id="content">

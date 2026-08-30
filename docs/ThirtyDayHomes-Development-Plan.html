@@ -1,0 +1,188 @@
+<h1>ThirtyDayHomes — Development Plan</h1>
+
+<p><b>WordPress build. Custom theme + custom plugin + Elementor free.</b><br>
+Prepared by Instaquirk · 27 August 2026 · Supersedes the earlier Next.js/Supabase plan</p>
+
+<p><i>Companion to the WordPress Development Handoff and Milestone Acceptance Plan. Where the two differ, the handoff document governs. This one records what has actually been built, the architecture decisions behind it, and what is blocking the rest.</i></p>
+
+<hr>
+
+<h2>1. Where the build actually is</h2>
+
+<p><b>6 of 15 sections complete.</b> The renter-facing site exists and works; the marketplace behind it does not yet.</p>
+
+<table border="1" style="border-collapse:collapse;width:100%">
+<tr style="background:#eef1f6">
+<td style="padding:7px"><b>#</b></td><td style="padding:7px"><b>Section</b></td><td style="padding:7px"><b>Status</b></td><td style="padding:7px"><b>Notes</b></td>
+</tr>
+<tr><td style="padding:7px">1</td><td style="padding:7px">Local environment + WordPress</td><td style="padding:7px">✅ Done</td><td style="padding:7px">WP 7.1, PHP 8.2, repo junctioned into XAMPP</td></tr>
+<tr><td style="padding:7px">2</td><td style="padding:7px">Plugin skeleton — content model, statuses, roles, fields, visibility</td><td style="padding:7px">✅ Done</td><td style="padding:7px">3 post types, 4 taxonomies, 3 custom statuses, 2 tables</td></tr>
+<tr><td style="padding:7px">3</td><td style="padding:7px">Theme + approved design port</td><td style="padding:7px">✅ Done</td><td style="padding:7px">Navy header, hero, audience, cards, split feature, footer</td></tr>
+<tr><td style="padding:7px">3b</td><td style="padding:7px">Elementor free + shortcode blocks</td><td style="padding:7px">✅ Done</td><td style="padding:7px">5 shortcodes, 5 widget wrappers, one renderer</td></tr>
+<tr><td style="padding:7px">3c</td><td style="padding:7px">Design token system</td><td style="padding:7px">✅ Done</td><td style="padding:7px">0 hex colours and 0 raw sizes left in component CSS</td></tr>
+<tr><td style="padding:7px">4</td><td style="padding:7px">Public pages and copy</td><td style="padding:7px">🟡 Partial</td><td style="padding:7px">Structure done. Copy is placeholder; legal pages need the attorney</td></tr>
+<tr><td style="padding:7px">5</td><td style="padding:7px">Client review mode + demo importer</td><td style="padding:7px">✅ Done</td><td style="padding:7px">Persona switcher, one-click content import</td></tr>
+<tr><td style="padding:7px">6</td><td style="padding:7px">Search, filters, sorting</td><td style="padding:7px">⬜ Next</td><td style="padding:7px">Hero form already puts terms in the URL, waiting to be consumed</td></tr>
+<tr><td style="padding:7px">7</td><td style="padding:7px">Listing detail — gallery, amenities, fees</td><td style="padding:7px">⬜ Not started</td><td style="padding:7px">Template exists; gallery incomplete</td></tr>
+<tr><td style="padding:7px">8</td><td style="padding:7px">Proximity engine</td><td style="padding:7px">⬜ Not started</td><td style="padding:7px">Seeded hospital coordinates make this testable now</td></tr>
+<tr><td style="padding:7px">9</td><td style="padding:7px">Landlord submission + dashboard</td><td style="padding:7px">⬜ Not started</td><td style="padding:7px">Admin meta boxes are currently the only way to create a listing</td></tr>
+<tr><td style="padding:7px">10</td><td style="padding:7px">Membership + Stripe</td><td style="padding:7px">🔴 Blocked</td><td style="padding:7px">Needs the pricing model and the PMPro/WooCommerce decision</td></tr>
+<tr><td style="padding:7px">11</td><td style="padding:7px">Inquiry pipeline + email</td><td style="padding:7px">⬜ Not started</td><td style="padding:7px"></td></tr>
+<tr><td style="padding:7px">12</td><td style="padding:7px">SMS notifications + A2P</td><td style="padding:7px">🔴 Blocked</td><td style="padding:7px">Needs the client's EIN before registration can even be submitted</td></tr>
+<tr><td style="padding:7px">13</td><td style="padding:7px">Admin — approval queue, facilities, inquiries</td><td style="padding:7px">⬜ Not started</td><td style="padding:7px"></td></tr>
+<tr><td style="padding:7px">14</td><td style="padding:7px">SEO, performance, accessibility</td><td style="padding:7px">⬜ Not started</td><td style="padding:7px"></td></tr>
+<tr><td style="padding:7px">15</td><td style="padding:7px">Launch, documentation, handover</td><td style="padding:7px">⬜ Not started</td><td style="padding:7px"></td></tr>
+</table>
+
+<h2>2. How we are working</h2>
+
+<p>One section at a time. No section starts before the previous one closes.</p>
+
+<p><b>BUILD locally → VERIFY → REPORT → COMMIT → DEPLOY → next section</b></p>
+
+<p><b>"Done" means all five, not just the first:</b></p>
+<ol>
+<li>The feature works end to end from the interface — not only from the database.</li>
+<li>Empty, loading, error, unauthorised and failure states are handled.</li>
+<li>It works at desktop, tablet and phone widths.</li>
+<li>Keyboard reachable, labelled, visible focus.</li>
+<li>Lint clean, no PHP errors, and <b>tested over HTTP rather than assumed</b>.</li>
+</ol>
+
+<p>That last point has already earned its place. Testing rather than assuming has caught, so far: a visibility rule that silently filtered WP-CLI queries; a duplicate auth cookie that worked in browsers but failed stricter clients; a seeder that created duplicate listings on every run; an Elementor autosave shadowing published data; and a stylesheet load order that stripped the height off every art-directed image.</p>
+
+<h2>3. Architecture as built</h2>
+
+<h3>The dividing line</h3>
+
+<p>The test for every decision: <b>if the theme were deleted and replaced tomorrow, would any listing, membership, inquiry, facility or relationship be lost?</b> If yes, the code is in the wrong place.</p>
+
+<table border="1" style="border-collapse:collapse;width:100%">
+<tr style="background:#eef1f6"><td style="padding:7px"><b>Layer</b></td><td style="padding:7px"><b>Owns</b></td></tr>
+<tr><td style="padding:7px"><b>Plugin</b><br>thirtydayhomes-core</td><td style="padding:7px">Content types, statuses, fields, roles and capabilities, membership rules, query logic, proximity, notifications, shortcodes, Elementor widget registration, admin screens, the demo importer</td></tr>
+<tr><td style="padding:7px"><b>Theme</b><br>thirtydayhomes</td><td style="padding:7px">Design tokens, document shell, header, footer, navigation, templates, page templates. No marketplace rules.</td></tr>
+<tr><td style="padding:7px"><b>Elementor free</b></td><td style="padding:7px">The editing layer. Presentation only — never the data.</td></tr>
+</table>
+
+<h3>Why Elementor free, and no Pro</h3>
+
+<p>Pro's value is its Theme Builder — header, footer, archive and single templates. Handoff §3.1 assigns every one of those to the custom theme, and §3.2 assigns the dynamic widgets to the custom plugin. Elementor free registers custom widgets through the same API as Pro. Milestone 1 explicitly asks for Elementor "without unnecessary add-ons".</p>
+
+<p><b>Annual licences: £0.</b></p>
+
+<p><b>The trade-off, stated plainly:</b> without Pro the client cannot drag-and-drop the listing archive or single listing layouts — those stay theme-rendered and change through us. The handoff document anticipates exactly this ("templates … where Elementor alone is not appropriate"), so it is compliance rather than a gap. Everything they will realistically want to edit is editable.</p>
+
+<h3>Shortcodes first, widgets second</h3>
+
+<p>Every dynamic block has one implementation in <code>TDH\Render</code> and two entry points:</p>
+
+<p><code>[tdh_hero_search]</code> · <code>[tdh_audience]</code> · <code>[tdh_property_grid]</code> · <code>[tdh_split_feature]</code> · <code>[tdh_owner_cta]</code></p>
+
+<p>The shortcode is the primitive. It works in Elementor, Gutenberg, the classic editor, a widget area, or a template — and it keeps working if Elementor is ever deactivated. A widget-only approach would lock the client's content inside Elementor's own JSON, which handoff §2 forbids.</p>
+
+<p>The Elementor widget is a thin wrapper around the same renderer. It exists for the structure tree: a page assembled from raw HTML collapses into a single "Text Editor" node, and the client ends up editing an entire homepage through one textarea. Named widgets give discrete, selectable sections.</p>
+
+<p><b>Static marketing content has no shortcode on purpose</b> where it does not read the database — but the audience cards and owner CTA are blocks rather than loose widgets, because a card grid has a fixed shape and loose widgets let someone delete one heading and leave a card with no title.</p>
+
+<p>A full attribute reference lives in wp-admin at <b>Listings → Shortcodes</b>.</p>
+
+<h3>Design token system</h3>
+
+<p>All values live in <code>assets/design-tokens.css</code>: colour roles, a fluid type scale, a 4px spacing scale, containers, radii, shadows, motion. Component and section styles draw exclusively from tokens.</p>
+
+<p>An audit of the stylesheet finds <b>0 hex colours, 0 raw rem literals, 400 var() references</b>. What remains as raw pixels: 1px borders, the focus outline offset, the card hover lift, the screen-reader clip values, and media query breakpoints — CSS cannot use custom properties in a media condition.</p>
+
+<h3>Data model</h3>
+
+<table border="1" style="border-collapse:collapse;width:100%">
+<tr style="background:#eef1f6"><td style="padding:7px"><b>Item</b></td><td style="padding:7px"><b>Value</b></td></tr>
+<tr><td style="padding:7px">Post types</td><td style="padding:7px">tdh_listing, tdh_facility, tdh_inquiry</td></tr>
+<tr><td style="padding:7px">Taxonomies</td><td style="padding:7px">property type, neighborhood, amenity, city</td></tr>
+<tr><td style="padding:7px">Statuses</td><td style="padding:7px">draft, pending, publish, tdh_paused, tdh_rejected, tdh_billing_hold</td></tr>
+<tr><td style="padding:7px">Role</td><td style="padding:7px">tdh_landlord — ownership enforced through WordPress capabilities, not template checks</td></tr>
+<tr><td style="padding:7px">Tables</td><td style="padding:7px">wp_tdh_distances, wp_tdh_notifications</td></tr>
+</table>
+
+<h3>Three decisions worth understanding</h3>
+
+<p><b>tdh_billing_hold is not tdh_paused.</b> To a renter both are simply "not there". On renewal they must behave completely differently: only billing holds are restored. Without the distinction, a landlord who paused one of their three homes last week finds it silently republished the moment their card is fixed.</p>
+
+<p><b>The street address is private.</b> A furnished rental that sits empty, with its address published, is an easy target. Three guards, and the third is a release blocker: fields registered <code>show_in_rest =&gt; false</code>; never placed on a public template, not even hidden, because Elementor renders hidden elements into the DOM; and an explicit REST and page-source check in QA.</p>
+
+<p><b>Never look up a listing by slug.</b> A pending or draft post has no slug until first published, and custom statuses are excluded from <code>post_status =&gt; 'any'</code>. Records are found by a meta key we control. The seeder learned this by duplicating every pending listing on each run.</p>
+
+<h2>4. Demo importer</h2>
+
+<p><b>Tools → Import Demo Content.</b> One button builds the whole demonstration site on any install: every public page, both menus, five Pittsburgh medical facilities, four furnished listings with photographs, and the homepage laid out in Elementor.</p>
+
+<p>Verified from an empty database: 8 pages, 4 listings, 5 facilities, 4 photographs, 2 menus. Run three times — counts identical, no duplicates.</p>
+
+<p>Photographs ship inside the plugin. An importer that downloads from a stock photo host fails on exactly the locked-down hosting a client is most likely to be on.</p>
+
+<p>It is not automatic on activation. Activating a theme on a site that already has content would overwrite the client's menus and front page with no warning and no undo. It requires a deliberate click, a nonce, the capability to manage options, and it states what it will overwrite before it does.</p>
+
+<h2>5. Blockers</h2>
+
+<p>The first two cost money or time if they move late.</p>
+
+<p><b>1. Membership pricing model — highest priority, needed at kickoff.</b><br>
+The delivery plan recommended one tier, up to three listings. The 8/16 feedback introduced per-listing pricing with 10% and 15% volume discounts. The prototype contains both, contradicting each other on adjacent screens. These are different products: one sells a membership, the other sells listing slots. It determines how many membership levels exist, how the allowance is enforced, and what happens when a landlord on the three-listing price deletes a listing. Stripe products are created in Milestone 1 and are awkward to restructure once real members exist.</p>
+
+<p><b>2. EIN / tax ID and business identity — needed at kickoff.</b><br>
+A2P 10DLC registration cannot be submitted without it, and carrier vetting is the longest lead time on the project — one to three weeks that neither of us controls. It should be submitted in week 1 and run in the background, not started when we reach the SMS section.</p>
+
+<p><b>3. Final name and domain.</b> "ThirtyDayHomes", "30 Day Homes" and "WorkStay" are all in use across the spec and prototype. Touches hosting, Stripe, email authentication, the A2P brand registration and the logo. The wordmark reads from the site title, so this is cheap to change until accounts are created in a name.</p>
+
+<p><b>4. Exact prices.</b> Monthly and annual figures, and the two-months-free annual discount. The prototype's numbers are placeholders.</p>
+
+<p><b>5. Subscription layer.</b> Paid Memberships Pro or WooCommerce Subscriptions. We recommend PMPro — core and its Stripe gateway are free, and its status model maps cleanly onto ours. Migrating after real members exist is painful.</p>
+
+<p><b>6. Approved SMS message template and consent wording.</b> Needed before the SMS build, with the client's legal guidance on consent and opt-out.</p>
+
+<p><b>7. The launch facility list — week 3.</b> Which Pittsburgh hospital campuses go live, with addresses. The seeded coordinates are approximate placeholders and must not reach production.</p>
+
+<p><b>8. Terms, Privacy, Fair Housing text — request week 1.</b> Attorney-provided. The most common reason a finished site sits unlaunched. The attorney needs a written summary of what the site does and what data it collects — now including SMS.</p>
+
+<h2>6. Recurring costs</h2>
+
+<table border="1" style="border-collapse:collapse;width:100%">
+<tr style="background:#eef1f6"><td style="padding:7px"><b>Service</b></td><td style="padding:7px"><b>Purpose</b></td><td style="padding:7px"><b>Expected at launch</b></td></tr>
+<tr><td style="padding:7px">Domain</td><td style="padding:7px">Web address</td><td style="padding:7px">~$15 / year</td></tr>
+<tr><td style="padding:7px">Managed WordPress hosting</td><td style="padding:7px">Site, staging, backups</td><td style="padding:7px">~$20–30 / month</td></tr>
+<tr><td style="padding:7px">Elementor</td><td style="padding:7px">Page editing layer</td><td style="padding:7px">Free — no Pro</td></tr>
+<tr><td style="padding:7px">Paid Memberships Pro + Stripe gateway</td><td style="padding:7px">Membership billing</td><td style="padding:7px">Free</td></tr>
+<tr><td style="padding:7px">Stripe</td><td style="padding:7px">Collects payments</td><td style="padding:7px">No monthly fee; per-transaction</td></tr>
+<tr><td style="padding:7px">Maps — geocoding + distance</td><td style="padding:7px">Coordinates and drive times</td><td style="padding:7px">Within free allowance given our caching</td></tr>
+<tr><td style="padding:7px">Transactional email</td><td style="padding:7px">Inquiry and account email</td><td style="padding:7px">Free tier covers launch volume</td></tr>
+<tr><td style="padding:7px"><b>SMS gateway</b></td><td style="padding:7px">Landlord inquiry notifications</td><td style="padding:7px"><b>Per-message, plus A2P registration fees</b></td></tr>
+<tr><td style="padding:7px">SEO, security, backups, spam</td><td style="padding:7px">Rank Math, Wordfence, UpdraftPlus, Turnstile</td><td style="padding:7px">Free tiers</td></tr>
+</table>
+
+<p><b>Annual licences total £0</b>, against the delivery plan's stated "under $100 per year". Hosting fits the quoted range.</p>
+
+<p><b>SMS is the one genuinely new recurring cost</b> and was not in the delivery plan's table, because that plan recommended the no-cost option — a button that opens the renter's own phone. The handoff document requires the gateway version instead. Registration fees plus per-message charges need confirming with the client before the gateway is activated.</p>
+
+<h2>7. Risks</h2>
+
+<table border="1" style="border-collapse:collapse;width:100%">
+<tr style="background:#eef1f6"><td style="padding:7px"><b>Risk</b></td><td style="padding:7px"><b>Mitigation</b></td></tr>
+<tr><td style="padding:7px"><b>A2P vetting delays launch</b></td><td style="padding:7px">The longest third-party lead time. Submit in week 1. Build the SMS layer behind a feature flag so the site can launch with email-only notification and SMS enabled the day approval lands — this keeps a carrier queue off the critical path.</td></tr>
+<tr><td style="padding:7px">Stripe verification takes weeks</td><td style="padding:7px">Create the account week 1. Everything is built and tested in test mode, which needs no verification.</td></tr>
+<tr><td style="padding:7px">Legal text arrives late</td><td style="padding:7px">Requested week 1 with a written summary for the attorney. Pages ship as clearly marked drafts so nothing else is blocked.</td></tr>
+<tr><td style="padding:7px">Plugin update breaks a layout</td><td style="padding:7px">Staging first, always. Elementor layouts are rebuildable from the importer in one click.</td></tr>
+<tr><td style="padding:7px">Geocoding fails on real addresses</td><td style="padding:7px">Explicit geocode_status, admin flag, manual coordinate override. A listing never publishes with an unknown location.</td></tr>
+<tr><td style="padding:7px">Street address leaks via REST</td><td style="padding:7px">Private meta registered show_in_rest false, never on a template, explicitly tested in QA as a release blocker.</td></tr>
+<tr><td style="padding:7px">Inquiry emails land in spam</td><td style="padding:7px">Authenticated sending domain from Milestone 1, delivery logging, and every inquiry stored on the site — so a failed send is a visible support item, not a lost lead.</td></tr>
+<tr><td style="padding:7px">Launching to an empty marketplace</td><td style="padding:7px">Decide before launch how the first 10–20 listings arrive. A founding-member discount costs nothing to configure.</td></tr>
+<tr><td style="padding:7px">Client feedback slower than two business days</td><td style="padding:7px">The schedule assumes it. Each slipped review moves the launch date by the same amount — flagged in the Friday update, not discovered at the end.</td></tr>
+</table>
+
+<h2>8. Deliberately not in V1</h2>
+
+<p>Preserved from spec §4: native mobile apps; renter payments, rent collection, escrow or deposit processing; two-way conversational SMS or in-app chat — the handoff document is explicit that SMS is notification only; video tours; background checks or identity verification; lease signing; advanced landlord analytics; dynamic pricing; recommendation engines; multi-language support; a separate site per city; and any custom payment infrastructure.</p>
+
+<p>Also excluded, and worth naming because the prototype implies otherwise: <b>property reviews and ratings</b>. The prototype showed a hardcoded 4.9 star rating on every card. There is no review system in V1 and none is planned, so it has been removed — it promised social proof that would never exist.</p>
+
+<hr>
+
+<p><i>Instaquirk · ThirtyDayHomes V1 · Pittsburgh launch. Cost figures are indicative and to be confirmed at the point of purchase. Current source of truth for progress is BUILD_STATUS.md in the repository.</i></p>
