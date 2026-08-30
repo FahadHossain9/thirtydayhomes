@@ -774,57 +774,147 @@ final class Account_Render {
 				</div>
 			</header>
 
-			<div class="account-body account-body--form">
+			<div class="account-body">
 
-			<?php self::notices( $notice ); ?>
+				<?php self::notices( $notice ); ?>
 
-			<form method="post" action="">
-				<?php self::form_head( 'profile' ); ?>
+				<div class="settings">
 
-				<div class="form-field">
-					<label for="tdh-p-name"><?php esc_html_e( 'Your name', 'thirtydayhomes' ); ?></label>
-					<input id="tdh-p-name" name="tdh_name" type="text" autocomplete="name" required
-						value="<?php echo esc_attr( $user->display_name ); ?>">
+					<?php
+					/*
+					 * One form, two cards. The two are separate concerns —
+					 * contact details and credentials — and grouping them
+					 * makes that obvious, but they stay a single submit so
+					 * the handler has one nonce and one validation pass.
+					 */
+					?>
+					<form class="settings-main" method="post" action="">
+						<?php self::form_head( 'profile' ); ?>
+
+						<section class="settings-card">
+							<header>
+								<h2><?php esc_html_e( 'Your details', 'thirtydayhomes' ); ?></h2>
+								<p><?php esc_html_e( 'How renters reach you about a home.', 'thirtydayhomes' ); ?></p>
+							</header>
+
+							<div class="form-field">
+								<label for="tdh-p-name"><?php esc_html_e( 'Your name', 'thirtydayhomes' ); ?></label>
+								<input id="tdh-p-name" name="tdh_name" type="text" autocomplete="name" required
+									value="<?php echo esc_attr( $user->display_name ); ?>">
+							</div>
+
+							<div class="form-field">
+								<label for="tdh-p-email"><?php esc_html_e( 'Email address', 'thirtydayhomes' ); ?></label>
+								<input id="tdh-p-email" name="tdh_email" type="email" autocomplete="email" required
+									value="<?php echo esc_attr( $user->user_email ); ?>">
+							</div>
+
+							<div class="form-grid">
+								<div class="form-field">
+									<label for="tdh-p-phone">
+										<?php esc_html_e( 'Phone', 'thirtydayhomes' ); ?>
+										<span class="label-note"><?php esc_html_e( '(optional)', 'thirtydayhomes' ); ?></span>
+									</label>
+									<input id="tdh-p-phone" name="tdh_phone" type="tel" autocomplete="tel"
+										value="<?php echo esc_attr( (string) get_user_meta( $user->ID, '_tdh_phone', true ) ); ?>">
+								</div>
+
+								<div class="form-field">
+									<label for="tdh-p-company">
+										<?php esc_html_e( 'Company', 'thirtydayhomes' ); ?>
+										<span class="label-note"><?php esc_html_e( '(optional)', 'thirtydayhomes' ); ?></span>
+									</label>
+									<input id="tdh-p-company" name="tdh_company" type="text" autocomplete="organization"
+										value="<?php echo esc_attr( (string) get_user_meta( $user->ID, '_tdh_company', true ) ); ?>">
+								</div>
+							</div>
+						</section>
+
+						<section class="settings-card">
+							<header>
+								<h2><?php esc_html_e( 'Password', 'thirtydayhomes' ); ?></h2>
+								<p><?php esc_html_e( 'Leave both blank unless you are changing it.', 'thirtydayhomes' ); ?></p>
+							</header>
+
+							<div class="form-field">
+								<label for="tdh-p-current"><?php esc_html_e( 'Current password', 'thirtydayhomes' ); ?></label>
+								<input id="tdh-p-current" name="tdh_password_current" type="password" autocomplete="current-password">
+								<small class="form-hint--show"><?php esc_html_e( 'Needed to change your email address or password.', 'thirtydayhomes' ); ?></small>
+							</div>
+
+							<div class="form-field">
+								<label for="tdh-p-new"><?php esc_html_e( 'New password', 'thirtydayhomes' ); ?></label>
+								<input id="tdh-p-new" name="tdh_password_new" type="password" autocomplete="new-password"
+									minlength="<?php echo esc_attr( (string) self::MIN_PASSWORD ); ?>">
+								<small class="form-hint--show">
+									<?php
+									printf(
+										/* translators: %d: minimum password length */
+										esc_html__( 'At least %d characters.', 'thirtydayhomes' ),
+										(int) self::MIN_PASSWORD
+									);
+									?>
+								</small>
+							</div>
+						</section>
+
+						<div class="settings-actions">
+							<button class="primary big" type="submit"><?php esc_html_e( 'Save changes', 'thirtydayhomes' ); ?></button>
+						</div>
+					</form>
+
+					<?php
+					/*
+					 * The summary. Read-only facts about the account, so
+					 * the page has an anchor instead of a form floating in
+					 * the middle of an empty screen — and so the landlord
+					 * can see their plan without going back a page.
+					 */
+					$status  = Membership::status( (int) $user->ID );
+					$labels  = Membership::labels();
+					$joined  = strtotime( (string) $user->user_registered );
+					$initial = mb_strtoupper( mb_substr( trim( (string) $user->display_name ), 0, 1 ) );
+					?>
+					<aside class="settings-side">
+						<div class="settings-card settings-identity">
+							<span class="avatar" aria-hidden="true"><?php echo esc_html( $initial ); ?></span>
+							<b><?php echo esc_html( $user->display_name ); ?></b>
+							<small><?php echo esc_html( $user->user_email ); ?></small>
+						</div>
+
+						<div class="settings-card">
+							<dl class="settings-facts">
+								<div>
+									<dt><?php esc_html_e( 'Membership', 'thirtydayhomes' ); ?></dt>
+									<dd class="metric-state metric-state--<?php echo esc_attr( Membership::badge_class( $status ) ); ?>">
+										<?php echo esc_html( $labels[ $status ] ?? $status ); ?>
+									</dd>
+								</div>
+								<div>
+									<dt><?php esc_html_e( 'Homes listed', 'thirtydayhomes' ); ?></dt>
+									<dd>
+										<?php
+										printf(
+											'%s / %s',
+											esc_html( number_format_i18n( Membership::listing_count( (int) $user->ID ) ) ),
+											esc_html( number_format_i18n( Membership::quota( (int) $user->ID ) ) )
+										);
+										?>
+									</dd>
+								</div>
+								<div>
+									<dt><?php esc_html_e( 'Member since', 'thirtydayhomes' ); ?></dt>
+									<dd><?php echo esc_html( $joined ? date_i18n( 'j M Y', $joined ) : '—' ); ?></dd>
+								</div>
+							</dl>
+
+							<a class="secondary full" href="<?php echo esc_url( Accounts::url( 'account' ) ); ?>">
+								<?php esc_html_e( 'Back to dashboard', 'thirtydayhomes' ); ?>
+							</a>
+						</div>
+					</aside>
+
 				</div>
-
-				<div class="form-field">
-					<label for="tdh-p-email"><?php esc_html_e( 'Email address', 'thirtydayhomes' ); ?></label>
-					<input id="tdh-p-email" name="tdh_email" type="email" autocomplete="email" required
-						value="<?php echo esc_attr( $user->user_email ); ?>">
-				</div>
-
-				<div class="form-grid">
-					<div class="form-field">
-						<label for="tdh-p-phone"><?php esc_html_e( 'Phone', 'thirtydayhomes' ); ?></label>
-						<input id="tdh-p-phone" name="tdh_phone" type="tel" autocomplete="tel"
-							value="<?php echo esc_attr( (string) get_user_meta( $user->ID, '_tdh_phone', true ) ); ?>">
-					</div>
-
-					<div class="form-field">
-						<label for="tdh-p-company"><?php esc_html_e( 'Company', 'thirtydayhomes' ); ?></label>
-						<input id="tdh-p-company" name="tdh_company" type="text" autocomplete="organization"
-							value="<?php echo esc_attr( (string) get_user_meta( $user->ID, '_tdh_company', true ) ); ?>">
-					</div>
-				</div>
-
-				<h2 class="form-section"><?php esc_html_e( 'Change password', 'thirtydayhomes' ); ?></h2>
-				<p class="muted form-fine"><?php esc_html_e( 'Leave the new password blank to keep your current one.', 'thirtydayhomes' ); ?></p>
-
-				<div class="form-field">
-					<label for="tdh-p-current"><?php esc_html_e( 'Current password', 'thirtydayhomes' ); ?></label>
-					<input id="tdh-p-current" name="tdh_password_current" type="password" autocomplete="current-password">
-					<small><?php esc_html_e( 'Required to change your email address or password.', 'thirtydayhomes' ); ?></small>
-				</div>
-
-				<div class="form-field">
-					<label for="tdh-p-new"><?php esc_html_e( 'New password', 'thirtydayhomes' ); ?></label>
-					<input id="tdh-p-new" name="tdh_password_new" type="password" autocomplete="new-password"
-						minlength="<?php echo esc_attr( (string) self::MIN_PASSWORD ); ?>">
-				</div>
-
-				<button class="primary full big" type="submit"><?php esc_html_e( 'Save changes', 'thirtydayhomes' ); ?></button>
-			</form>
-
 			</div>
 		</div>
 		<?php
