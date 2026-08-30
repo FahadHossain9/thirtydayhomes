@@ -55,6 +55,7 @@ final class Settings {
 
 			// Scoped to this screen only — nothing here belongs on any other
 			// admin page.
+			add_action( 'admin_head-' . $hook, [ $this, 'print_styles' ] );
 			add_action( 'admin_footer-' . $hook, [ $this, 'print_script' ] );
 		}
 	}
@@ -266,15 +267,31 @@ final class Settings {
 
 		$missing = Stripe::plans_missing_price( $mode );
 
-		$this->notice(
-			$missing ? 'warning' : 'success',
-			$missing
-				? sprintf(
+		if ( $missing ) {
+			$this->notice(
+				'warning',
+				sprintf(
 					/* translators: %s: comma-separated plan names */
 					__( 'Connected to Stripe. No Price ID yet for: %s.', 'thirtydayhomes' ),
 					implode( ', ', $missing )
 				)
-				: __( 'Connected to Stripe, and every plan has a Price ID.', 'thirtydayhomes' )
+			);
+			$this->redirect( $mode );
+		}
+
+		/*
+		 * Every Price is filled in — but filled in is not the same as
+		 * correct. Ask Stripe what each one actually charges, because the
+		 * right IDs in the wrong slots is the mistake that silently bills
+		 * the wrong amount for the wrong quota.
+		 */
+		$wrong = Stripe::verify_prices( $mode, $secret );
+
+		$this->notice(
+			$wrong ? 'error' : 'success',
+			$wrong
+				? __( 'Connected to Stripe, but the Price IDs do not match the plans: ', 'thirtydayhomes' ) . implode( ' ', $wrong )
+				: __( 'Connected to Stripe. Every plan has a Price ID, and each one charges what the pricing page says, monthly.', 'thirtydayhomes' )
 		);
 
 		$this->redirect( $mode );
@@ -411,6 +428,35 @@ final class Settings {
 			?>
 
 		</div>
+		<?php
+	}
+
+	/**
+	 * No focus ring on the two mode tabs. Client's explicit call, asked twice.
+	 *
+	 * An earlier version suppressed it only for `:focus:not(:focus-visible)`,
+	 * to keep the ring for keyboard users. That did not work here and is
+	 * worth recording: the tab script calls preventDefault(), so focus stays
+	 * on the anchor, and Chrome then treats it as keyboard focus and matches
+	 * :focus-visible — falling through to the browser's own default outline,
+	 * which is the dark ring that replaced the blue one.
+	 *
+	 * WHAT IS LOST: someone tabbing with a keyboard gets no ring on these two
+	 * tabs. What they do still get is WordPress's active-tab styling, which
+	 * changes the moment a tab is activated — so the STATE stays visible even
+	 * though focus is not. Scoped to `.nav-tab` inside this screen only:
+	 * every field, button and link here keeps its normal focus indicator.
+	 */
+	public function print_styles(): void {
+		?>
+		<style>
+			.tdh-payments .nav-tab:focus,
+			.tdh-payments .nav-tab:focus-visible,
+			.tdh-payments .nav-tab:active {
+				box-shadow: none;
+				outline: 0;
+			}
+		</style>
 		<?php
 	}
 

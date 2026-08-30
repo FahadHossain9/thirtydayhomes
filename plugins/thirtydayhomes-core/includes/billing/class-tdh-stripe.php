@@ -217,6 +217,109 @@ final class Stripe {
 	}
 
 	/**
+	 * Ask Stripe what each configured Price actually is.
+	 *
+	 * A Price ID is opaque — price_1UA4fD… says nothing about what it
+	 * charges. Checking only that the field is filled in leaves the one
+	 * mistake that costs real money: the right IDs pasted into the wrong
+	 * slots. Swap two and a landlord pays the three-listing rate for one
+	 * home, or the site charges $49 and grants a quota of three. Nothing on
+	 * screen would look wrong.
+	 *
+	 * So this fetches each one and compares it against the plan it is filed
+	 * under: the amount, that it recurs monthly at all rather than being a
+	 * one-off, and that its own livemode matches the mode it is stored in.
+	 *
+	 * @param string      $mode   Which credential set to verify.
+	 * @param string|null $secret Key to use; defaults to the stored one.
+	 * @return array<int,string> Human-readable problems. Empty means correct.
+	 */
+	public static function verify_prices( string $mode, ?string $secret = null ): array {
+
+		$mode   = self::normalise_mode( $mode );
+		$secret = null === $secret ? self::secret_key( $mode ) : $secret;
+
+		if ( '' === $secret ) {
+			return [ __( 'No secret key, so the Price IDs cannot be checked.', 'thirtydayhomes' ) ];
+		}
+
+		$problems = [];
+
+		foreach ( self::plans() as $plan ) {
+
+			$id = self::price_id( $plan['listings'], $mode );
+
+			if ( '' === $id ) {
+				continue; // Reported separately by plans_missing_price().
+			}
+
+			$response = wp_remote_get(
+				'https://api.stripe.com/v1/prices/' . rawurlencode( $id ),
+				[
+					'timeout' => 20,
+					'headers' => [ 'Authorization' => 'Bearer ' . $secret ],
+				]
+			);
+
+			if ( is_wp_error( $response ) ) {
+				$problems[] = sprintf(
+					/* translators: 1: plan name, 2: error message */
+					__( '%1$s: could not reach Stripe (%2$s)', 'thirtydayhomes' ),
+					$plan['label'],
+					$response->get_error_message()
+				);
+				continue;
+			}
+
+			$body = json_decode( (string) wp_remote_retrieve_body( $response ), true );
+
+			if ( 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
+				$problems[] = sprintf(
+					/* translators: 1: plan name, 2: message from Stripe */
+					__( '%1$s: %2$s', 'thirtydayhomes' ),
+					$plan['label'],
+					isset( $body['error']['message'] ) ? (string) $body['error']['message'] : __( 'Stripe does not recognise that Price ID.', 'thirtydayhomes' )
+				);
+				continue;
+			}
+
+			$amount   = isset( $body['unit_amount'] ) ? (float) $body['unit_amount'] / 100 : 0.0;
+			$interval = (string) ( $body['recurring']['interval'] ?? '' );
+
+			// Half a cent of tolerance: the comparison is against a float
+			// from the plan table, and exact equality on floats is a bug
+			// waiting for the first plan priced at 49.99.
+			if ( abs( $amount - $plan['price'] ) > 0.005 ) {
+				$problems[] = sprintf(
+					/* translators: 1: plan name, 2: amount in Stripe, 3: amount on the pricing page */
+					__( '%1$s charges %2$s in Stripe but the pricing page says %3$s.', 'thirtydayhomes' ),
+					$plan['label'],
+					number_format( $amount, 2 ),
+					number_format( $plan['price'], 2 )
+				);
+			}
+
+			if ( 'month' !== $interval ) {
+				$problems[] = sprintf(
+					/* translators: %s: plan name */
+					__( '%s is not a monthly recurring price. A membership that never renews would be sold once and last forever.', 'thirtydayhomes' ),
+					$plan['label']
+				);
+			}
+
+			if ( ! empty( $body['livemode'] ) !== ( self::MODE_LIVE === $mode ) ) {
+				$problems[] = sprintf(
+					/* translators: %s: plan name */
+					__( '%s uses a Price from the other Stripe mode.', 'thirtydayhomes' ),
+					$plan['label']
+				);
+			}
+		}
+
+		return $problems;
+	}
+
+	/**
 	 * What a credential must begin with, per mode.
 	 *
 	 * This is the most valuable validation on the settings screen. Stripe
