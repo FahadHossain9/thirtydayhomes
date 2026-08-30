@@ -293,8 +293,18 @@ final class Site_Structure {
 				[ 'url',  $homes,                                 __( 'Find a home', 'thirtydayhomes' ), '' ],
 				[ 'page', (string) ( $ids['how-it-works'] ?? 0 ), __( 'Renter FAQ', 'thirtydayhomes' ), '' ],
 				[ 'page', (string) ( $ids['pricing'] ?? 0 ),      __( 'List your property', 'thirtydayhomes' ), '' ],
-				[ 'url',  wp_login_url(),                         __( 'Sign in', 'thirtydayhomes' ), '' ],
-				[ 'page', (string) ( $ids['pricing'] ?? 0 ),      __( 'List your home', 'thirtydayhomes' ), 'nav-cta' ],
+
+				// Our own sign-in page, not wp-login.php. A landlord is a
+				// customer of this marketplace; sending them to a screen
+				// branded "WordPress" to sign in is jarring, and the plugin
+				// swaps this item for "Dashboard" once they are signed in.
+				[ 'page', (string) ( $ids['login'] ?? 0 ),        __( 'Sign in', 'thirtydayhomes' ), '' ],
+
+				// The gold call to action goes to registration, not pricing.
+				// "List your home" is the first step of signing up, and
+				// sending it to the plan list made it a duplicate of the
+				// "List your property" item directly beside it.
+				[ 'page', (string) ( $ids['register'] ?? 0 ),     __( 'List your home', 'thirtydayhomes' ), 'nav-cta' ],
 			]
 		);
 

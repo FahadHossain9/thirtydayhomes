@@ -20,6 +20,13 @@
 *.yml   text eol=lf
 *.xml   text eol=lf
 
+# The exception. cmd.exe requires CRLF in a batch file: with bare LF it
+# eats the first character of the following line, so REM becomes M and
+# a multi-line if( ) block stops parsing entirely. The rule above would
+# hand every clone a broken script.
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+
 # Binary — never touch these.
 *.webp  binary
 *.png   binary

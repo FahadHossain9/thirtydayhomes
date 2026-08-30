@@ -56,6 +56,51 @@ final class Accounts {
 		// theme: the reset page carries a one-time token in its URL, and a
 		// theme swap must not quietly make that crawlable.
 		add_filter( 'wp_robots', [ $this, 'noindex_account_pages' ] );
+
+		// "Sign in" becomes "Dashboard" once somebody is signed in.
+		add_filter( 'wp_nav_menu_objects', [ $this, 'account_aware_menu' ] );
+	}
+
+	/**
+	 * Point the sign-in menu item at the right place for the visitor.
+	 *
+	 * Done as a filter on the menu rather than as hardcoded links in the
+	 * header, because the client owns the menu. Printing account links in
+	 * the template as well produced a header with three buttons in it and
+	 * a row that wrapped.
+	 *
+	 * Matching is by destination, not by label: an administrator who
+	 * renames "Sign in" to "Landlord login" must not break this.
+	 *
+	 * @param array<int,object> $items Menu items about to be rendered.
+	 *
+	 * @return array<int,object>
+	 */
+	public function account_aware_menu( $items ) {
+
+		if ( ! is_user_logged_in() ) {
+			return $items;
+		}
+
+		$login   = untrailingslashit( self::url( 'login' ) );
+		$account = self::url( 'account' );
+
+		foreach ( $items as $item ) {
+
+			$url = untrailingslashit( (string) $item->url );
+
+			// wp_login_url() is matched too: the demo menu was seeded
+			// pointing at wp-login.php before front-end auth existed, and
+			// any site imported before that fix still carries it.
+			if ( $url !== $login && $url !== untrailingslashit( wp_login_url() ) ) {
+				continue;
+			}
+
+			$item->url   = $account;
+			$item->title = __( 'Dashboard', 'thirtydayhomes' );
+		}
+
+		return $items;
 	}
 
 	/**
