@@ -185,22 +185,32 @@ final class Account_Render {
 
 		$user = wp_get_current_user();
 
+		// Wrapped in .auth-simple, which supplies the page padding and
+		// centring. The auth screens bypass the page template, so anything
+		// rendered here without its own shell lands flush against the
+		// header with the footer pulled up under it.
 		ob_start();
 		?>
-		<div class="form-card form-card--narrow">
-			<p>
-				<?php
-				printf(
-					/* translators: %s: display name */
-					esc_html__( 'You are signed in as %s.', 'thirtydayhomes' ),
-					'<strong>' . esc_html( $user->display_name ) . '</strong>' // phpcs:ignore WordPress.Security.EscapeOutput
-				);
-				?>
-			</p>
-			<p class="form-actions-inline">
-				<a class="primary" href="<?php echo esc_url( Accounts::url( 'account' ) ); ?>"><?php esc_html_e( 'Go to your dashboard', 'thirtydayhomes' ); ?></a>
-				<a class="secondary" href="<?php echo esc_url( wp_logout_url( home_url( '/' ) ) ); ?>"><?php esc_html_e( 'Sign out', 'thirtydayhomes' ); ?></a>
-			</p>
+		<div class="auth-simple">
+			<div class="form-card">
+				<div class="form-intro">
+					<h1><?php esc_html_e( 'You are already signed in', 'thirtydayhomes' ); ?></h1>
+					<p class="muted">
+						<?php
+						printf(
+							/* translators: %s: display name */
+							esc_html__( 'Signed in as %s.', 'thirtydayhomes' ),
+							'<strong>' . esc_html( $user->display_name ) . '</strong>' // phpcs:ignore WordPress.Security.EscapeOutput
+						);
+						?>
+					</p>
+				</div>
+
+				<p class="form-actions-inline">
+					<a class="primary" href="<?php echo esc_url( Accounts::url( 'account' ) ); ?>"><?php esc_html_e( 'Go to your dashboard', 'thirtydayhomes' ); ?></a>
+					<a class="secondary" href="<?php echo esc_url( wp_logout_url( home_url( '/' ) ) ); ?>"><?php esc_html_e( 'Sign out', 'thirtydayhomes' ); ?></a>
+				</p>
+			</div>
 		</div>
 		<?php
 		return (string) ob_get_clean();
@@ -585,22 +595,28 @@ final class Account_Render {
 
 					<div class="stat">
 						<i><?php echo $icon( 'key-round' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
-						<p class="stat-label"><?php esc_html_e( 'Plan', 'thirtydayhomes' ); ?></p>
-						<p class="stat-value"><?php echo esc_html( Membership::plan( $user_id ) ?: __( 'None', 'thirtydayhomes' ) ); ?></p>
+						<div>
+							<p class="stat-label"><?php esc_html_e( 'Plan', 'thirtydayhomes' ); ?></p>
+							<p class="stat-value"><?php echo esc_html( Membership::plan( $user_id ) ?: __( 'None', 'thirtydayhomes' ) ); ?></p>
+						</div>
 					</div>
 
 					<div class="stat">
 						<i><?php echo $icon( 'map-pinned' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
-						<p class="stat-label"><?php esc_html_e( 'Listings', 'thirtydayhomes' ); ?></p>
-						<p class="stat-value">
-							<?php echo esc_html( number_format_i18n( $used ) ); ?><em><?php echo esc_html( '/' . number_format_i18n( $quota ) ); ?></em>
-						</p>
+						<div>
+							<p class="stat-label"><?php esc_html_e( 'Listings', 'thirtydayhomes' ); ?></p>
+							<p class="stat-value">
+								<?php echo esc_html( number_format_i18n( $used ) ); ?><em><?php echo esc_html( '/' . number_format_i18n( $quota ) ); ?></em>
+							</p>
+						</div>
 					</div>
 
 					<div class="stat">
 						<i><?php echo $icon( 'calendar-days' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
-						<p class="stat-label"><?php esc_html_e( 'Renews', 'thirtydayhomes' ); ?></p>
-						<p class="stat-value"><?php echo esc_html( $expires ? date_i18n( 'j M Y', $expires ) : __( 'Not yet', 'thirtydayhomes' ) ); ?></p>
+						<div>
+							<p class="stat-label"><?php esc_html_e( 'Renews', 'thirtydayhomes' ); ?></p>
+							<p class="stat-value"><?php echo esc_html( $expires ? date_i18n( 'j M Y', $expires ) : __( 'Not yet', 'thirtydayhomes' ) ); ?></p>
+						</div>
 					</div>
 
 				</div>

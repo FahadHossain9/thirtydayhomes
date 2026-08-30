@@ -72,3 +72,20 @@ function tdh_is_account_page(): bool {
 		true
 	);
 }
+
+/**
+ * Does this page render its own heading and container?
+ *
+ * Account screens always do. Any other page can opt in with the
+ * `_tdh_full_layout` meta the importer sets — the pricing page does,
+ * because its shortcode prints its own headline and would otherwise sit
+ * under a duplicate "Membership" from the template.
+ */
+function tdh_is_full_layout_page(): bool {
+
+	if ( tdh_is_account_page() ) {
+		return true;
+	}
+
+	return is_page() && (bool) get_post_meta( get_queried_object_id(), '_tdh_full_layout', true );
+}

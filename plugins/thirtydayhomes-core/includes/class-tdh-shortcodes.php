@@ -36,6 +36,7 @@ final class Shortcodes {
 		add_shortcode( 'tdh_audience', [ $this, 'audience' ] );
 		add_shortcode( 'tdh_split_feature', [ $this, 'split_feature' ] );
 		add_shortcode( 'tdh_owner_cta', [ $this, 'owner_cta' ] );
+		add_shortcode( 'tdh_pricing', [ $this, 'pricing' ] );
 
 		// Account screens. No attributes: these render one thing each, and
 		// an attribute would only be a way to configure them into a state
@@ -46,6 +47,34 @@ final class Shortcodes {
 		add_shortcode( 'tdh_reset_password', [ Account_Render::class, 'reset_password' ] );
 		add_shortcode( 'tdh_account', [ Account_Render::class, 'dashboard' ] );
 		add_shortcode( 'tdh_profile', [ Account_Render::class, 'profile' ] );
+	}
+
+	/**
+	 * The membership pricing table.
+	 *
+	 * @param array<string,string>|string $atts
+	 */
+	public function pricing( $atts ): string {
+
+		$a = shortcode_atts(
+			[
+				'eyebrow' => '',
+				'heading' => '',
+				'intro'   => '',
+			],
+			(array) $atts,
+			'tdh_pricing'
+		);
+
+		$args = [];
+
+		foreach ( [ 'eyebrow', 'heading', 'intro' ] as $key ) {
+			if ( '' !== $a[ $key ] ) {
+				$args[ $key ] = sanitize_text_field( $a[ $key ] );
+			}
+		}
+
+		return Render::pricing( $args );
 	}
 
 	/**

@@ -14,9 +14,9 @@ if ( ! tdh_elementor_location( 'single' ) ) :
 	while ( have_posts() ) :
 		the_post();
 
-		// Account screens own the whole page: no site name, no page title,
-		// no prose column. Their shortcode renders its own layout.
-		if ( tdh_is_account_page() ) {
+		// Some pages own the whole page: no site name, no page title, no
+		// prose column. Their shortcode renders its own layout.
+		if ( tdh_is_full_layout_page() ) {
 			the_content();
 			continue;
 		}

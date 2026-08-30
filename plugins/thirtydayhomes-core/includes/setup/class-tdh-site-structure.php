@@ -33,7 +33,8 @@ final class Site_Structure {
 				$slug,
 				$page['title'],
 				$page['content'],
-				! empty( $page['noindex'] )
+				! empty( $page['noindex'] ),
+				! empty( $page['full'] )
 			);
 
 			if ( $id ) {
@@ -116,7 +117,7 @@ final class Site_Structure {
 	 * Not by slug: WordPress appends -2 when a slug collides, so a lookup
 	 * that misses silently produces a duplicate rather than an error.
 	 */
-	private function upsert_page( string $slug, string $title, string $content, bool $noindex = false ): int {
+	private function upsert_page( string $slug, string $title, string $content, bool $noindex = false, bool $full = false ): int {
 
 		$existing = get_posts(
 			[
@@ -158,6 +159,16 @@ final class Site_Structure {
 			delete_post_meta( (int) $id, '_tdh_noindex' );
 		}
 
+		// The page renders its own heading and container, so the theme
+		// skips the site name and page title it would normally print above
+		// the content. Without this the pricing page shows "Membership"
+		// directly above the pricing block's own headline.
+		if ( $full ) {
+			update_post_meta( (int) $id, '_tdh_full_layout', 1 );
+		} else {
+			delete_post_meta( (int) $id, '_tdh_full_layout' );
+		}
+
 		return (int) $id;
 	}
 
@@ -188,8 +199,11 @@ final class Site_Structure {
 			],
 			'pricing' => [
 				'title'   => __( 'Membership', 'thirtydayhomes' ),
-				'content' => '<p>Publish your furnished property to renters searching near Pittsburgh’s medical centres.</p>' . $draft
-					. '<p><strong>Pricing is not yet confirmed.</strong> The membership structure is a client decision still open at kickoff.</p>',
+				// The plans, their prices and the copy all come from
+				// TDH\Render::plans(), so confirming a price is one edit
+				// there rather than a hunt through page content.
+				'content' => '[tdh_pricing]',
+				'full'    => true,
 			],
 			'about' => [
 				'title'   => __( 'About', 'thirtydayhomes' ),

@@ -623,4 +623,184 @@ final class Render {
 		<?php
 		return (string) ob_get_clean();
 	}
+
+	/**
+	 * The membership plans.
+	 *
+	 * PRICES ARE NOT SIGNED OFF. These are the approved prototype's figures
+	 * and the delivery plan lists them as placeholders — see
+	 * DEVELOPMENT_PLAN.md §5. They live here, in one array, so confirming
+	 * them is a single edit rather than a hunt through markup.
+	 *
+	 * `listings` is the quota the plan grants, and it is the same number
+	 * TDH\Membership enforces. Changing a plan's listing count here without
+	 * changing what billing writes to _tdh_listing_quota would let someone
+	 * publish more homes than they paid for.
+	 *
+	 * @return array<int,array<string,mixed>>
+	 */
+	public static function plans(): array {
+
+		$plans = [
+			[
+				'listings' => 1,
+				'label'    => __( 'One listing', 'thirtydayhomes' ),
+				'price'    => 49,
+				'note'     => __( 'Standard rate', 'thirtydayhomes' ),
+				'featured' => false,
+				'badge'    => '',
+			],
+			[
+				'listings' => 2,
+				'label'    => __( '2 listings', 'thirtydayhomes' ),
+				'price'    => 88,
+				'note'     => __( '10% multi-listing discount', 'thirtydayhomes' ),
+				'featured' => false,
+				'badge'    => '',
+			],
+			[
+				'listings' => 3,
+				'label'    => __( '3 listings', 'thirtydayhomes' ),
+				'price'    => 125,
+				'note'     => __( '15% multi-listing discount', 'thirtydayhomes' ),
+				'featured' => true,
+				'badge'    => __( 'Best value', 'thirtydayhomes' ),
+			],
+		];
+
+		/**
+		 * Filter the membership plans.
+		 *
+		 * The billing layer will own these once it exists.
+		 *
+		 * @param array<int,array<string,mixed>> $plans
+		 */
+		return (array) apply_filters( 'tdh_membership_plans', $plans );
+	}
+
+	/**
+	 * What every plan includes.
+	 *
+	 * One list, not one per plan: the plans differ only in how many homes
+	 * they carry, and repeating four identical bullets three times invites
+	 * them to drift apart in a later edit.
+	 *
+	 * @return string[]
+	 */
+	public static function plan_features(): array {
+		return (array) apply_filters(
+			'tdh_plan_features',
+			[
+				__( 'Unlimited renter inquiries', 'thirtydayhomes' ),
+				__( 'Location proximity search', 'thirtydayhomes' ),
+				__( 'Pause or update any time', 'thirtydayhomes' ),
+				__( 'No guest booking fees', 'thirtydayhomes' ),
+			]
+		);
+	}
+
+	/**
+	 * The membership pricing table.
+	 *
+	 * @param array<string,mixed> $args
+	 */
+	public static function pricing( array $args = [] ): string {
+
+		$args = wp_parse_args(
+			$args,
+			[
+				'eyebrow'  => __( 'Simple, transparent membership', 'thirtydayhomes' ),
+				'heading'  => __( 'More listings. Better value.', 'thirtydayhomes' ),
+				'intro'    => __( 'Automatic volume pricing rewards landlords who publish more than one home.', 'thirtydayhomes' ),
+				'currency' => '$',
+			]
+		);
+
+		$features = self::plan_features();
+		$signed_in = is_user_logged_in();
+
+		$icon = static fn( string $name, int $size = 16 ): string =>
+			function_exists( 'tdh_icon' ) ? tdh_icon( $name, $size ) : '';
+
+		ob_start();
+		?>
+		<div class="pricing">
+
+			<div class="page-head center">
+				<p class="overline gold"><?php echo esc_html( (string) $args['eyebrow'] ); ?></p>
+				<h1><?php echo esc_html( (string) $args['heading'] ); ?></h1>
+				<p><?php echo esc_html( (string) $args['intro'] ); ?></p>
+			</div>
+
+			<div class="pricing-grid">
+				<?php foreach ( self::plans() as $plan ) : ?>
+					<?php
+					$is_featured = ! empty( $plan['featured'] );
+					$listings    = (int) $plan['listings'];
+					?>
+					<div class="plan<?php echo $is_featured ? ' plan--featured' : ''; ?>">
+
+						<?php if ( ! empty( $plan['badge'] ) ) : ?>
+							<span class="plan-badge"><?php echo esc_html( (string) $plan['badge'] ); ?></span>
+						<?php endif; ?>
+
+						<p class="plan-tier"><?php echo esc_html( (string) $plan['label'] ); ?></p>
+
+						<p class="plan-price">
+							<b><?php echo esc_html( $args['currency'] . number_format_i18n( (float) $plan['price'] ) ); ?></b>
+							<small><?php esc_html_e( '/ month', 'thirtydayhomes' ); ?></small>
+						</p>
+
+						<p class="plan-note"><?php echo esc_html( (string) $plan['note'] ); ?></p>
+
+						<ul class="plan-features">
+							<?php foreach ( $features as $feature ) : ?>
+								<li>
+									<?php echo $icon( 'check' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+									<?php echo esc_html( (string) $feature ); ?>
+								</li>
+							<?php endforeach; ?>
+							<li>
+								<?php echo $icon( 'check' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+								<?php
+								printf(
+									/* translators: %d: number of homes the plan allows */
+									esc_html( _n( '%d home published', '%d homes published', $listings, 'thirtydayhomes' ) ),
+									(int) $listings
+								);
+								?>
+							</li>
+						</ul>
+
+						<?php
+						/*
+						 * Checkout does not exist yet. Rather than a button
+						 * that silently does nothing, a signed-in landlord
+						 * is told plainly; a visitor is sent to the step
+						 * that IS built, which is creating an account.
+						 */
+						?>
+						<?php if ( $signed_in ) : ?>
+							<button class="<?php echo $is_featured ? 'gold-btn' : 'secondary'; ?> full" type="button" disabled>
+								<?php esc_html_e( 'Checkout coming soon', 'thirtydayhomes' ); ?>
+							</button>
+						<?php else : ?>
+							<a class="<?php echo $is_featured ? 'gold-btn' : 'secondary'; ?> full" href="<?php echo esc_url( Accounts::url( 'register' ) ); ?>">
+								<?php esc_html_e( 'Create an account', 'thirtydayhomes' ); ?>
+							</a>
+						<?php endif; ?>
+
+					</div>
+				<?php endforeach; ?>
+			</div>
+
+			<p class="pricing-note">
+				<?php esc_html_e( 'The discount applies automatically as homes are added.', 'thirtydayhomes' ); ?>
+				<strong><?php esc_html_e( 'Prices shown are not final and are awaiting client confirmation.', 'thirtydayhomes' ); ?></strong>
+			</p>
+
+		</div>
+		<?php
+		return (string) ob_get_clean();
+	}
 }

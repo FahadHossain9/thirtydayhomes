@@ -1559,22 +1559,148 @@ img, video { max-width: 100%; height: auto; }
    stretching its fields across the full grid width. */
 .account-body--form { max-width: 38rem; }
 
-.alert {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: var( --space-4 );
-	margin-bottom: var( --space-6 );
-	padding: var( --space-4 ) var( --space-5 );
-	background: var( --bg-surface-accent );
-	border: 1px solid var( --color-gold );
-	border-radius: var( --radius-xs );
+/* A single centred card on an account page that has no split shell — the
+   "already signed in" state. Supplies the padding the page template would
+   otherwise have given it. */
+.auth-simple {
+	display: grid;
+	place-items: center;
+	min-height: 26rem;
+	padding: var( --space-11 ) var( --gutter );
+	background: var( --bg-surface-tint );
 }
 
-.alert > .tdh-icon { flex: none; color: var( --text-accent ); }
-.alert span { display: flex; flex-direction: column; flex: 1; min-width: 12rem; }
-.alert small { color: var( --text-muted ); margin-top: var( --space-1 ); }
-.alert--warn { background: var( --color-warning-bg ); border-color: var( --color-warning ); }
+.auth-simple .form-card { width: 100%; max-width: 30rem; }
+.auth-simple .form-intro { margin-bottom: var( --space-6 ); }
+.auth-simple .form-intro h1 { font-size: var( --text-h3 ); margin: 0 0 var( --type-gap ); }
+.auth-simple .form-actions-inline { margin: 0; }
+
+/* --- Pricing -----------------------------------------------------------
+   Three plans that differ only in how many homes they carry, so the cards
+   are identical apart from the figure and the one that is recommended.
+   ---------------------------------------------------------------------- */
+
+.pricing { padding: var( --section-gap ) var( --gutter ); }
+
+.pricing .page-head { margin-inline: auto; }
+
+.pricing-grid {
+	display: grid;
+	grid-template-columns: repeat( 3, 1fr );
+	gap: var( --space-5 );
+	align-items: start;
+	max-width: var( --container-form );
+	margin-inline: auto;
+}
+
+.plan {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	padding: var( --space-8 );
+	background: var( --bg-surface );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-lg );
+}
+
+/* The recommended plan is raised rather than merely tinted, so it reads at
+   a glance without the other two looking disabled. */
+.plan--featured {
+	border: 2px solid var( --color-gold );
+	background: var( --bg-surface-tint );
+	box-shadow: var( --shadow-md );
+}
+
+/* Centred on the card's top edge. Sitting at the right it half-overhung
+   the corner and read as a misplaced sticker rather than a ribbon. */
+.plan-badge {
+	position: absolute;
+	top: calc( var( --space-3 ) * -1 );
+	left: 50%;
+	transform: translateX( -50% );
+	white-space: nowrap;
+	padding: var( --space-1 ) var( --space-3 );
+	background: var( --color-gold );
+	color: var( --color-navy );
+	border-radius: var( --radius-pill );
+	font-size: var( --text-3xs );
+	font-weight: var( --weight-bold );
+	letter-spacing: var( --tracking-wide );
+	text-transform: uppercase;
+}
+
+.plan-tier {
+	margin: 0;
+	color: var( --text-accent );
+	font-size: var( --text-3xs );
+	font-weight: var( --weight-bold );
+	letter-spacing: var( --tracking-wider );
+	text-transform: uppercase;
+}
+
+.plan-price {
+	display: flex;
+	align-items: baseline;
+	gap: var( --space-2 );
+	margin: var( --space-3 ) 0 var( --space-1 );
+}
+
+.plan-price b {
+	font-family: var( --font-heading );
+	font-size: var( --text-h2 );
+	line-height: var( --leading-none );
+	letter-spacing: var( --tracking-tight );
+	font-variant-numeric: tabular-nums;
+}
+
+.plan-price small { color: var( --text-muted ); font-size: var( --text-sm ); }
+
+.plan-note { margin: 0; color: var( --text-muted ); font-size: var( --text-sm ); }
+
+.plan-features {
+	margin: var( --space-7 ) 0;
+	padding: 0;
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: var( --space-3 );
+	font-size: var( --text-sm );
+}
+
+.plan-features li {
+	display: flex;
+	align-items: flex-start;
+	gap: var( --space-3 );
+	line-height: var( --leading-body );
+}
+
+.plan-features .tdh-icon {
+	flex: none;
+	margin-top: 0.15em;
+	color: var( --text-accent );
+}
+
+/* margin-top:auto pins every button to the bottom, so the three line up
+   even though the feature lists can differ in length. */
+.plan > .secondary,
+.plan > .gold-btn { margin-top: auto; }
+
+.plan button[disabled] { opacity: var( --disabled-opacity ); cursor: not-allowed; }
+
+.pricing-note {
+	max-width: var( --container-form );
+	margin: var( --space-8 ) auto 0;
+	color: var( --text-muted );
+	font-size: var( --text-sm );
+	text-align: center;
+}
+
+.pricing-note strong { display: block; margin-top: var( --space-2 ); color: var( --color-warning ); }
+
+@media ( max-width: 62rem ) {
+	.pricing-grid { grid-template-columns: 1fr; max-width: 26rem; }
+}
 
 /* --- Membership panel --------------------------------------------------
    The anchor of the dashboard: the one thing a landlord without a plan can
@@ -1657,8 +1783,13 @@ img, video { max-width: 100%; height: auto; }
 	margin-bottom: var( --space-7 );
 }
 
+/* Icon beside the text, not above it. Stacked, each tile ran to about
+   170px for two short lines and the row read as three empty boxes. */
 .stat {
-	padding: var( --space-6 );
+	display: flex;
+	align-items: center;
+	gap: var( --space-4 );
+	padding: var( --space-5 ) var( --space-6 );
 	background: var( --bg-surface );
 	border: 1px solid var( --border-default );
 	border-radius: var( --radius-lg );
@@ -1667,9 +1798,9 @@ img, video { max-width: 100%; height: auto; }
 .stat > i {
 	display: grid;
 	place-items: center;
+	flex: none;
 	width: var( --icon-well );
 	height: var( --icon-well );
-	margin-bottom: var( --space-5 );
 	background: var( --bg-surface-accent );
 	color: var( --text-accent );
 	border-radius: var( --radius-full );
@@ -1742,85 +1873,12 @@ img, video { max-width: 100%; height: auto; }
 	line-height: var( --leading-body );
 }
 
-.metric-grid {
-	display: grid;
-	grid-template-columns: repeat( 4, 1fr );
-	gap: var( --space-4 );
-	margin-bottom: var( --space-6 );
-}
-
-.metric {
-	display: flex;
-	align-items: center;
-	gap: var( --space-4 );
-	padding: var( --space-5 );
-	background: var( --bg-surface );
-	border: 1px solid var( --border-default );
-	border-radius: var( --radius-md );
-}
-
-.metric > i {
-	display: grid;
-	place-items: center;
-	flex: none;
-	width: var( --icon-well );
-	height: var( --icon-well );
-	background: var( --bg-surface-accent );
-	color: var( --text-accent );
-	border-radius: var( --radius-full );
-	font-style: normal;
-}
-
-.metric > i .tdh-icon { width: var( --icon-base ); height: var( --icon-base ); }
-
-.metric span { display: flex; flex-direction: column; gap: var( --space-1 ); min-width: 0; }
-
-.metric small {
-	color: var( --text-muted );
-	font-size: var( --text-xs );
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
-}
-
-.metric b {
-	font-size: var( --text-h5 );
-	line-height: var( --leading-heading );
-}
-
-/* The figure reads as one number with its allowance beside it, rather than
-   as a sentence: "0" at full weight, "/ 3" quiet next to it. */
-.metric-figure { font-family: var( --font-heading ); font-variant-numeric: tabular-nums; }
-.metric-figure span {
-	color: var( --text-muted );
-	font-family: var( --font-body );
-	font-size: var( --text-base );
-	font-weight: var( --weight-normal );
-}
-
-/* State as a coloured dot beside plain text. The old pill wrapped "No
-   active plan" onto three lines inside a narrow card and looked broken;
-   the dot also means colour is not carrying the meaning on its own. */
-.metric-state {
-	display: flex;
-	align-items: center;
-	gap: var( --space-2 );
-	font-size: var( --text-base );
-}
-
-.metric-state::before {
-	content: "";
-	flex: none;
-	width: 0.5rem;
-	height: 0.5rem;
-	border-radius: var( --radius-full );
-	background: var( --color-neutral );
-}
-
-.metric-state--active::before   { background: var( --color-success ); }
-.metric-state--past_due::before { background: var( --color-warning ); }
-.metric-state--pending::before  { background: var( --color-warning ); }
-.metric-state--inactive::before { background: var( --color-neutral ); }
-
+/* .metric* and .alert were removed here. They were the dashboard's first
+   layout and nothing renders them any more; .metric span in particular was
+   the rule that split the listings figure onto two lines by styling every
+   descendant span as a flex column item. Dead CSS that still matches a
+   generic element is a trap for whatever markup is written next.
+   The dashboard now uses .member-panel and .stat. */
 .panel-note { color: var( --text-muted ); font-size: var( --text-sm ); }
 
 .panel {
@@ -1868,14 +1926,13 @@ img, video { max-width: 100%; height: auto; }
 .nav-signin:hover { color: var( --color-gold-light ); }
 
 @media ( max-width: 62rem ) {
-	.metric-grid { grid-template-columns: 1fr 1fr; }
+	.stat-grid { grid-template-columns: repeat( 3, 1fr ); }
 }
 
 @media ( max-width: 43.75rem ) {
 	.form-card { padding: var( --space-6 ); }
 	.form-grid { grid-template-columns: 1fr; }
-	.metric-grid { grid-template-columns: 1fr 1fr; }
-	.stat-grid { grid-template-columns: 1fr 1fr; }
+	.stat-grid { grid-template-columns: 1fr; }
 	.account-bar-inner { align-items: flex-start; }
 	.account-nav { gap: var( --space-5 ); }
 	.member-panel { padding: var( --space-7 ) var( --space-6 ); }
