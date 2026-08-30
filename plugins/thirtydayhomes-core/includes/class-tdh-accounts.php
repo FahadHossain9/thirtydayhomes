@@ -36,10 +36,25 @@ final class Accounts {
 	/** Which form is being handled, so a failure knows where to send it back. */
 	private string $screen = '';
 
-	/** Failed logins allowed from one IP before throttling. */
+	/**
+	 * Failed sign-ins allowed against ONE account from one address.
+	 *
+	 * Five, which is what someone genuinely mistyping their own password
+	 * needs. It is counted per account, not per address — see throttle_keys().
+	 */
 	private const LOGIN_ATTEMPT_LIMIT = 5;
 
-	/** How long the throttle lasts. */
+	/**
+	 * Failed sign-ins allowed from one address across ALL accounts.
+	 *
+	 * Deliberately much higher than the per-account limit. Its job is not to
+	 * catch someone guessing one password, which the limit above already
+	 * does; it is to catch one address trying a few passwords against many
+	 * different accounts, which the per-account counter would never see.
+	 */
+	private const LOGIN_IP_LIMIT = 20;
+
+	/** How long either throttle lasts. */
 	private const LOGIN_LOCKOUT = 15 * MINUTE_IN_SECONDS;
 
 	public function register(): void {
@@ -263,12 +278,21 @@ final class Accounts {
 
 	private function do_login(): void {
 
-		if ( $this->is_throttled() ) {
-			$this->fail( __( 'Too many failed attempts. Please try again in fifteen minutes.', 'thirtydayhomes' ) );
-		}
-
 		$login    = sanitize_text_field( wp_unslash( (string) ( $_POST['tdh_email'] ?? '' ) ) );
 		$password = (string) ( $_POST['tdh_password'] ?? '' );
+
+		// After reading the address, because the allowance is counted per
+		// account now rather than per visitor address.
+		//
+		// One message whichever limit tripped. Saying which would tell
+		// someone probing whether they are near the per-account ceiling,
+		// and the address kept in the form is the same either way.
+		if ( $this->is_throttled( $login ) ) {
+			$this->fail(
+				__( 'Too many failed attempts. Please try again in fifteen minutes.', 'thirtydayhomes' ),
+				[ 'tdh_email' => $login ]
+			);
+		}
 
 		$user = wp_signon(
 			[
@@ -280,7 +304,7 @@ final class Accounts {
 		);
 
 		if ( is_wp_error( $user ) ) {
-			$this->record_failed_login();
+			$this->record_failed_login( $login );
 
 			// One message for a wrong email and a wrong password alike.
 			// Distinguishing them tells an attacker which addresses are
@@ -288,7 +312,7 @@ final class Accounts {
 			$this->fail( __( 'That email address and password do not match.', 'thirtydayhomes' ), [ 'tdh_email' => $login ] );
 		}
 
-		$this->clear_failed_logins();
+		$this->clear_failed_logins( $login );
 		wp_set_current_user( $user->ID );
 
 		$redirect = isset( $_POST['tdh_redirect_to'] ) ? esc_url_raw( wp_unslash( (string) $_POST['tdh_redirect_to'] ) ) : '';
@@ -559,23 +583,70 @@ final class Accounts {
 	 * Login throttling
 	 * ------------------------------------------------------------------ */
 
-	private function throttle_key(): string {
+	/**
+	 * The two counters a failed sign-in increments.
+	 *
+	 * WHY TWO. This used to be one counter keyed on md5( IP ) alone, so
+	 * every visitor sharing an address shared a single allowance of five.
+	 * Behind an office NAT — a property management company with four staff,
+	 * exactly the customer this marketplace is for — one person mistyping
+	 * their password five times locked out all of their colleagues, and none
+	 * of them would have any idea why. On this machine it bit us directly:
+	 * automated tests and a browser both come from localhost, so the
+	 * developer's failures spent the client's allowance.
+	 *
+	 * Per account and address: five, which is what a real person mistyping
+	 * their own password needs, and it cannot be spent by anyone else.
+	 *
+	 * Per address across all accounts: twenty, so one address quietly trying
+	 * two or three common passwords against dozens of accounts still trips
+	 * something. The per-account counter cannot see that pattern, because no
+	 * single account gets near five.
+	 *
+	 * @return array{0:string,1:string} The per-account key, then the per-address key.
+	 */
+	private function throttle_keys( string $login ): array {
+
 		$ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( (string) $_SERVER['REMOTE_ADDR'] ) ) : 'unknown';
 
-		return 'tdh_login_fail_' . md5( $ip );
+		// Lower-cased and trimmed so "Test@Example.com" and the same address
+		// in lower case count against one allowance; they are one account.
+		$account = strtolower( trim( $login ) );
+
+		return [
+			'tdh_login_fail_' . md5( $ip . '|' . $account ),
+			'tdh_login_ip_' . md5( $ip ),
+		];
 	}
 
-	private function is_throttled(): bool {
-		return (int) get_transient( $this->throttle_key() ) >= self::LOGIN_ATTEMPT_LIMIT;
+	private function is_throttled( string $login ): bool {
+
+		list( $account_key, $ip_key ) = $this->throttle_keys( $login );
+
+		return (int) get_transient( $account_key ) >= self::LOGIN_ATTEMPT_LIMIT
+			|| (int) get_transient( $ip_key ) >= self::LOGIN_IP_LIMIT;
 	}
 
-	private function record_failed_login(): void {
-		$key = $this->throttle_key();
-		set_transient( $key, (int) get_transient( $key ) + 1, self::LOGIN_LOCKOUT );
+	private function record_failed_login( string $login ): void {
+
+		foreach ( $this->throttle_keys( $login ) as $key ) {
+			set_transient( $key, (int) get_transient( $key ) + 1, self::LOGIN_LOCKOUT );
+		}
 	}
 
-	private function clear_failed_logins(): void {
-		delete_transient( $this->throttle_key() );
+	/**
+	 * Clears the account's allowance, NOT the address-wide one.
+	 *
+	 * Someone who signs in successfully has proved they own that account, so
+	 * its counter is meaningless. The address-wide counter is evidence about
+	 * the address rather than the account, and one successful sign-in should
+	 * not wipe it — otherwise anyone spraying passwords resets the wider
+	 * limit simply by signing into an account they do own.
+	 */
+	private function clear_failed_logins( string $login ): void {
+		list( $account_key ) = $this->throttle_keys( $login );
+
+		delete_transient( $account_key );
 	}
 
 	/* ---------------------------------------------------------------------
