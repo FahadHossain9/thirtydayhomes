@@ -215,7 +215,7 @@ final class Account_Render {
 
 				<p class="form-actions-inline">
 					<a class="primary" href="<?php echo esc_url( Accounts::url( 'account' ) ); ?>"><?php esc_html_e( 'Go to your dashboard', 'thirtydayhomes' ); ?></a>
-					<a class="secondary" href="<?php echo esc_url( wp_logout_url( home_url( '/' ) ) ); ?>"><?php esc_html_e( 'Sign out', 'thirtydayhomes' ); ?></a>
+					<a class="secondary" href="<?php echo esc_url( Accounts::logout_url() ); ?>"><?php esc_html_e( 'Sign out', 'thirtydayhomes' ); ?></a>
 				</p>
 			</div>
 		</div>
@@ -357,6 +357,16 @@ final class Account_Render {
 
 		$notice = Accounts::take_notice();
 		$values = $notice['values'];
+
+		/*
+		 * Signing out lands here rather than on the home page, and says so.
+		 * Only when there is nothing else to report — a real message about
+		 * what just happened always outranks the summary of what happened
+		 * before it.
+		 */
+		if ( isset( $_GET['signed_out'] ) && '' === $notice['success'] && ! $notice['errors'] ) {
+			$notice['success'] = __( 'You have been signed out.', 'thirtydayhomes' );
+		}
 
 		// Carried through so someone bounced off a protected page lands back
 		// on it. esc_url_raw plus wp_safe_redirect in the handler keeps this
@@ -560,7 +570,7 @@ final class Account_Render {
 					<nav class="account-nav" aria-label="<?php esc_attr_e( 'Account', 'thirtydayhomes' ); ?>">
 						<a class="is-current" href="<?php echo esc_url( Accounts::url( 'account' ) ); ?>"><?php esc_html_e( 'Dashboard', 'thirtydayhomes' ); ?></a>
 						<a href="<?php echo esc_url( Accounts::url( 'profile' ) ); ?>"><?php esc_html_e( 'Account details', 'thirtydayhomes' ); ?></a>
-						<a href="<?php echo esc_url( wp_logout_url( home_url( '/' ) ) ); ?>"><?php esc_html_e( 'Sign out', 'thirtydayhomes' ); ?></a>
+						<a href="<?php echo esc_url( Accounts::logout_url() ); ?>"><?php esc_html_e( 'Sign out', 'thirtydayhomes' ); ?></a>
 					</nav>
 				</div>
 			</header>
@@ -769,7 +779,7 @@ final class Account_Render {
 					<nav class="account-nav" aria-label="<?php esc_attr_e( 'Account', 'thirtydayhomes' ); ?>">
 						<a href="<?php echo esc_url( Accounts::url( 'account' ) ); ?>"><?php esc_html_e( 'Dashboard', 'thirtydayhomes' ); ?></a>
 						<a class="is-current" href="<?php echo esc_url( Accounts::url( 'profile' ) ); ?>"><?php esc_html_e( 'Account details', 'thirtydayhomes' ); ?></a>
-						<a href="<?php echo esc_url( wp_logout_url( home_url( '/' ) ) ); ?>"><?php esc_html_e( 'Sign out', 'thirtydayhomes' ); ?></a>
+						<a href="<?php echo esc_url( Accounts::logout_url() ); ?>"><?php esc_html_e( 'Sign out', 'thirtydayhomes' ); ?></a>
 					</nav>
 				</div>
 			</header>

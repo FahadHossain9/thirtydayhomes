@@ -30,6 +30,12 @@ final class Accounts {
 	/** Where errors and notices survive one redirect. */
 	private const TRANSIENT_PREFIX = 'tdh_notice_';
 
+	/** Names the visitor a stashed notice belongs to. See visitor_key(). */
+	private const NOTICE_COOKIE = 'tdh_notice_id';
+
+	/** Which form is being handled, so a failure knows where to send it back. */
+	private string $screen = '';
+
 	/** Failed logins allowed from one IP before throttling. */
 	private const LOGIN_ATTEMPT_LIMIT = 5;
 
@@ -144,6 +150,10 @@ final class Accounts {
 		if ( ! isset( $handlers[ $action ] ) ) {
 			return;
 		}
+
+		// Remembered before anything can fail, so every fail() below knows
+		// which screen to return to without consulting the Referer.
+		$this->screen = $action;
 
 		// One nonce action per form. A single shared nonce would let a token
 		// harvested from the login page authorise a profile change.
@@ -614,8 +624,18 @@ final class Accounts {
 	 */
 	private function stash( array $errors, string $success = '', array $values = [] ): void {
 
+		$key = self::visitor_key( true );
+
+		// On the cookie-less fallback key the message is generic enough to
+		// show anyone; the values are not, because they carry the email
+		// address this visitor just typed. Drop them rather than risk
+		// handing them to the next person on the same IP and browser.
+		if ( 't' !== $key[0] && 'u' !== $key[0] ) {
+			$values = [];
+		}
+
 		set_transient(
-			self::TRANSIENT_PREFIX . self::visitor_key(),
+			self::TRANSIENT_PREFIX . $key,
 			[
 				'errors'  => $errors,
 				'success' => $success,
@@ -645,13 +665,44 @@ final class Accounts {
 	}
 
 	/**
+	 * Where "Sign out" goes.
+	 *
+	 * The sign-in screen, saying so — not the home page in silence, which is
+	 * what a landlord got before: the site simply changed under them with no
+	 * word that anything had happened, and the header quietly swapped
+	 * "Dashboard" back to "Sign in".
+	 *
+	 * The flag rides in the URL rather than in the notice transient on
+	 * purpose. Signing out changes the visitor key from the user id to a
+	 * guest token, so a stashed notice would be written under one key and
+	 * read under another — the same class of bug as the referrer redirect.
+	 * "You signed out" is not sensitive, so a query argument is honest here
+	 * where an error message would not be.
+	 */
+	public static function logout_url(): string {
+		return wp_logout_url( add_query_arg( 'signed_out', '1', self::url( 'login' ) ) );
+	}
+
+	/**
 	 * Identifies this visitor for the notice transient.
 	 *
-	 * The user id once logged in; otherwise a cookie-scoped hash. Falling
-	 * back to IP alone would show one visitor's error to everyone behind
-	 * the same office NAT.
+	 * The user id once signed in; otherwise a token in a cookie of our own.
+	 *
+	 * This used to hash TEST_COOKIE . REMOTE_ADDR . HTTP_USER_AGENT and call
+	 * itself "cookie-scoped". It was not. WordPress sets TEST_COOKIE on
+	 * wp-login.php, and these are our own front-end forms, so that cookie is
+	 * simply absent here — verified on a live request — and the key
+	 * collapsed to md5( IP . user agent ). Two people behind one office NAT
+	 * on the same browser build shared a key, and the stash carries the
+	 * email address the visitor typed for repopulating the form. One of them
+	 * could be handed the other's address.
+	 *
+	 * @param bool $create Mint a token if there is none. Only true on the
+	 *                     stashing request: minting sends a Set-Cookie
+	 *                     header, and take_notice() runs during rendering,
+	 *                     after headers are away.
 	 */
-	private static function visitor_key(): string {
+	private static function visitor_key( bool $create = false ): string {
 
 		$user_id = get_current_user_id();
 
@@ -659,9 +710,55 @@ final class Accounts {
 			return 'u' . $user_id;
 		}
 
-		$seed = ( $_COOKIE[ TEST_COOKIE ] ?? '' ) . ( $_SERVER['REMOTE_ADDR'] ?? '' ) . ( $_SERVER['HTTP_USER_AGENT'] ?? '' );
+		$token = self::notice_token( $create );
 
-		return 'g' . md5( (string) $seed );
+		if ( '' !== $token ) {
+			return 't' . $token;
+		}
+
+		// Cookies refused. Keep the old behaviour rather than swallowing the
+		// message — but stash() drops the form values on this key, so the
+		// worst a collision can now show someone is a generic sentence.
+		return 'g' . md5( ( $_SERVER['REMOTE_ADDR'] ?? '' ) . ( $_SERVER['HTTP_USER_AGENT'] ?? '' ) );
+	}
+
+	/**
+	 * Read, or mint, this visitor's notice token.
+	 *
+	 * Ten minutes, host-only, HttpOnly, SameSite=Lax. It identifies nobody
+	 * and survives exactly one redirect; it is not an analytics cookie and
+	 * needs no consent banner.
+	 */
+	private static function notice_token( bool $create = false ): string {
+
+		$existing = preg_replace( '/[^a-f0-9]/', '', (string) ( $_COOKIE[ self::NOTICE_COOKIE ] ?? '' ) );
+
+		if ( is_string( $existing ) && 32 === strlen( $existing ) ) {
+			return $existing;
+		}
+
+		if ( ! $create || headers_sent() ) {
+			return '';
+		}
+
+		$token = md5( wp_generate_password( 40, true, true ) );
+
+		setcookie(
+			self::NOTICE_COOKIE,
+			$token,
+			[
+				'expires'  => time() + ( 10 * MINUTE_IN_SECONDS ),
+				'path'     => COOKIEPATH ? COOKIEPATH : '/',
+				'secure'   => is_ssl(),
+				'httponly' => true,
+				'samesite' => 'Lax',
+			]
+		);
+
+		// So the same request can key its own stash with it.
+		$_COOKIE[ self::NOTICE_COOKIE ] = $token;
+
+		return $token;
 	}
 
 	/**
@@ -670,7 +767,7 @@ final class Accounts {
 	 */
 	private function fail( $errors, array $values = [], string $to = '' ): void {
 		$this->stash( (array) $errors, '', $values );
-		$this->redirect( $to ?: $this->back() );
+		$this->redirect( $to ?: $this->screen_url() );
 	}
 
 	private function succeed( string $message, string $to ): void {
@@ -678,10 +775,65 @@ final class Accounts {
 		$this->redirect( $to );
 	}
 
-	private function back(): string {
-		$ref = wp_get_referer();
+	/**
+	 * The page the form being handled lives on.
+	 *
+	 * THIS IS NOT THE REFERRER, and that is the whole point. The previous
+	 * version redirected to wp_get_referer(), which is the Referer header
+	 * and is optional: privacy browsers trim it, proxies and some
+	 * navigations drop it entirely. When it was missing, a failed sign-in
+	 * redirected to the HOME PAGE — and the home page renders no notices,
+	 * so the stashed "that email address and password do not match" was
+	 * never shown. Someone typed a wrong password and the site quietly
+	 * showed them the front page, which is indistinguishable from having
+	 * signed in successfully.
+	 *
+	 * A form always knows which screen it belongs to. Ask that, not the
+	 * browser.
+	 */
+	private function screen_url(): string {
 
-		return $ref ?: home_url( '/' );
+		switch ( $this->screen ) {
+			case 'register':
+				return self::url( 'register' );
+			case 'login':
+				return self::url( 'login' );
+			case 'lost_password':
+				return self::url( 'lost-password' );
+			case 'reset_password':
+				return $this->reset_url();
+			case 'profile':
+				return self::url( 'profile' );
+		}
+
+		// Nothing was being handled — a direct hit on the hook, which should
+		// not happen. Home is a dead end but it is a working one.
+		return home_url( '/' );
+	}
+
+	/**
+	 * The reset screen, with the credentials from the link kept.
+	 *
+	 * Without them the page has no key to check and renders "this page needs
+	 * the link from your reset email" — so a mistyped password confirmation
+	 * would cost the visitor the link they were sent.
+	 */
+	private function reset_url(): string {
+
+		$key   = sanitize_text_field( wp_unslash( (string) ( $_POST['tdh_key'] ?? '' ) ) );
+		$login = sanitize_text_field( wp_unslash( (string) ( $_POST['tdh_login'] ?? '' ) ) );
+
+		if ( '' === $key || '' === $login ) {
+			return self::url( 'reset-password' );
+		}
+
+		return add_query_arg(
+			[
+				'key'   => $key,
+				'login' => $login,
+			],
+			self::url( 'reset-password' )
+		);
 	}
 
 	private function redirect( string $to ): void {

@@ -723,32 +723,24 @@ final class Render {
 		$signed_in = is_user_logged_in();
 
 		/*
-		 * The recommended plan is displayed in the middle, which is the
-		 * convention for a pricing table — the eye lands there first.
+		 * Ascending, exactly as plans() lists them. NOT reordered to put the
+		 * recommended plan in the middle.
 		 *
-		 * Reordered here rather than in plans(), for two reasons. The data
-		 * stays in ascending order, which is what anything reading it for
-		 * billing wants. And the reorder moves the actual DOM node rather
-		 * than using CSS `order`, so tab order follows what is on screen;
-		 * with CSS the keyboard would jump from the first card to the one
-		 * on the right and then back to the middle.
+		 * That convention comes from tables with NAMED tiers — Basic, Pro,
+		 * Enterprise — where the middle column carries no meaning of its own
+		 * and is free to mean "recommended". Here the tiers are a number
+		 * sequence and the page's whole argument is that more listings cost
+		 * less each. Moving the featured plan to the middle rendered the row
+		 * as 1 listing, 3 listings, 2 listings — $49, $125, $88 — so the
+		 * prices climbed, dropped, and the "Save 15%" badge sat to the left
+		 * of "Save 10%". The sequence IS the argument, and scrambling it
+		 * made the page read as a mistake.
+		 *
+		 * The recommended plan is already marked twice over, by its badge
+		 * and its gold border, which is what the middle position was there
+		 * to do.
 		 */
-		$plans    = self::plans();
-		$featured = null;
-
-		foreach ( $plans as $i => $plan ) {
-			if ( ! empty( $plan['featured'] ) ) {
-				$featured = $plan;
-				unset( $plans[ $i ] );
-				break;
-			}
-		}
-
-		$plans = array_values( $plans );
-
-		if ( null !== $featured ) {
-			array_splice( $plans, (int) floor( ( count( $plans ) + 1 ) / 2 ), 0, [ $featured ] );
-		}
+		$plans = self::plans();
 
 		$icon = static fn( string $name, int $size = 16 ): string =>
 			function_exists( 'tdh_icon' ) ? tdh_icon( $name, $size ) : '';
@@ -792,7 +784,22 @@ final class Render {
 						<p class="plan-tier"><?php echo esc_html( (string) $plan['label'] ); ?></p>
 
 						<p class="plan-price">
-							<b><?php echo esc_html( $args['currency'] . number_format_i18n( (float) $plan['price'] ) ); ?></b>
+							<?php
+							/*
+							 * Currency in its own element so it can be set
+							 * smaller and raised. Playfair's dollar sign has
+							 * a tall bar and tight sidebearings, and at the
+							 * price's display size it collided with the
+							 * first digit — "$49" rendered with the bar
+							 * struck through the 4. Setting a currency
+							 * symbol smaller and raised is the convention
+							 * for a price anyway, and it puts the number
+							 * where the eye should land.
+							 */
+							?>
+							<b>
+								<span class="plan-currency"><?php echo esc_html( (string) $args['currency'] ); ?></span><?php echo esc_html( number_format_i18n( (float) $plan['price'] ) ); ?>
+							</b>
 							<small><?php esc_html_e( '/ month', 'thirtydayhomes' ); ?></small>
 						</p>
 

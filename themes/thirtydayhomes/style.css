@@ -2000,6 +2000,22 @@ img, video { max-width: 100%; height: auto; }
 	font-variant-numeric: tabular-nums;
 }
 
+/* Playfair's dollar sign carries a bar well above and below the S, on a
+   narrower advance than its inked width, so at the price's size it struck
+   through the first digit. Tested: neither tabular-nums nor the negative
+   tracking caused it — the glyph does, at every setting.
+
+   Smaller and raised, which is how a currency symbol is set on a price in
+   any case. The em units tie it to the figure beside it, so it holds as
+   the fluid --text-h2 grows and shrinks. */
+.plan-currency {
+	font-size: 0.62em;
+	vertical-align: 0.42em;
+	margin-right: 0.06em;
+	font-weight: var( --weight-normal );
+	letter-spacing: 0;
+}
+
 .plan-price small { color: var( --text-muted ); font-size: var( --text-sm ); }
 
 /* The cost of one home. The figure a landlord with three properties is
@@ -2648,9 +2664,16 @@ img, video { max-width: 100%; height: auto; }
 	border-radius: var( --radius-md );
 }
 
+/* 6px, an optical correction rather than a spacing value — raw px on
+   purpose, same reasoning as the audience arrow above. The check is a grid
+   item in the first column and lands at the top of its row; the eye reads
+   it against the cap height of the bold title beside it, which sits lower
+   than the top of the line box. The em value this replaced scaled with the
+   font size, which is wrong here: the gap being corrected belongs to this
+   glyph's geometry, not to the type. */
 .about-rules-list .tdh-icon {
 	flex: none;
-	margin-top: 0.15em;
+	margin-top: 6px;
 	color: var( --color-gold );
 }
 
