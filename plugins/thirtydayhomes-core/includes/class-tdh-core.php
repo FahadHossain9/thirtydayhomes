@@ -53,6 +53,7 @@ final class Core {
 			'roles'      => new Roles(),
 			'visibility' => new Visibility(),
 			'proximity'  => new Proximity(),
+			'accounts'   => new Accounts(),
 			'shortcodes' => new Shortcodes(),
 		];
 

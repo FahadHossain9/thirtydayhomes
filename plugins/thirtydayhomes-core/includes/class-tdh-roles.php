@@ -39,11 +39,22 @@ final class Roles {
 		$landlord_caps = [
 			'read'                      => true,
 
-			// Own listings only — the "others" caps are deliberately absent.
+			// Own listings only — the "others" caps are deliberately absent,
+			// and that absence is what enforces ownership. WordPress maps
+			// edit_tdh_listing on someone else's post to
+			// edit_others_tdh_listings, which a landlord never holds.
 			'edit_tdh_listing'          => true,
 			'edit_tdh_listings'         => true,
 			'delete_tdh_listing'        => true,
 			'delete_tdh_listings'       => true,
+
+			// Required to edit a listing that is already live. Without
+			// these a landlord can edit a draft and then never touch it
+			// again the moment an administrator approves it. Ownership is
+			// still enforced: a non-owner needs the "others" cap as well.
+			'edit_published_tdh_listings'   => true,
+			'delete_published_tdh_listings' => true,
+
 			'publish_tdh_listings'      => false, // An administrator approves. Always.
 			'upload_files'              => true,
 
@@ -99,10 +110,27 @@ final class Roles {
 	}
 
 	/**
-	 * Landlords may only touch their own listings and their own inquiries.
+	 * An inquiry belongs to whoever owns the listing it was sent about.
+	 *
+	 * ONLY inquiries. Listings are left to WordPress, which compares
+	 * post_author itself and already handles the published, private and
+	 * trashed variants correctly — duplicating that here would mean
+	 * maintaining a copy of core's logic that silently drifts from it.
+	 *
+	 * An inquiry is different: its post_author is not the landlord, so the
+	 * ownership relationship runs through _tdh_listing_id and core cannot
+	 * see it. Without this, read_post on a published inquiry maps to plain
+	 * `read`, which every signed-in user holds — any landlord could read
+	 * any other landlord's enquiries.
+	 *
+	 * NOTE ON THE CAP NAME. WordPress rewrites a custom post type's meta
+	 * capability to its generic form *before* applying this filter:
+	 * `read_tdh_inquiry` arrives here as `read_post`. Matching the
+	 * marketplace-specific name means this filter never runs at all, which
+	 * is exactly the bug this comment exists to prevent recurring.
 	 *
 	 * @param string[] $caps    Primitive capabilities required.
-	 * @param string   $cap     Meta capability being checked.
+	 * @param string   $cap     Meta capability being checked, already mapped.
 	 * @param int      $user_id User being checked.
 	 * @param array    $args    [0] is the object ID.
 	 *
@@ -110,40 +138,29 @@ final class Roles {
 	 */
 	public function map_listing_caps( array $caps, string $cap, int $user_id, array $args ): array {
 
-		$owned = [
-			'edit_tdh_listing',
-			'delete_tdh_listing',
-			'read_tdh_listing',
-			'read_tdh_inquiry',
-		];
-
-		if ( ! in_array( $cap, $owned, true ) || empty( $args[0] ) ) {
+		if ( ! in_array( $cap, [ 'read_post', 'edit_post', 'delete_post' ], true ) || empty( $args[0] ) ) {
 			return $caps;
 		}
 
 		$post = get_post( (int) $args[0] );
-		if ( ! $post ) {
-			return [ 'do_not_allow' ];
+
+		if ( ! $post || Post_Types::INQUIRY !== $post->post_type ) {
+			return $caps;
 		}
 
-		// An inquiry belongs to whoever owns the listing it was sent about.
-		if ( Post_Types::INQUIRY === $post->post_type ) {
-			$listing_id = (int) get_post_meta( $post->ID, '_tdh_listing_id', true );
-			$listing    = $listing_id ? get_post( $listing_id ) : null;
-			$owner_id   = $listing ? (int) $listing->post_author : 0;
-		} else {
-			$owner_id = (int) $post->post_author;
-		}
+		$listing_id = (int) get_post_meta( $post->ID, '_tdh_listing_id', true );
+		$listing    = $listing_id ? get_post( $listing_id ) : null;
+		$owner_id   = $listing ? (int) $listing->post_author : 0;
 
 		if ( $owner_id && $owner_id === $user_id ) {
 			return $caps;
 		}
 
-		// Not the owner: fall back to the "others" capability, which the
-		// landlord role does not have and an administrator does.
-		$type   = get_post_type_object( $post->post_type );
-		$plural = $type->cap->edit_others_posts ?? 'do_not_allow';
+		// Not the recipient. Require the capability only an administrator
+		// holds, rather than do_not_allow, so an administrator can still
+		// read every inquiry for support and moderation.
+		$type = get_post_type_object( Post_Types::INQUIRY );
 
-		return [ $plural ];
+		return [ $type->cap->read_private_posts ?? 'do_not_allow' ];
 	}
 }

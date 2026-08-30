@@ -36,6 +36,16 @@ final class Shortcodes {
 		add_shortcode( 'tdh_audience', [ $this, 'audience' ] );
 		add_shortcode( 'tdh_split_feature', [ $this, 'split_feature' ] );
 		add_shortcode( 'tdh_owner_cta', [ $this, 'owner_cta' ] );
+
+		// Account screens. No attributes: these render one thing each, and
+		// an attribute would only be a way to configure them into a state
+		// the form handler does not accept.
+		add_shortcode( 'tdh_register', [ Account_Render::class, 'register' ] );
+		add_shortcode( 'tdh_login', [ Account_Render::class, 'login' ] );
+		add_shortcode( 'tdh_lost_password', [ Account_Render::class, 'lost_password' ] );
+		add_shortcode( 'tdh_reset_password', [ Account_Render::class, 'reset_password' ] );
+		add_shortcode( 'tdh_account', [ Account_Render::class, 'dashboard' ] );
+		add_shortcode( 'tdh_profile', [ Account_Render::class, 'profile' ] );
 	}
 
 	/**

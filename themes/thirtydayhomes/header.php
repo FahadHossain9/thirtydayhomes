@@ -48,6 +48,27 @@ defined( 'ABSPATH' ) || exit;
 				]
 			);
 			?>
+
+			<?php
+			/*
+			 * The account entry point. Inside the nav rather than beside it,
+			 * so the mobile menu carries it too — a sign-in link that only
+			 * exists on desktop strands the landlord checking enquiries from
+			 * a phone, which is most of them.
+			 */
+			?>
+			<?php if ( is_user_logged_in() ) : ?>
+				<a class="gold-btn nav-cta" href="<?php echo esc_url( tdh_account_url( 'account' ) ); ?>">
+					<?php esc_html_e( 'Dashboard', 'thirtydayhomes' ); ?>
+				</a>
+			<?php else : ?>
+				<a class="nav-signin" href="<?php echo esc_url( tdh_account_url( 'login' ) ); ?>">
+					<?php esc_html_e( 'Sign in', 'thirtydayhomes' ); ?>
+				</a>
+				<a class="gold-btn nav-cta" href="<?php echo esc_url( tdh_account_url( 'register' ) ); ?>">
+					<?php esc_html_e( 'List your property', 'thirtydayhomes' ); ?>
+				</a>
+			<?php endif; ?>
 		</nav>
 
 		<button

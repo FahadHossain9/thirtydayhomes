@@ -1143,6 +1143,280 @@ img, video { max-width: 100%; height: auto; }
 .status.tdh_paused       { background: var( --color-neutral-bg ); color: var( --color-neutral ); }
 .status.tdh_billing_hold { background: var( --color-warning-bg ); color: var( --color-warning ); }
 
+/* Aliases used by the dashboard, which names states in business terms
+   rather than by WordPress post status. */
+.status.live     { background: var( --color-success-bg ); color: var( --color-success ); }
+.status.past_due { background: var( --color-warning-bg ); color: var( --color-warning ); }
+.status.rejected { background: var( --color-danger-bg );  color: var( --color-danger ); }
+.status.inactive { background: var( --color-neutral-bg ); color: var( --color-neutral ); }
+
+/* =========================================================================
+   ACCOUNT SCREENS
+   Sign up, sign in, reset, dashboard, profile.
+   ========================================================================= */
+
+.form-card {
+	background: var( --bg-surface );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-md );
+	padding: var( --space-9 );
+}
+
+/* A form is read one line at a time, so it is capped near the comfortable
+   reading measure rather than stretched to the page container. */
+.form-card--narrow {
+	max-width: 34rem;
+	margin-inline: auto;
+}
+
+.form-intro { margin-bottom: var( --space-7 ); }
+
+.form-intro h1 {
+	font-size: var( --text-h1 );
+	margin: var( --type-gap ) 0;
+}
+
+.form-intro .overline { margin: 0; }
+.form-intro p:last-child { margin: 0; }
+
+.form-field {
+	display: flex;
+	flex-direction: column;
+	gap: var( --space-2 );
+	margin-bottom: var( --space-5 );
+}
+
+.form-field label { font-size: var( --text-sm ); font-weight: var( --weight-semibold ); }
+
+.form-field input,
+.form-field select,
+.form-field textarea {
+	width: 100%;
+	padding: var( --space-3 );
+	border: 1px solid var( --border-strong );
+	border-radius: var( --radius-xs );
+	background: var( --bg-surface );
+	color: var( --text-default );
+	font: inherit;
+}
+
+.form-field input:focus-visible,
+.form-field select:focus-visible,
+.form-field textarea:focus-visible {
+	outline: 2px solid var( --border-focus );
+	outline-offset: 1px;
+	border-color: var( --border-focus );
+}
+
+.form-field small { color: var( --text-muted ); font-size: var( --text-xs ); }
+
+/* Checkbox rows read as one sentence, so the box sits on the first line of
+   the label rather than being centred against a wrapped paragraph. */
+.form-field--check label {
+	display: flex;
+	align-items: flex-start;
+	gap: var( --space-3 );
+	font-weight: var( --weight-normal );
+	font-size: var( --text-sm );
+	line-height: var( --leading-body );
+}
+
+.form-field--check input {
+	width: auto;
+	flex: none;
+	margin-top: 0.15em;
+}
+
+.form-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: var( --space-5 );
+}
+
+.form-section {
+	font-size: var( --text-h5 );
+	margin: var( --space-8 ) 0 var( --space-2 );
+	padding-top: var( --space-6 );
+	border-top: 1px solid var( --border-soft );
+}
+
+.form-fine { font-size: var( --text-sm ); margin-top: 0; }
+
+.form-alt {
+	margin: var( --space-5 ) 0 0;
+	font-size: var( --text-sm );
+	color: var( --text-muted );
+	text-align: center;
+}
+
+.form-actions-inline {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var( --space-3 );
+	margin: var( --space-6 ) 0 0;
+}
+
+/* The honeypot. Moved out of view rather than display:none, because some
+   bots skip fields that are not rendered at all. */
+.tdh-hp {
+	position: absolute;
+	left: -9999px;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+}
+
+/* --- Notices ---------------------------------------------------------- */
+
+.form-notice {
+	display: flex;
+	align-items: flex-start;
+	gap: var( --space-3 );
+	margin-bottom: var( --space-6 );
+	padding: var( --space-4 );
+	border-radius: var( --radius-xs );
+	font-size: var( --text-sm );
+	line-height: var( --leading-body );
+}
+
+.form-notice p { margin: 0; }
+.form-notice p + p { margin-top: var( --space-2 ); }
+.form-notice .tdh-icon { flex: none; margin-top: 0.1em; }
+
+.form-notice--error {
+	background: var( --color-danger-bg );
+	color: var( --color-danger );
+}
+
+.form-notice--ok {
+	background: var( --color-success-bg );
+	color: var( --color-success );
+}
+
+/* --- Dashboard -------------------------------------------------------- */
+
+.account { max-width: var( --container ); margin-inline: auto; }
+
+.dash-heading {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: var( --space-5 );
+	margin-bottom: var( --space-7 );
+}
+
+.dash-heading .overline { margin: 0; }
+.dash-heading h1 { font-size: var( --text-h1 ); margin: var( --type-gap ) 0 0; }
+
+.alert {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var( --space-4 );
+	margin-bottom: var( --space-6 );
+	padding: var( --space-4 ) var( --space-5 );
+	background: var( --bg-surface-accent );
+	border: 1px solid var( --color-gold );
+	border-radius: var( --radius-xs );
+}
+
+.alert > .tdh-icon { flex: none; color: var( --text-accent ); }
+.alert span { display: flex; flex-direction: column; flex: 1; min-width: 12rem; }
+.alert small { color: var( --text-muted ); margin-top: var( --space-1 ); }
+.alert--warn { background: var( --color-warning-bg ); border-color: var( --color-warning ); }
+
+.metric-grid {
+	display: grid;
+	grid-template-columns: repeat( 4, 1fr );
+	gap: var( --space-4 );
+	margin-bottom: var( --space-6 );
+}
+
+.metric {
+	display: flex;
+	align-items: center;
+	gap: var( --space-4 );
+	padding: var( --space-5 );
+	background: var( --bg-surface );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-md );
+}
+
+.metric > i {
+	display: grid;
+	place-items: center;
+	flex: none;
+	width: var( --icon-well );
+	height: var( --icon-well );
+	background: var( --bg-surface-accent );
+	color: var( --text-accent );
+	border-radius: var( --radius-full );
+	font-style: normal;
+}
+
+.metric > i .tdh-icon { width: var( --icon-base ); height: var( --icon-base ); }
+
+.metric span { display: flex; flex-direction: column; gap: var( --space-1 ); min-width: 0; }
+.metric small { color: var( --text-muted ); font-size: var( --text-xs ); }
+.metric b { font-size: var( --text-h5 ); }
+.metric b.status { align-self: flex-start; font-size: var( --text-3xs ); }
+
+.panel {
+	padding: var( --space-5 );
+	background: var( --bg-surface );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-md );
+	margin-bottom: var( --space-7 );
+}
+
+.panel-title {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var( --space-4 );
+	padding-bottom: var( --space-4 );
+	border-bottom: 1px solid var( --border-default );
+}
+
+.panel-title h3 { margin: 0; font-size: var( --text-h5 ); }
+
+.mini-listing {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var( --space-4 );
+	padding: var( --space-4 ) 0;
+	border-bottom: 1px solid var( --border-soft );
+}
+
+.mini-listing:last-child { border-bottom: 0; }
+.mini-listing span { display: flex; flex-direction: column; gap: var( --space-1 ); min-width: 0; }
+.mini-listing small { color: var( --text-muted ); font-size: var( --text-xs ); }
+.mini-listing .status { flex: none; }
+
+/* --- Header sign-in --------------------------------------------------- */
+
+.nav-signin {
+	color: var( --color-on-dark-nav );
+	font-weight: var( --weight-semibold );
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.nav-signin:hover { color: var( --color-gold-light ); }
+
+@media ( max-width: 62rem ) {
+	.metric-grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media ( max-width: 43.75rem ) {
+	.form-card { padding: var( --space-6 ); }
+	.form-grid { grid-template-columns: 1fr; }
+	.metric-grid { grid-template-columns: 1fr; }
+	.dash-heading { align-items: flex-start; }
+}
+
 /* =========================================================================
    FOOTER
    ========================================================================= */

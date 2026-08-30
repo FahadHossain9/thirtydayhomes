@@ -110,17 +110,41 @@ Owns everything that is presentation. No marketplace rules.
 
 The editing layer. Administrators change headings, supporting copy, calls to action, imagery, item counts, query selection and approved style variants. They never touch prices, ownership, membership status, distance values or inquiry content — those come from the plugin as dynamic values and are never duplicated by hand.
 
-### 2.4 Subscription layer — decide at kickoff
+### 2.4 Subscription layer — DECIDED
 
-The handoff document leaves this open: *"Stripe/WooCommerce subscription integration as selected during setup."*
+The handoff document left this open: *"Stripe/WooCommerce subscription integration as selected during setup."*
 
-| Option | Cost | Fit |
+**Decision (2026-08-30): WooCommerce core plus a renewal layer inside `thirtydayhomes-core`. No premium extension.**
+
+Two client constraints drove it, and they are not fully compatible on their own:
+
+1. Everything in one plugin we own, nothing bought in.
+2. WooCommerce, because the client wants that admin.
+
+WooCommerce core is free but sells one-off products — it has no renewal engine. The extension that adds one, **WooCommerce Subscriptions, is premium at roughly $200–280/year**, which the budget rules out. So the split is:
+
+| Layer | Owner | Cost |
 |---|---|---|
-| **Paid Memberships Pro** + Stripe gateway | Free | Lightweight, levels map directly to plans, Stripe-hosted checkout, mature webhook handling. **Recommended.** |
-| **WooCommerce + WooCommerce Subscriptions** | ~$239/yr | Heavier, but brings invoicing, tax and coupons if the client wants them later |
-| Direct Stripe integration in the plugin | Free | Maximum control, most code, and we would be hand-writing dunning and proration logic that both options above already solved. Not recommended. |
+| Products, cart, checkout, orders, refunds | WooCommerce core | Free |
+| Card capture and tokenised saved cards | WooCommerce Stripe Gateway (official) | Free |
+| Renewal schedule, dunning, grace periods, plan changes | **`thirtydayhomes-core`** | Free |
 
-**Recommendation: Paid Memberships Pro.** It keeps the annual licence figure at Elementor Pro alone, and its subscription status model maps cleanly onto §3.2. Migrating membership plugins after real members exist is genuinely painful, so this needs deciding at kickoff, not in Milestone 2.
+Annual licence cost across the whole project stays **£0**.
+
+**What we are taking on by not buying the extension.** Recurring billing is the highest-risk work in this project — higher than listings or search, because a bug costs the client money rather than looking wrong. Specifically ours to get right:
+
+- Charging the saved card on schedule, with idempotency so a retried request cannot double-charge.
+- Retry and dunning: a declined card moves the member's listings to `tdh_billing_hold`, not `tdh_paused`, so a successful retry restores exactly what billing took away and nothing the owner paused themselves. This distinction already exists in `TDH\Statuses` for this reason.
+- Webhook handling that is replay-safe and signature-verified.
+- Upgrades and downgrades mid-cycle, and what happens to listings over quota on a downgrade.
+
+**Rejected alternatives, recorded so this is not reopened:**
+
+- *Paid Memberships Pro* — free and would have solved the renewal engine, but it is a second plugin the client does not want.
+- *Buying WooCommerce Subscriptions* — lowest risk, but an ongoing licence the client declined.
+- *Stripe Billing direct, no WooCommerce* — fewest moving parts for a site selling one thing, but the client wants the WooCommerce admin.
+
+Migrating billing after real members exist is genuinely painful, so this is fixed unless the client changes the budget.
 
 ---
 
@@ -393,7 +417,7 @@ The delivery plan recommended *one tier, up to three listings*. The 8/16 feedbac
 
 **4. Exact prices.** Monthly and annual figures, and confirmation of the two-months-free annual discount. The prototype's $49 / $88 / $125 / $490 numbers are placeholders.
 
-**5. Subscription layer.** Paid Memberships Pro or WooCommerce Subscriptions (§2.4). Recommend PMPro. Decide at kickoff — migrating after launch is painful.
+**5. ~~Subscription layer.~~ SETTLED 2026-08-30** — WooCommerce core plus our own renewal layer, no premium extension. See §2.4. Still needed from the client: the exact plan structure, because "3 listings per plan" is currently on the homepage as an unverified figure.
 
 **6. Approved SMS message template and consent wording.** Needed before the M2 SMS build, and the consent and opt-out language should have the client's legal guidance per handoff §9.
 
@@ -433,7 +457,8 @@ Per handoff §8, disclosed before anything is activated. All accounts in the own
 | Domain | Web address | ~$15 / year |
 | Managed WordPress hosting | Site, staging, backups | ~$20–30 / month |
 | Elementor (free) | Page editing layer | Free |
-| Paid Memberships Pro + Stripe gateway | Membership billing | Free |
+| WooCommerce + official Stripe gateway | Checkout and saved cards | Free |
+| Renewals, dunning, plan changes | Built into `thirtydayhomes-core` — no premium extension | Free |
 | Stripe | Collects payments | No monthly fee; per-transaction rate |
 | Maps — geocoding + distance matrix | Coordinates and drive times | Within free allowance given our caching; billing account required |
 | Transactional email (Resend / Postmark) | Inquiry and account email | Free tier covers launch volume |

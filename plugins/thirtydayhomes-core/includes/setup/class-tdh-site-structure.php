@@ -29,7 +29,12 @@ final class Site_Structure {
 		$ids = [];
 
 		foreach ( $this->pages() as $slug => $page ) {
-			$id = $this->upsert_page( $slug, $page['title'], $page['content'] );
+			$id = $this->upsert_page(
+				$slug,
+				$page['title'],
+				$page['content'],
+				! empty( $page['noindex'] )
+			);
 
 			if ( $id ) {
 				$ids[ $slug ] = $id;
@@ -111,7 +116,7 @@ final class Site_Structure {
 	 * Not by slug: WordPress appends -2 when a slug collides, so a lookup
 	 * that misses silently produces a duplicate rather than an error.
 	 */
-	private function upsert_page( string $slug, string $title, string $content ): int {
+	private function upsert_page( string $slug, string $title, string $content, bool $noindex = false ): int {
 
 		$existing = get_posts(
 			[
@@ -146,6 +151,12 @@ final class Site_Structure {
 		}
 
 		update_post_meta( (int) $id, '_tdh_seed_key', $slug );
+
+		if ( $noindex ) {
+			update_post_meta( (int) $id, '_tdh_noindex', 1 );
+		} else {
+			delete_post_meta( (int) $id, '_tdh_noindex' );
+		}
 
 		return (int) $id;
 	}
@@ -202,6 +213,47 @@ final class Site_Structure {
 				'title'   => __( 'Fair Housing', 'thirtydayhomes' ),
 				'content' => '<p>ThirtyDayHomes supports equal access to housing.</p>'
 					. '<p>Listings must describe the property, not the ideal renter. Every landlord acknowledges this before a listing is submitted, and listings are reviewed before publication.</p>' . $draft,
+			],
+
+			/*
+			 * Account screens. Each is one shortcode and nothing else — the
+			 * markup is paired with its handler in the plugin, so an editor
+			 * cannot accidentally break a form by editing the page.
+			 *
+			 * noindex: a sign-in screen in search results is worthless to a
+			 * searcher and dilutes the pages that do matter. The reset page
+			 * additionally carries a token in the URL, which must never be
+			 * crawled or logged by a third party.
+			 */
+			'register' => [
+				'title'   => __( 'Create an account', 'thirtydayhomes' ),
+				'content' => '[tdh_register]',
+				'noindex' => true,
+			],
+			'login' => [
+				'title'   => __( 'Sign in', 'thirtydayhomes' ),
+				'content' => '[tdh_login]',
+				'noindex' => true,
+			],
+			'lost-password' => [
+				'title'   => __( 'Reset your password', 'thirtydayhomes' ),
+				'content' => '[tdh_lost_password]',
+				'noindex' => true,
+			],
+			'reset-password' => [
+				'title'   => __( 'Choose a new password', 'thirtydayhomes' ),
+				'content' => '[tdh_reset_password]',
+				'noindex' => true,
+			],
+			'account' => [
+				'title'   => __( 'Dashboard', 'thirtydayhomes' ),
+				'content' => '[tdh_account]',
+				'noindex' => true,
+			],
+			'profile' => [
+				'title'   => __( 'Account details', 'thirtydayhomes' ),
+				'content' => '[tdh_profile]',
+				'noindex' => true,
 			],
 		];
 	}
