@@ -117,27 +117,126 @@ final class Settings {
 		}
 	}
 
+	/**
+	 * Everything that must be true before a mode may take money.
+	 *
+	 * Shared by the connection test and by the switch to live, so "the button
+	 * said it was fine" and "the switch let me through" can never disagree.
+	 *
+	 * @return array<int,string> Problems. Empty means ready.
+	 */
+	private function readiness( string $mode ): array {
+
+		$problems = [];
+
+		foreach ( $this->fields( $mode ) as $field => $spec ) {
+
+			if ( str_starts_with( $field, 'price_' ) ) {
+				continue; // Reported by name below.
+			}
+
+			if ( '' !== Stripe::credential( $field, $mode ) ) {
+				continue;
+			}
+
+			/*
+			 * The webhook secret blocks LIVE and only live.
+			 *
+			 * Going live without it means Stripe's renewals, failed payments
+			 * and cancellations never reach the site, so memberships would
+			 * drift out of step with what people are actually paying — the
+			 * worst possible silent failure here. It is a hard requirement.
+			 *
+			 * In the sandbox it cannot be one. Stripe issues a signing secret
+			 * per endpoint, and it can only reach an endpoint on a public
+			 * URL; on a local machine there is none to give. Demanding it
+			 * here would make the sandbox permanently "not ready" for a
+			 * reason nobody can fix locally.
+			 */
+			if ( 'webhook' === $field && Stripe::MODE_TEST === $mode ) {
+				continue;
+			}
+
+			/* translators: %s: field label */
+			$problems[] = sprintf( __( '%s is empty.', 'thirtydayhomes' ), $spec['label'] );
+		}
+
+		$missing = Stripe::plans_missing_price( $mode );
+
+		if ( $missing ) {
+			$problems[] = sprintf(
+				/* translators: %s: comma-separated plan names */
+				__( 'No Price ID for: %s.', 'thirtydayhomes' ),
+				implode( ', ', $missing )
+			);
+		}
+
+		// Nothing below can be checked without a working key, and reporting
+		// "price not found" when the real problem is a dead key sends someone
+		// looking in the wrong place.
+		$ping = Stripe::ping( $mode );
+
+		if ( ! $ping['ok'] ) {
+			$problems[] = $ping['error'];
+
+			return $problems;
+		}
+
+		if ( $ping['livemode'] !== ( Stripe::MODE_LIVE === $mode ) ) {
+			$problems[] = $ping['livemode']
+				? __( 'That key works, but it is a LIVE key in the sandbox tab. It charges real cards.', 'thirtydayhomes' )
+				: __( 'That key works, but it is a test key in the production tab. Live payments would not go through.', 'thirtydayhomes' );
+
+			return $problems;
+		}
+
+		return array_merge( $problems, Stripe::verify_prices( $mode ) );
+	}
+
+	/**
+	 * Switch which Stripe the site talks to.
+	 *
+	 * Going LIVE is gated; coming back to test never is.
+	 *
+	 * The previous version set the mode first and then complained if the
+	 * credentials were incomplete — so one click could put the site into live
+	 * mode with nothing behind it, and the first person to find out was a
+	 * real customer at a broken checkout. Now the switch runs exactly the
+	 * checks the test button runs, and refuses if any fail. Nothing changes
+	 * until everything is ready.
+	 *
+	 * The reverse direction is deliberately unguarded: dropping back to test
+	 * stops money moving, and anything that stops money moving should never
+	 * need permission.
+	 */
 	private function save_mode(): void {
 
 		$mode = isset( $_POST['tdh_mode'] ) ? sanitize_key( wp_unslash( (string) $_POST['tdh_mode'] ) ) : Stripe::MODE_TEST;
+		$mode = Stripe::MODE_LIVE === $mode ? Stripe::MODE_LIVE : Stripe::MODE_TEST;
 
-		Stripe::set_mode( $mode );
-
-		if ( Stripe::is_live() && ! Stripe::is_configured( Stripe::MODE_LIVE ) ) {
-			// Switching to live with nothing to switch to is worth saying out
-			// loud rather than leaving them to discover it at checkout.
-			$this->notice(
-				'warning',
-				__( 'Live mode is on, but the live credentials are incomplete. Payments will fail until they are filled in.', 'thirtydayhomes' )
-			);
-		} else {
-			$this->notice(
-				'success',
-				Stripe::is_live()
-					? __( 'Live mode is on. Real cards will be charged.', 'thirtydayhomes' )
-					: __( 'Test mode is on. No real money will move.', 'thirtydayhomes' )
-			);
+		if ( Stripe::MODE_TEST === $mode ) {
+			Stripe::set_mode( Stripe::MODE_TEST );
+			$this->notice( 'success', __( 'Test mode is on. No real money will move.', 'thirtydayhomes' ) );
+			$this->redirect();
 		}
+
+		$problems = $this->readiness( Stripe::MODE_LIVE );
+
+		if ( $problems ) {
+			// Deliberately NOT switched. The site stays where it was.
+			$this->notice(
+				'error',
+				__( 'Still in test mode — live is not ready yet: ', 'thirtydayhomes' ) . implode( ' ', $problems )
+			);
+			$this->redirect( Stripe::MODE_LIVE );
+		}
+
+		Stripe::set_mode( Stripe::MODE_LIVE );
+
+		$this->notice(
+			'success',
+			__( 'Live mode is on. Keys and prices were verified against Stripe. Real cards will now be charged.', 'thirtydayhomes' )
+		);
 
 		$this->redirect();
 	}
@@ -204,94 +303,19 @@ final class Settings {
 		$mode = isset( $_POST['tdh_tab'] ) ? sanitize_key( wp_unslash( (string) $_POST['tdh_tab'] ) ) : Stripe::MODE_TEST;
 		$mode = Stripe::MODE_LIVE === $mode ? Stripe::MODE_LIVE : Stripe::MODE_TEST;
 
-		$secret = Stripe::secret_key( $mode );
-
-		if ( '' === $secret ) {
-			$this->notice( 'error', __( 'No secret key is saved for this mode yet.', 'thirtydayhomes' ) );
-			$this->redirect( $mode );
-		}
-
-		$response = wp_remote_get(
-			'https://api.stripe.com/v1/balance',
-			[
-				'timeout' => 15,
-				'headers' => [
-					'Authorization'  => 'Bearer ' . $secret,
-					'Stripe-Version' => '2024-06-20',
-				],
-			]
-		);
-
-		if ( is_wp_error( $response ) ) {
-			$this->notice(
-				'error',
-				sprintf(
-					/* translators: %s: network error message */
-					__( 'Could not reach Stripe: %s', 'thirtydayhomes' ),
-					$response->get_error_message()
-				)
-			);
-			$this->redirect( $mode );
-		}
-
-		$code = (int) wp_remote_retrieve_response_code( $response );
-		$body = json_decode( (string) wp_remote_retrieve_body( $response ), true );
-
-		if ( 200 !== $code ) {
-			// Stripe's own message names the problem precisely — expired key,
-			// wrong account, insufficient permissions on a restricted key.
-			$this->notice(
-				'error',
-				sprintf(
-					/* translators: 1: HTTP status, 2: message from Stripe */
-					__( 'Stripe rejected the key (HTTP %1$d): %2$s', 'thirtydayhomes' ),
-					$code,
-					isset( $body['error']['message'] ) ? (string) $body['error']['message'] : __( 'no reason given', 'thirtydayhomes' )
-				)
-			);
-			$this->redirect( $mode );
-		}
-
-		$key_is_live  = ! empty( $body['livemode'] );
-		$tab_is_live  = Stripe::MODE_LIVE === $mode;
-
-		if ( $key_is_live !== $tab_is_live ) {
-			$this->notice(
-				'error',
-				$key_is_live
-					? __( 'That key works, but it is a LIVE key sitting in the sandbox tab. Remove it before testing — it charges real cards.', 'thirtydayhomes' )
-					: __( 'That key works, but it is a test key sitting in the production tab. Live payments would not go through.', 'thirtydayhomes' )
-			);
-			$this->redirect( $mode );
-		}
-
-		$missing = Stripe::plans_missing_price( $mode );
-
-		if ( $missing ) {
-			$this->notice(
-				'warning',
-				sprintf(
-					/* translators: %s: comma-separated plan names */
-					__( 'Connected to Stripe. No Price ID yet for: %s.', 'thirtydayhomes' ),
-					implode( ', ', $missing )
-				)
-			);
-			$this->redirect( $mode );
-		}
-
-		/*
-		 * Every Price is filled in — but filled in is not the same as
-		 * correct. Ask Stripe what each one actually charges, because the
-		 * right IDs in the wrong slots is the mistake that silently bills
-		 * the wrong amount for the wrong quota.
-		 */
-		$wrong = Stripe::verify_prices( $mode, $secret );
+		// The SAME checks the switch to live runs. If this button says ready,
+		// the switch will go through; if it lists problems, those are exactly
+		// the problems blocking it. One source of truth, so the two can never
+		// tell a different story.
+		$problems = $this->readiness( $mode );
 
 		$this->notice(
-			$wrong ? 'error' : 'success',
-			$wrong
-				? __( 'Connected to Stripe, but the Price IDs do not match the plans: ', 'thirtydayhomes' ) . implode( ' ', $wrong )
-				: __( 'Connected to Stripe. Every plan has a Price ID, and each one charges what the pricing page says, monthly.', 'thirtydayhomes' )
+			$problems ? 'error' : 'success',
+			$problems
+				? __( 'Not ready: ', 'thirtydayhomes' ) . implode( ' ', $problems )
+				: ( Stripe::MODE_LIVE === $mode
+					? __( 'Live credentials are ready. Keys work and every plan charges what the pricing page says, monthly.', 'thirtydayhomes' )
+					: __( 'Connected to Stripe. Every plan has a Price ID, and each one charges what the pricing page says, monthly.', 'thirtydayhomes' ) )
 		);
 
 		$this->redirect( $mode );

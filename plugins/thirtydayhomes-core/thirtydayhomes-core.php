@@ -3,7 +3,7 @@
  * Plugin Name:       ThirtyDayHomes Core
  * Plugin URI:        https://github.com/FahadHossain9/thirtydayhomes
  * Description:       Marketplace engine for ThirtyDayHomes — listings, facilities, proximity, memberships and inquiries. All marketplace data and business rules live here, never in the theme or in Elementor.
- * Version:           0.1.0
+ * Version:           0.2.0
  * Requires at least: 6.5
  * Requires PHP:      8.1
  * Author:            Instaquirk
@@ -36,7 +36,16 @@ defined( 'ABSPATH' ) || exit;
  * If yes, it belongs in this plugin.
  */
 
-const VERSION     = '0.1.0';
+/*
+ * BUMP THIS ON EVERY RELEASE.
+ *
+ * Core::maybe_upgrade() compares it against the stored tdh_db_version and
+ * only then reinstalls tables and re-registers roles. Ship a build with the
+ * version unchanged and a live site keeps the OLD capabilities: the code
+ * updates, the roles do not, and a landlord silently cannot do something the
+ * new code assumes they can.
+ */
+const VERSION     = '0.2.0';
 const PLUGIN_FILE = __FILE__;
 
 define( 'TDH_VERSION', VERSION );

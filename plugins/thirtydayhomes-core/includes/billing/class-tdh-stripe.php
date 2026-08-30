@@ -217,6 +217,75 @@ final class Stripe {
 	}
 
 	/**
+	 * Does this mode's secret key work, and which Stripe does it belong to?
+	 *
+	 * /v1/balance is the cheapest authenticated call Stripe offers, and its
+	 * response carries `livemode`, which is the only trustworthy answer to
+	 * "is this really a live key". The prefix check is a guess made from the
+	 * string; this is Stripe itself saying so.
+	 *
+	 * @return array{ok:bool,livemode:bool,error:string}
+	 */
+	public static function ping( string $mode, ?string $secret = null ): array {
+
+		$mode   = self::normalise_mode( $mode );
+		$secret = null === $secret ? self::secret_key( $mode ) : $secret;
+
+		if ( '' === $secret ) {
+			return [
+				'ok'       => false,
+				'livemode' => false,
+				'error'    => __( 'No secret key is saved for this mode.', 'thirtydayhomes' ),
+			];
+		}
+
+		$response = wp_remote_get(
+			'https://api.stripe.com/v1/balance',
+			[
+				'timeout' => 15,
+				'headers' => [
+					'Authorization'  => 'Bearer ' . $secret,
+					'Stripe-Version' => '2024-06-20',
+				],
+			]
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return [
+				'ok'       => false,
+				'livemode' => false,
+				'error'    => sprintf(
+					/* translators: %s: network error */
+					__( 'Could not reach Stripe: %s', 'thirtydayhomes' ),
+					$response->get_error_message()
+				),
+			];
+		}
+
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		$body = json_decode( (string) wp_remote_retrieve_body( $response ), true );
+
+		if ( 200 !== $code ) {
+			return [
+				'ok'       => false,
+				'livemode' => false,
+				'error'    => sprintf(
+					/* translators: 1: HTTP status, 2: message from Stripe */
+					__( 'Stripe rejected the key (HTTP %1$d): %2$s', 'thirtydayhomes' ),
+					$code,
+					isset( $body['error']['message'] ) ? (string) $body['error']['message'] : __( 'no reason given', 'thirtydayhomes' )
+				),
+			];
+		}
+
+		return [
+			'ok'       => true,
+			'livemode' => ! empty( $body['livemode'] ),
+			'error'    => '',
+		];
+	}
+
+	/**
 	 * Ask Stripe what each configured Price actually is.
 	 *
 	 * A Price ID is opaque — price_1UA4fD… says nothing about what it
