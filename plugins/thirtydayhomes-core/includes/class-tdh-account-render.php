@@ -67,6 +67,99 @@ final class Account_Render {
 	}
 
 	/**
+	 * Wrap a sign-up / sign-in form in the split brand layout.
+	 *
+	 * The panel is not decoration. A form asking a stranger for a password
+	 * has to say who is asking and why it is worth their time — a bare
+	 * white card on a page with no header does neither, and it is the point
+	 * in the whole site where someone is most likely to give up.
+	 *
+	 * @param string   $screen One of register, login, lost, reset.
+	 * @param callable $form   Prints the form column.
+	 */
+	private static function shell( string $screen, callable $form ): string {
+
+		$panels = [
+			'register' => [
+				'eyebrow' => __( 'For property owners', 'thirtydayhomes' ),
+				'heading' => __( 'Your home, in front of the people looking for it.', 'thirtydayhomes' ),
+				'points'  => [
+					[ 'stethoscope', __( 'Renters who search by hospital', 'thirtydayhomes' ), __( 'Nurses and clinicians on 13-week assignments, comparing homes by the drive to work.', 'thirtydayhomes' ) ],
+					[ 'shield-check', __( 'Every listing reviewed', 'thirtydayhomes' ), __( 'Homes are checked before they go live, so the ones that are published are trusted.', 'thirtydayhomes' ) ],
+					[ 'key-round', __( 'Enquiries come straight to you', 'thirtydayhomes' ), __( 'No commission on the booking. You deal with the renter directly.', 'thirtydayhomes' ) ],
+				],
+			],
+			'login'    => [
+				'eyebrow' => __( 'Welcome back', 'thirtydayhomes' ),
+				'heading' => __( 'Your listings and enquiries, where you left them.', 'thirtydayhomes' ),
+				'points'  => [
+					[ 'map-pinned', __( 'Manage your homes', 'thirtydayhomes' ), __( 'Edit details, pause a listing while it is occupied, bring it back when it is free.', 'thirtydayhomes' ) ],
+					[ 'calendar-days', __( 'Keep availability current', 'thirtydayhomes' ), __( 'Renters filter by move-in date, so an accurate date is what gets you found.', 'thirtydayhomes' ) ],
+				],
+			],
+			'lost'     => [
+				'eyebrow' => __( 'Account recovery', 'thirtydayhomes' ),
+				'heading' => __( 'It happens. Let’s get you back in.', 'thirtydayhomes' ),
+				'points'  => [
+					[ 'shield-check', __( 'The link expires in 24 hours', 'thirtydayhomes' ), __( 'And it can only be used once, so an old email in your inbox is not a way in.', 'thirtydayhomes' ) ],
+				],
+			],
+			'reset'    => [
+				'eyebrow' => __( 'Account recovery', 'thirtydayhomes' ),
+				'heading' => __( 'Choose something you will remember.', 'thirtydayhomes' ),
+				'points'  => [
+					[ 'shield-check', __( 'Every other session ends', 'thirtydayhomes' ), __( 'Changing your password signs out every other device, in case someone else had access.', 'thirtydayhomes' ) ],
+				],
+			],
+		];
+
+		$panel = $panels[ $screen ] ?? $panels['login'];
+
+		ob_start();
+		?>
+		<div class="auth">
+
+			<aside class="auth-brand">
+				<div class="auth-brand-inner">
+
+					<?php if ( function_exists( 'tdh_the_logo' ) ) : ?>
+						<a class="auth-logo" href="<?php echo esc_url( home_url( '/' ) ); ?>" rel="home">
+							<?php tdh_the_logo(); ?>
+						</a>
+					<?php endif; ?>
+
+					<div class="auth-pitch">
+						<p class="overline"><?php echo esc_html( $panel['eyebrow'] ); ?></p>
+						<h2><?php echo esc_html( $panel['heading'] ); ?></h2>
+					</div>
+
+					<ul class="auth-points">
+						<?php foreach ( $panel['points'] as [ $icon, $title, $copy ] ) : ?>
+							<li>
+								<i><?php echo function_exists( 'tdh_icon' ) ? tdh_icon( $icon, 19 ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+								<span>
+									<b><?php echo esc_html( $title ); ?></b>
+									<small><?php echo esc_html( $copy ); ?></small>
+								</span>
+							</li>
+						<?php endforeach; ?>
+					</ul>
+
+				</div>
+			</aside>
+
+			<div class="auth-panel">
+				<div class="auth-panel-inner">
+					<?php $form(); ?>
+				</div>
+			</div>
+
+		</div>
+		<?php
+		return (string) ob_get_clean();
+	}
+
+	/**
 	 * The hidden pair every account form needs.
 	 */
 	private static function form_head( string $action ): void {
@@ -126,14 +219,13 @@ final class Account_Render {
 		$notice = Accounts::take_notice();
 		$values = $notice['values'];
 
-		ob_start();
-		?>
-		<div class="form-card form-card--narrow">
-
+		return self::shell(
+			'register',
+			static function () use ( $notice, $values ) {
+				?>
 			<div class="form-intro">
-				<p class="overline gold"><?php esc_html_e( 'For property owners', 'thirtydayhomes' ); ?></p>
-				<h1><?php esc_html_e( 'Create your landlord account', 'thirtydayhomes' ); ?></h1>
-				<p class="muted"><?php esc_html_e( 'Publish furnished homes to renters searching near Pittsburgh’s medical centres.', 'thirtydayhomes' ); ?></p>
+				<h1><?php esc_html_e( 'Create your account', 'thirtydayhomes' ); ?></h1>
+				<p class="muted"><?php esc_html_e( 'Free to open. You only pay when you are ready to publish.', 'thirtydayhomes' ); ?></p>
 			</div>
 
 			<?php self::notices( $notice ); ?>
@@ -156,17 +248,21 @@ final class Account_Render {
 
 				<div class="form-grid">
 					<div class="form-field">
-						<label for="tdh-phone"><?php esc_html_e( 'Phone', 'thirtydayhomes' ); ?></label>
+						<label for="tdh-phone">
+							<?php esc_html_e( 'Phone', 'thirtydayhomes' ); ?>
+							<span class="label-note"><?php esc_html_e( '(optional)', 'thirtydayhomes' ); ?></span>
+						</label>
 						<input id="tdh-phone" name="tdh_phone" type="tel" autocomplete="tel"
 							value="<?php echo esc_attr( self::old( $values, 'tdh_phone' ) ); ?>">
-						<small><?php esc_html_e( 'Optional. Used for enquiry alerts by text.', 'thirtydayhomes' ); ?></small>
 					</div>
 
 					<div class="form-field">
-						<label for="tdh-company"><?php esc_html_e( 'Company', 'thirtydayhomes' ); ?></label>
+						<label for="tdh-company">
+							<?php esc_html_e( 'Company', 'thirtydayhomes' ); ?>
+							<span class="label-note"><?php esc_html_e( '(optional)', 'thirtydayhomes' ); ?></span>
+						</label>
 						<input id="tdh-company" name="tdh_company" type="text" autocomplete="organization"
 							value="<?php echo esc_attr( self::old( $values, 'tdh_company' ) ); ?>">
-						<small><?php esc_html_e( 'Optional.', 'thirtydayhomes' ); ?></small>
 					</div>
 				</div>
 
@@ -174,11 +270,16 @@ final class Account_Render {
 					<label for="tdh-password"><?php esc_html_e( 'Password', 'thirtydayhomes' ); ?></label>
 					<input id="tdh-password" name="tdh_password" type="password" autocomplete="new-password"
 						required minlength="<?php echo esc_attr( (string) self::MIN_PASSWORD ); ?>">
-					<small>
+					<?php
+					// The one hint kept visible. Stated before typing it
+					// prevents a rejected submission; discovered afterwards
+					// it is an error message someone already earned.
+					?>
+					<small class="form-hint--show">
 						<?php
 						printf(
 							/* translators: %d: minimum password length */
-							esc_html__( 'At least %d characters. A short phrase you will remember beats a short jumble you will not.', 'thirtydayhomes' ),
+							esc_html__( 'At least %d characters.', 'thirtydayhomes' ),
 							(int) self::MIN_PASSWORD
 						);
 						?>
@@ -222,9 +323,9 @@ final class Account_Render {
 				<?php esc_html_e( 'Already have an account?', 'thirtydayhomes' ); ?>
 				<a href="<?php echo esc_url( Accounts::url( 'login' ) ); ?>"><?php esc_html_e( 'Sign in', 'thirtydayhomes' ); ?></a>
 			</p>
-		</div>
-		<?php
-		return (string) ob_get_clean();
+				<?php
+			}
+		);
 	}
 
 	/* ---------------------------------------------------------------------
@@ -245,10 +346,10 @@ final class Account_Render {
 		// from becoming an open redirect.
 		$redirect = isset( $_GET['redirect_to'] ) ? esc_url_raw( wp_unslash( (string) $_GET['redirect_to'] ) ) : '';
 
-		ob_start();
-		?>
-		<div class="form-card form-card--narrow">
-
+		return self::shell(
+			'login',
+			static function () use ( $notice, $values, $redirect ) {
+				?>
 			<div class="form-intro">
 				<h1><?php esc_html_e( 'Sign in', 'thirtydayhomes' ); ?></h1>
 				<p class="muted"><?php esc_html_e( 'Manage your listings and enquiries.', 'thirtydayhomes' ); ?></p>
@@ -288,9 +389,9 @@ final class Account_Render {
 				<?php esc_html_e( 'New here?', 'thirtydayhomes' ); ?>
 				<a href="<?php echo esc_url( Accounts::url( 'register' ) ); ?>"><?php esc_html_e( 'Create a landlord account', 'thirtydayhomes' ); ?></a>
 			</p>
-		</div>
-		<?php
-		return (string) ob_get_clean();
+				<?php
+			}
+		);
 	}
 
 	/* ---------------------------------------------------------------------
@@ -301,9 +402,10 @@ final class Account_Render {
 
 		$notice = Accounts::take_notice();
 
-		ob_start();
-		?>
-		<div class="form-card form-card--narrow">
+		return self::shell(
+			'lost',
+			static function () use ( $notice ) {
+				?>
 			<div class="form-intro">
 				<h1><?php esc_html_e( 'Reset your password', 'thirtydayhomes' ); ?></h1>
 				<p class="muted"><?php esc_html_e( 'Enter your email address and we will send you a link.', 'thirtydayhomes' ); ?></p>
@@ -325,9 +427,9 @@ final class Account_Render {
 			<p class="form-alt">
 				<a href="<?php echo esc_url( Accounts::url( 'login' ) ); ?>"><?php esc_html_e( 'Back to sign in', 'thirtydayhomes' ); ?></a>
 			</p>
-		</div>
-		<?php
-		return (string) ob_get_clean();
+				<?php
+			}
+		);
 	}
 
 	public static function reset_password(): string {
@@ -337,9 +439,10 @@ final class Account_Render {
 		$key   = isset( $_GET['key'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['key'] ) ) : '';
 		$login = isset( $_GET['login'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['login'] ) ) : '';
 
-		ob_start();
-		?>
-		<div class="form-card form-card--narrow">
+		return self::shell(
+			'reset',
+			static function () use ( $notice, $key, $login ) {
+				?>
 			<div class="form-intro">
 				<h1><?php esc_html_e( 'Choose a new password', 'thirtydayhomes' ); ?></h1>
 			</div>
@@ -378,9 +481,9 @@ final class Account_Render {
 				</form>
 
 			<?php endif; ?>
-		</div>
-		<?php
-		return (string) ob_get_clean();
+				<?php
+			}
+		);
 	}
 
 	/* ---------------------------------------------------------------------

@@ -1155,6 +1155,161 @@ img, video { max-width: 100%; height: auto; }
    Sign up, sign in, reset, dashboard, profile.
    ========================================================================= */
 
+/* --- The sign-up / sign-in split ---------------------------------------
+   Two columns that each fill the viewport height. The left panel says who
+   is asking and why it is worth a stranger's time; the right one asks for
+   the password. A bare form on white does neither, and this is the point
+   in the whole site where someone is most likely to give up.
+   ---------------------------------------------------------------------- */
+
+.auth {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	min-height: calc( 100vh - var( --header-height ) );
+}
+
+.auth-brand {
+	position: relative;
+	display: flex;
+	align-items: center;
+	padding: var( --space-11 ) var( --space-10 );
+	background: var( --color-navy );
+	color: var( --text-inverse );
+	overflow: hidden;
+}
+
+/* A single warm light source behind the type, so the panel is not a flat
+   navy rectangle. Painted rather than an image: no extra request, and it
+   scales to any panel size without going soft. */
+.auth-brand::before {
+	content: "";
+	position: absolute;
+	top: -30%;
+	right: -20%;
+	width: 80%;
+	aspect-ratio: 1;
+	background: radial-gradient(
+		circle,
+		rgba( 215, 185, 103, 0.16 ) 0%,
+		rgba( 215, 185, 103, 0.05 ) 45%,
+		transparent 70%
+	);
+	pointer-events: none;
+}
+
+/* A hairline of gold down the seam between the two columns. */
+.auth-brand::after {
+	content: "";
+	position: absolute;
+	inset-block: 0;
+	right: 0;
+	width: 1px;
+	background: linear-gradient(
+		to bottom,
+		transparent,
+		var( --color-gold ) 30%,
+		var( --color-gold ) 70%,
+		transparent
+	);
+	opacity: 0.5;
+}
+
+.auth-brand-inner {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: var( --space-10 );
+	max-width: 30rem;
+	margin-inline: auto;
+}
+
+.auth-logo { display: inline-block; text-decoration: none; }
+
+.auth-pitch .overline { margin: 0 0 var( --space-4 ); }
+
+.auth-pitch h2 {
+	font-family: var( --font-heading );
+	font-size: var( --text-h2 );
+	line-height: var( --leading-tight );
+	letter-spacing: var( --tracking-tight );
+	margin: 0;
+	text-wrap: balance;
+}
+
+.auth-points {
+	display: flex;
+	flex-direction: column;
+	gap: var( --space-6 );
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.auth-points li {
+	display: flex;
+	align-items: flex-start;
+	gap: var( --space-4 );
+}
+
+.auth-points i {
+	display: grid;
+	place-items: center;
+	flex: none;
+	width: var( --icon-well );
+	height: var( --icon-well );
+	background: var( --color-surface-on-dark );
+	border: 1px solid var( --color-border-on-dark );
+	border-radius: var( --radius-full );
+	color: var( --color-gold-light );
+	font-style: normal;
+}
+
+.auth-points span { display: flex; flex-direction: column; gap: var( --space-1 ); }
+.auth-points b { font-size: var( --text-base ); }
+.auth-points small {
+	color: var( --color-on-dark-muted );
+	font-size: var( --text-sm );
+	line-height: var( --leading-body );
+}
+
+.auth-panel {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var( --space-11 ) var( --space-10 );
+	background: var( --bg-surface );
+}
+
+.auth-panel-inner { width: 100%; max-width: 26rem; }
+
+/* Inside the split the form needs no card of its own — the panel is the
+   card. Doubling them puts a border inside a border.
+
+   --text-h2, matching the pitch headline opposite. The two sit side by
+   side at the same height, so a 4px difference between them reads as a
+   mistake rather than as hierarchy. */
+.auth-panel .form-intro h1 {
+	font-size: var( --text-h2 );
+	margin: 0 0 var( --type-gap );
+}
+
+.auth-panel .form-intro { margin-bottom: var( --space-7 ); }
+
+@media ( max-width: 62rem ) {
+	.auth { grid-template-columns: 1fr; min-height: 0; }
+
+	/* On a phone the pitch goes above the form, trimmed to the headline —
+	   three feature paragraphs between someone and the form they came for
+	   is an obstacle, not persuasion. */
+	.auth-brand { padding: var( --space-9 ) var( --gutter ); }
+	.auth-brand-inner { gap: var( --space-6 ); max-width: none; }
+	.auth-brand::after { display: none; }
+	.auth-points { display: none; }
+	.auth-pitch h2 { font-size: var( --text-h3 ); }
+	.auth-panel { padding: var( --space-9 ) var( --gutter ); }
+	.auth-panel-inner { max-width: 30rem; margin-inline: auto; }
+}
+
 .form-card {
 	background: var( --bg-surface );
 	border: 1px solid var( --border-default );
@@ -1192,23 +1347,60 @@ img, video { max-width: 100%; height: auto; }
 .form-field select,
 .form-field textarea {
 	width: 100%;
-	padding: var( --space-3 );
-	border: 1px solid var( --border-strong );
-	border-radius: var( --radius-xs );
-	background: var( --bg-surface );
+	padding: var( --space-4 );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-sm );
+	background: var( --bg-surface-tint );
 	color: var( --text-default );
 	font: inherit;
+	transition: border-color var( --duration-fast ) var( --ease ),
+	            background var( --duration-fast ) var( --ease ),
+	            box-shadow var( --duration-fast ) var( --ease );
 }
 
+.form-field input::placeholder { color: var( --text-subtle ); }
+
+.form-field input:hover,
+.form-field select:hover,
+.form-field textarea:hover { border-color: var( --border-strong ); }
+
+/* The field lifts to white and takes a soft gold ring on focus, so the one
+   you are typing in is obvious at a glance down a long form. focus-visible,
+   not focus, so a mouse click does not draw the ring. */
 .form-field input:focus-visible,
 .form-field select:focus-visible,
 .form-field textarea:focus-visible {
-	outline: 2px solid var( --border-focus );
-	outline-offset: 1px;
-	border-color: var( --border-focus );
+	outline: none;
+	background: var( --bg-surface );
+	border-color: var( --color-gold );
+	box-shadow: 0 0 0 3px rgba( 215, 185, 103, 0.28 );
 }
 
-.form-field small { color: var( --text-muted ); font-size: var( --text-xs ); }
+/* A field the browser has flagged as invalid, but only once the visitor
+   has actually left it — :invalid alone paints every empty required field
+   red before anyone has typed a character. */
+.form-field input:not( :placeholder-shown ):user-invalid {
+	border-color: var( --color-danger );
+}
+
+/* Hints are hidden by default. Most of them restated something the label
+   already said, and one that wrapped to two lines while its neighbour ran
+   to one pulled a side-by-side row out of alignment.
+   Add .form-hint--show to keep one that earns its place. */
+.form-field small {
+	color: var( --text-muted );
+	font-size: var( --text-xs );
+	display: none;
+}
+
+.form-field small.form-hint--show { display: block; }
+
+/* "(optional)" belongs in the label, not on a line of its own below it:
+   it is part of naming the field, and it costs no vertical space there. */
+.label-note {
+	color: var( --text-subtle );
+	font-weight: var( --weight-normal );
+}
 
 /* Checkbox rows read as one sentence, so the box sits on the first line of
    the label rather than being centred against a wrapped paragraph. */
@@ -1221,10 +1413,17 @@ img, video { max-width: 100%; height: auto; }
 	line-height: var( --leading-body );
 }
 
+/* align-items:flex-start pins the box to the top of a 1.6 line box, which
+   leaves it sitting above the text it belongs to. Two nudges, because they
+   do different jobs: the em margin scales with the label's font size, and
+   the 2px is a fixed optical correction for the box's own chrome, which
+   does not scale. Raw px on purpose — see the note on the audience arrow. */
 .form-field--check input {
 	width: auto;
 	flex: none;
 	margin-top: 0.15em;
+	position: relative;
+	top: 2px;
 }
 
 .form-grid {

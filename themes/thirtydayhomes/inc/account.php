@@ -46,3 +46,25 @@ function tdh_is_landlord(): bool {
 
 	return false;
 }
+
+/**
+ * Is this one of the sign-up / sign-in screens?
+ *
+ * These four take over the whole page. The standard page template prints
+ * the site name and the page title above the content, which on /register/
+ * put "Create an account" directly above the form's own "Create your
+ * landlord account" — two headings saying the same thing.
+ *
+ * Matched on the meta key the importer sets, not the slug, so renaming the
+ * page in wp-admin does not quietly drop it back to the plain layout.
+ */
+function tdh_is_auth_page(): bool {
+
+	if ( ! is_page() ) {
+		return false;
+	}
+
+	$key = (string) get_post_meta( get_queried_object_id(), '_tdh_seed_key', true );
+
+	return in_array( $key, [ 'register', 'login', 'lost-password', 'reset-password' ], true );
+}

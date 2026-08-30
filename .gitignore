@@ -9,3 +9,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# A second clone of this project lives here, pointing at a different remote.
+# It carries its own .git, and Git cannot store a repository inside another
+# one: it records a submodule pointer instead, which shows up as an empty
+# folder and fails for anyone who clones. It is a working copy, not source.
+New folder/
+

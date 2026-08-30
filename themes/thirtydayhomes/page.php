@@ -13,6 +13,13 @@ if ( ! tdh_elementor_location( 'single' ) ) :
 
 	while ( have_posts() ) :
 		the_post();
+
+		// Sign-up and sign-in own the whole page: no site name, no page
+		// title, no prose column. Their shortcode renders its own layout.
+		if ( tdh_is_auth_page() ) {
+			the_content();
+			continue;
+		}
 		?>
 		<div class="page-shell narrow">
 
