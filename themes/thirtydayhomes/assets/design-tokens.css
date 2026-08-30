@@ -183,8 +183,13 @@
 
 	/* --- Section rhythm -----------------------------------------------
 	   Fluid, so there is no mobile padding override to keep in sync.      */
-	--section-gap:         clamp( 4.0625rem, 6vw, 5.625rem );  /* 65 → 90 */
-	--section-gap-tight:   clamp( 3.75rem,   5vw, 5.3125rem ); /* 60 → 85 */
+	/* One section rhythm, top and bottom, on every section of every page.
+	   Fixed rather than fluid: the point is that a visitor scrolling the
+	   site sees the same gap between every band, and a clamp made that gap
+	   drift by 25px depending on viewport width. The mobile step down is
+	   handled once, in the narrow media query, not per section. */
+	--section-gap:         5.3125rem;         /* 85 */
+	--section-gap-tight:   var( --section-gap );
 	/* The optical gap between a heading and the type next to it — off the
 	   4px scale on purpose. That scale governs distance between blocks on
 	   the page; this is the space inside a run of text, and snapping it to

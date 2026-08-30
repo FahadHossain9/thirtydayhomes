@@ -21,17 +21,22 @@ if ( ! tdh_elementor_location( 'single' ) ) :
 			continue;
 		}
 		?>
+		<?php
+		// Full-bleed, so it sits outside the padded shell below.
+		// 'narrow' because the prose below sits in the narrow shell, and the
+		// heading has to share its left edge.
+		tdh_page_banner(
+			[
+				'title' => get_the_title(),
+				'width' => 'narrow',
+			]
+		);
+		?>
+
 		<div class="page-shell narrow">
-
-			<div class="page-head">
-				<p class="overline gold"><?php bloginfo( 'name' ); ?></p>
-				<h1><?php the_title(); ?></h1>
-			</div>
-
 			<div class="prose">
 				<?php the_content(); ?>
 			</div>
-
 		</div>
 		<?php
 	endwhile;

@@ -52,29 +52,26 @@ if ( ! tdh_elementor_location( 'single' ) ) :
 		][ $pets ] ?? '';
 		?>
 
+		<?php
+		/*
+		 * The banner carries the trail, which replaced the old "Back to
+		 * homes" link — it does the same job and also says where this home
+		 * sits, which a lone back arrow does not.
+		 */
+		tdh_page_banner(
+			[
+				'eyebrow' => $hood ? $hood . __( ' · Pittsburgh', 'thirtydayhomes' ) : '',
+				'title'   => get_the_title(),
+				'lead'    => sprintf(
+					/* translators: %s: ZIP code */
+					__( 'Approximate location · %s', 'thirtydayhomes' ),
+					(string) $zip
+				),
+			]
+		);
+		?>
+
 		<div class="detail">
-
-			<a class="back" href="<?php echo esc_url( (string) get_post_type_archive_link( 'tdh_listing' ) ); ?>">
-				<?php esc_html_e( '← Back to homes', 'thirtydayhomes' ); ?>
-			</a>
-
-			<div class="detail-title">
-				<div>
-					<?php if ( $hood ) : ?>
-						<p class="overline gold"><?php echo esc_html( $hood ); ?><?php esc_html_e( ' · Pittsburgh', 'thirtydayhomes' ); ?></p>
-					<?php endif; ?>
-					<h1><?php the_title(); ?></h1>
-					<p>
-						<?php
-						printf(
-							/* translators: %s: ZIP code */
-							esc_html__( 'Approximate location · %s', 'thirtydayhomes' ),
-							esc_html( (string) $zip )
-						);
-						?>
-					</p>
-				</div>
-			</div>
 
 			<?php if ( has_post_thumbnail() ) : ?>
 				<figure class="detail-media">

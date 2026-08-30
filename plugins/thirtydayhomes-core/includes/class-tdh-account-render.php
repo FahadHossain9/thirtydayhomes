@@ -150,6 +150,13 @@ final class Account_Render {
 
 			<div class="auth-panel">
 				<div class="auth-panel-inner">
+					<?php
+					// In the form column, not the brand panel: it belongs
+					// with the content someone is acting on.
+					if ( function_exists( 'tdh_the_breadcrumb' ) ) {
+						tdh_the_breadcrumb();
+					}
+					?>
 					<?php $form(); ?>
 				</div>
 			</div>
@@ -531,6 +538,11 @@ final class Account_Render {
 			 */
 			?>
 			<header class="account-bar">
+				<?php
+				if ( function_exists( 'tdh_the_breadcrumb' ) ) {
+					tdh_the_breadcrumb();
+				}
+				?>
 				<div class="account-bar-inner">
 					<div>
 						<p class="overline"><?php esc_html_e( 'Landlord dashboard', 'thirtydayhomes' ); ?></p>
@@ -743,6 +755,11 @@ final class Account_Render {
 		<div class="account">
 
 			<header class="account-bar">
+				<?php
+				if ( function_exists( 'tdh_the_breadcrumb' ) ) {
+					tdh_the_breadcrumb();
+				}
+				?>
 				<div class="account-bar-inner">
 					<div>
 						<p class="overline"><?php esc_html_e( 'Landlord dashboard', 'thirtydayhomes' ); ?></p>

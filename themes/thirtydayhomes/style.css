@@ -430,9 +430,14 @@ img, video { max-width: 100%; height: auto; }
    SECTION SHELL
    ========================================================================= */
 
+/* Every content section: the same 85px top and bottom. Add a new section
+   to this list rather than giving it its own padding. */
 .section,
 .page-shell,
-.detail { padding: var( --section-gap ) var( --gutter ); }
+.detail,
+.pricing,
+.split,
+.audience { padding: var( --section-gap ) var( --gutter ); }
 
 .page-shell.narrow { max-width: var( --container-form ); margin-inline: auto; }
 
@@ -475,6 +480,197 @@ img, video { max-width: 100%; height: auto; }
 .owner-cta h2 + p { margin: 0; }
 
 .section-title > div > p:last-child { color: var( --text-muted ); margin: 0; }
+
+/* --- Breadcrumb ---------------------------------------------------------
+   Occupies the slot the site-name overline used to, so it adds no height.
+   Set at the overline's size but not uppercased: a trail is read as words,
+   and letter-spaced capitals slow that down.
+   ---------------------------------------------------------------------- */
+
+/* The banner that opens an inner page.
+   ------------------------------------------------------------------------
+   Navy, continuing straight out of the header, so the two read as one dark
+   mass rather than a pale strip wedged between two whites. A gold hairline
+   closes it against the content below.
+
+   Full-bleed with its own inner container, which is why it is called
+   outside the page's padded shell. The container MUST match the one the
+   page's content uses, or the title and the body text sit on different
+   left edges — which is what the first version of this did. */
+.page-banner {
+	position: relative;
+	/* Flex, not grid. An absolutely positioned child of a grid container is
+	   still subject to place-items, which fights inset:0 and leaves the
+	   mask with no box to paint. A flex container's abspos children are not
+	   flex items, so they stretch as written. */
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	/* Compact. The height was raised to 20rem when the photograph was meant
+	   to be the subject; now that it sits back under a heavy mask it is
+	   texture, and texture does not need the room. A shallow band also puts
+	   the page's actual content nearer the top, which is the point. */
+	min-height: 13rem;
+	padding: var( --space-8 ) var( --gutter );
+	color: var( --text-inverse );
+	text-align: center;
+	overflow: hidden;
+
+	/* The photograph, on the element itself. Its mask is ::before and the
+	   content sits above both.
+
+	   background-color is the fallback: a page rendered before the image
+	   arrives, or with the Customizer photo cleared, is still navy with
+	   readable white type rather than white on white. */
+	background-color: var( --color-navy );
+	background-image: var( --banner-image, none );
+	background-size: cover;
+	background-position: center;
+	background-repeat: no-repeat;
+}
+
+/* The gold glow that used to sit here is gone. It was added when the band
+   was flat navy and needed some life; with a photograph behind it, it was
+   adding light directly behind the type and eating the contrast the mask
+   had just bought. The picture provides the interest now. */
+
+/* The navy mask over the photograph.
+   ------------------------------------------------------------------------
+   A separate layer, not a gradient stacked into the same background-image
+   as the picture. This is why the photo was invisible for three attempts:
+   a second .page-banner::before further down this file used the
+   `background` SHORTHAND, which resets background-image, and being later
+   at equal specificity it won. One ::before per element, always. */
+.page-banner::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	/* A flat wash, not a gradient. The photograph is background: present
+	   enough to give the band depth, quiet enough that the title is the
+	   thing being read, and even across the width so nothing draws the eye
+	   away from the centred type. */
+	background: #0c192be8;
+	pointer-events: none;
+}
+
+.page-banner::after {
+	content: "";
+	position: absolute;
+	inset-inline: 0;
+	bottom: 0;
+	height: 2px;
+	background: linear-gradient(
+		to right,
+		var( --color-gold ) 0%,
+		rgba( 215, 185, 103, 0.25 ) 38%,
+		transparent 70%
+	);
+}
+
+.page-banner-inner {
+	/* Positioned, so it paints above the mask rather than under it. */
+	position: relative;
+	width: 100%;
+	max-width: var( --container );
+	margin-inline: auto;
+}
+
+/* Pages that render their content in the narrow shell need the banner on
+   the same measure, so the heading lines up with the paragraph under it. */
+.page-banner--narrow .page-banner-inner { max-width: var( --container-form ); }
+
+.page-banner .overline { margin: 0 0 var( --type-gap ); color: var( --color-gold-light ); }
+
+/* A shadow rather than a heavier overlay. It buys the type its contrast
+   back at the few pixels where it actually sits, instead of dimming the
+   whole photograph to protect a line of text. Two shadows: a tight one
+   for edge definition against a bright wall, and a wide soft one that
+   acts as a local scrim. */
+.page-banner-inner {
+	text-shadow:
+		0 1px 2px rgba( 7, 17, 31, 0.65 ),
+		0 2px 22px rgba( 7, 17, 31, 0.75 );
+}
+
+/* --text-h2, not --text-h1. In a shallow band the larger size crowded the
+   trail above it and the rule below. */
+.page-banner h1 {
+	font-size: var( --text-h2 );
+	margin: 0;
+	color: var( --text-inverse );
+}
+
+/* text-align on the banner centres the type, but neither of these follows
+   from it: the trail is a flex row and needs its items centred, and the
+   lead is width-capped so it needs its own box centred too. */
+.page-banner .breadcrumb ol { justify-content: center; }
+
+.page-banner-lead {
+	max-width: var( --measure );
+	margin: var( --space-4 ) auto 0;
+	color: var( --color-on-dark-muted );
+	font-size: var( --text-lg );
+	line-height: var( --leading-body );
+}
+
+/* The trail sits over a photograph here, not flat navy, so it takes the
+   brightest end of the on-dark palette rather than the muted one — it is
+   the smallest type on the banner and the first thing a light patch in
+   the picture washes out. Scoped to the banner, so the light-ground
+   version elsewhere is untouched. */
+.page-banner .breadcrumb ol { color: var( --color-on-dark-lead ); }
+.page-banner .breadcrumb a { color: var( --text-inverse ); }
+.page-banner .breadcrumb a:hover { color: var( --color-gold-light ); }
+.page-banner .breadcrumb li + li::before { color: var( --color-on-dark-subtle ); }
+.page-banner .breadcrumb [aria-current="page"] { color: var( --color-gold-light ); }
+
+/* The banner already gives the page its opening space, so the shell below
+   does not need a full section gap on top as well. That double gap left
+   about 350px of nothing between the title and the first paragraph. */
+/* No banner-adjacent override any more. Every section carries the same
+   85px top and bottom, including the first one after a banner — that
+   consistency is the point, and the exception was what made the pricing
+   page's top and bottom look mismatched. */
+
+.breadcrumb { margin-bottom: var( --space-4 ); }
+
+.breadcrumb ol {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var( --space-2 );
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	font-size: var( --text-sm );
+	color: var( --text-muted );
+}
+
+/* The separator is generated, so it never lands before the first item and
+   never has to be maintained in the markup. aria-hidden keeps a screen
+   reader from announcing a chevron between every step. */
+.breadcrumb li + li::before {
+	content: "›";
+	margin-right: var( --space-2 );
+	color: var( --text-subtle );
+}
+
+.breadcrumb a {
+	color: var( --text-accent );
+	text-decoration: none;
+}
+
+.breadcrumb a:hover { text-decoration: underline; }
+
+/* The current page is not a link, and is weighted so the eye can find
+   where it is without reading the whole trail. */
+.breadcrumb [aria-current="page"] {
+	color: var( --text-default );
+	font-weight: var( --weight-semibold );
+}
+
+/* On the listing detail the trail sits on a light ground under a dark
+   header, so it keeps the same colours; nothing to override. */
 
 .page-head { max-width: var( --container-head ); margin-bottom: var( --space-8 ); }
 .page-head.center { text-align: center; margin-inline: auto; }
@@ -737,12 +933,12 @@ img, video { max-width: 100%; height: auto; }
    SPLIT FEATURE
    ========================================================================= */
 
+/* Padding comes from the shared section rule. */
 .split {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
 	align-items: center;
 	gap: var( --gutter );
-	padding: var( --section-gap ) var( --gutter );
 	background: var( --bg-surface-tint );
 }
 
@@ -803,10 +999,10 @@ img, video { max-width: 100%; height: auto; }
    AUDIENCE
    ========================================================================= */
 
-.audience {
-	background: var( --bg-surface-warm );
-	padding: var( --section-gap-tight ) var( --gutter-narrow );
-}
+/* Padding comes from the shared section rule at the top of the file, so
+   this band keeps the same 85px as every other section. Only the ground
+   is its own. */
+.audience { background: var( --bg-surface-warm ); }
 
 .audience-head {
 	display: grid;
@@ -1513,6 +1709,20 @@ img, video { max-width: 100%; height: auto; }
 	margin-inline: auto;
 }
 
+/* The trail in the account bar shares the bar's measure, so it lines up
+   with the greeting under it, and takes on-dark colours like the banner's.
+   Scoped to .account-bar, so the light-ground version is untouched. */
+.account-bar .breadcrumb {
+	max-width: var( --container );
+	margin: 0 auto var( --space-5 );
+}
+
+.account-bar .breadcrumb ol { color: var( --color-on-dark-faint ); }
+.account-bar .breadcrumb a { color: var( --color-on-dark-muted ); }
+.account-bar .breadcrumb a:hover { color: var( --color-gold-light ); }
+.account-bar .breadcrumb li + li::before { color: var( --color-on-dark-faint ); }
+.account-bar .breadcrumb [aria-current="page"] { color: var( --text-inverse ); }
+
 .account-bar .overline { margin: 0; }
 
 .account-bar h1 {
@@ -1580,9 +1790,8 @@ img, video { max-width: 100%; height: auto; }
    are identical apart from the figure and the one that is recommended.
    ---------------------------------------------------------------------- */
 
-.pricing { padding: var( --section-gap ) var( --gutter ); }
-
-.pricing .page-head { margin-inline: auto; }
+/* Padding comes from the shared section rule — 85px top and bottom, the
+   same as every other section on the site. */
 
 .pricing-grid {
 	display: grid;
@@ -1656,30 +1865,50 @@ img, video { max-width: 100%; height: auto; }
 
 .plan-price small { color: var( --text-muted ); font-size: var( --text-sm ); }
 
-.plan-note { margin: 0; color: var( --text-muted ); font-size: var( --text-sm ); }
-
-.plan-features {
-	margin: var( --space-7 ) 0;
-	padding: 0;
-	list-style: none;
-	display: flex;
-	flex-direction: column;
-	gap: var( --space-3 );
+/* The cost of one home. The figure a landlord with three properties is
+   working out in their head, done for them. */
+.plan-each {
+	margin: var( --space-1 ) 0 0;
+	color: var( --text-muted );
 	font-size: var( --text-sm );
 }
 
-.plan-features li {
+.plan-each b { color: var( --text-default ); font-weight: var( --weight-semibold ); }
+
+.plan-note {
 	display: flex;
-	align-items: flex-start;
-	gap: var( --space-3 );
-	line-height: var( --leading-body );
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var( --space-2 );
+	margin: var( --space-4 ) 0 0;
+	color: var( --text-muted );
+	font-size: var( --text-sm );
 }
 
-.plan-features .tdh-icon {
-	flex: none;
-	margin-top: 0.15em;
-	color: var( --text-accent );
+.plan-save {
+	padding: var( --space-1 ) var( --space-2 );
+	background: var( --color-success-bg );
+	color: var( --color-success );
+	border-radius: var( --radius-xs );
+	font-size: var( --text-2xs );
+	font-weight: var( --weight-bold );
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
 }
+
+/* The one line that differs between plans, given its own weight and a
+   rule above it so it reads as the answer rather than another bullet. */
+.plan-allowance {
+	display: flex;
+	align-items: center;
+	gap: var( --space-3 );
+	margin: var( --space-6 ) 0 var( --space-7 );
+	padding-top: var( --space-6 );
+	border-top: 1px solid var( --border-soft );
+	font-weight: var( --weight-semibold );
+}
+
+.plan-allowance .tdh-icon { flex: none; color: var( --text-accent ); }
 
 /* margin-top:auto pins every button to the bottom, so the three line up
    even though the feature lists can differ in length. */
@@ -1688,9 +1917,57 @@ img, video { max-width: 100%; height: auto; }
 
 .plan button[disabled] { opacity: var( --disabled-opacity ); cursor: not-allowed; }
 
+/* Stated once, under the three plans, instead of repeated inside each of
+   them. Twelve identical lines across three cards buried the one number
+   that actually varies. */
+.plan-included {
+	max-width: var( --container-form );
+	margin: var( --space-9 ) auto 0;
+	padding: var( --space-7 ) var( --space-8 );
+	background: var( --bg-surface-tint );
+	border-radius: var( --radius-lg );
+	text-align: center;
+}
+
+.plan-included h2 {
+	font-family: var( --font-heading );
+	font-size: var( --text-h5 );
+	margin: 0 0 var( --space-6 );
+}
+
+.plan-included ul {
+	display: grid;
+	grid-template-columns: repeat( 4, 1fr );
+	gap: var( --space-5 );
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.plan-included li {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var( --space-2 );
+	font-size: var( --text-sm );
+	line-height: var( --leading-snug );
+	text-align: left;
+}
+
+.plan-included .tdh-icon { flex: none; color: var( --color-success ); }
+
+@media ( max-width: 62rem ) {
+	.plan-included ul { grid-template-columns: 1fr 1fr; }
+}
+
+@media ( max-width: 34rem ) {
+	.plan-included ul { grid-template-columns: 1fr; }
+	.plan-included li { justify-content: flex-start; }
+}
+
 .pricing-note {
 	max-width: var( --container-form );
-	margin: var( --space-8 ) auto 0;
+	margin: var( --space-7 ) auto 0;
 	color: var( --text-muted );
 	font-size: var( --text-sm );
 	text-align: center;

@@ -646,6 +646,7 @@ final class Render {
 				'listings' => 1,
 				'label'    => __( 'One listing', 'thirtydayhomes' ),
 				'price'    => 49,
+				'save'     => 0,
 				'note'     => __( 'Standard rate', 'thirtydayhomes' ),
 				'featured' => false,
 				'badge'    => '',
@@ -654,7 +655,8 @@ final class Render {
 				'listings' => 2,
 				'label'    => __( '2 listings', 'thirtydayhomes' ),
 				'price'    => 88,
-				'note'     => __( '10% multi-listing discount', 'thirtydayhomes' ),
+				'save'     => 10,
+				'note'     => __( 'Multi-listing discount', 'thirtydayhomes' ),
 				'featured' => false,
 				'badge'    => '',
 			],
@@ -662,7 +664,8 @@ final class Render {
 				'listings' => 3,
 				'label'    => __( '3 listings', 'thirtydayhomes' ),
 				'price'    => 125,
-				'note'     => __( '15% multi-listing discount', 'thirtydayhomes' ),
+				'save'     => 15,
+				'note'     => __( 'Multi-listing discount', 'thirtydayhomes' ),
 				'featured' => true,
 				'badge'    => __( 'Best value', 'thirtydayhomes' ),
 			],
@@ -716,24 +719,66 @@ final class Render {
 			]
 		);
 
-		$features = self::plan_features();
+		$features  = self::plan_features();
 		$signed_in = is_user_logged_in();
+
+		/*
+		 * The recommended plan is displayed in the middle, which is the
+		 * convention for a pricing table — the eye lands there first.
+		 *
+		 * Reordered here rather than in plans(), for two reasons. The data
+		 * stays in ascending order, which is what anything reading it for
+		 * billing wants. And the reorder moves the actual DOM node rather
+		 * than using CSS `order`, so tab order follows what is on screen;
+		 * with CSS the keyboard would jump from the first card to the one
+		 * on the right and then back to the middle.
+		 */
+		$plans    = self::plans();
+		$featured = null;
+
+		foreach ( $plans as $i => $plan ) {
+			if ( ! empty( $plan['featured'] ) ) {
+				$featured = $plan;
+				unset( $plans[ $i ] );
+				break;
+			}
+		}
+
+		$plans = array_values( $plans );
+
+		if ( null !== $featured ) {
+			array_splice( $plans, (int) floor( ( count( $plans ) + 1 ) / 2 ), 0, [ $featured ] );
+		}
 
 		$icon = static fn( string $name, int $size = 16 ): string =>
 			function_exists( 'tdh_icon' ) ? tdh_icon( $name, $size ) : '';
 
 		ob_start();
+
+		/*
+		 * The same banner every other inner page opens on, carrying the
+		 * trail and the heading. This page used to print its own centred
+		 * head instead, which left it the only page on the site with
+		 * neither a banner nor a header design of its own — a bare trail
+		 * on white above a centred title.
+		 *
+		 * Theme-side, so it degrades if this plugin ever runs under a theme
+		 * that has no banner — same guard as the icons above.
+		 */
+		if ( function_exists( 'tdh_page_banner' ) ) {
+			tdh_page_banner(
+				[
+					'eyebrow' => (string) $args['eyebrow'],
+					'title'   => (string) $args['heading'],
+					'lead'    => (string) $args['intro'],
+				]
+			);
+		}
 		?>
 		<div class="pricing">
 
-			<div class="page-head center">
-				<p class="overline gold"><?php echo esc_html( (string) $args['eyebrow'] ); ?></p>
-				<h1><?php echo esc_html( (string) $args['heading'] ); ?></h1>
-				<p><?php echo esc_html( (string) $args['intro'] ); ?></p>
-			</div>
-
 			<div class="pricing-grid">
-				<?php foreach ( self::plans() as $plan ) : ?>
+				<?php foreach ( $plans as $plan ) : ?>
 					<?php
 					$is_featured = ! empty( $plan['featured'] );
 					$listings    = (int) $plan['listings'];
@@ -751,26 +796,61 @@ final class Render {
 							<small><?php esc_html_e( '/ month', 'thirtydayhomes' ); ?></small>
 						</p>
 
-						<p class="plan-note"><?php echo esc_html( (string) $plan['note'] ); ?></p>
+						<?php
+						/*
+						 * The cost of one home, worked out rather than
+						 * asserted. "15% discount" is a claim; "£41.67 a
+						 * home instead of £49" is the claim made checkable,
+						 * and it is the number a landlord with three
+						 * properties is actually doing in their head.
+						 */
+						$per_home = (float) $plan['price'] / max( 1, $listings );
+						$decimals = ( $per_home === floor( $per_home ) ) ? 0 : 2;
+						?>
+						<p class="plan-each">
+							<?php
+							printf(
+								/* translators: %s: price for a single home */
+								esc_html__( '%s per home', 'thirtydayhomes' ),
+								'<b>' . esc_html( $args['currency'] . number_format_i18n( $per_home, $decimals ) ) . '</b>' // phpcs:ignore WordPress.Security.EscapeOutput
+							);
+							?>
+						</p>
 
-						<ul class="plan-features">
-							<?php foreach ( $features as $feature ) : ?>
-								<li>
-									<?php echo $icon( 'check' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
-									<?php echo esc_html( (string) $feature ); ?>
-								</li>
-							<?php endforeach; ?>
-							<li>
-								<?php echo $icon( 'check' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
-								<?php
-								printf(
-									/* translators: %d: number of homes the plan allows */
-									esc_html( _n( '%d home published', '%d homes published', $listings, 'thirtydayhomes' ) ),
-									(int) $listings
-								);
-								?>
-							</li>
-						</ul>
+						<p class="plan-note">
+							<?php if ( (int) $plan['save'] > 0 ) : ?>
+								<span class="plan-save">
+									<?php
+									printf(
+										/* translators: %d: percentage saved */
+										esc_html__( 'Save %d%%', 'thirtydayhomes' ),
+										(int) $plan['save']
+									);
+									?>
+								</span>
+							<?php endif; ?>
+							<?php echo esc_html( (string) $plan['note'] ); ?>
+						</p>
+
+						<?php
+						/*
+						 * Only what differs between plans. The four shared
+						 * features used to be repeated in all three cards —
+						 * twelve lines saying the same thing, with the one
+						 * number that actually varies buried at the bottom
+						 * of each list. They are stated once, below.
+						 */
+						?>
+						<p class="plan-allowance">
+							<?php echo $icon( 'map-pinned', 19 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+							<?php
+							printf(
+								/* translators: %d: number of homes the plan allows */
+								esc_html( _n( '%d home published', '%d homes published', $listings, 'thirtydayhomes' ) ),
+								(int) $listings
+							);
+							?>
+						</p>
 
 						<?php
 						/*
@@ -793,6 +873,18 @@ final class Render {
 					</div>
 				<?php endforeach; ?>
 			</div>
+
+			<section class="plan-included">
+				<h2><?php esc_html_e( 'Included in every plan', 'thirtydayhomes' ); ?></h2>
+				<ul>
+					<?php foreach ( $features as $feature ) : ?>
+						<li>
+							<?php echo $icon( 'check', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+							<span><?php echo esc_html( (string) $feature ); ?></span>
+						</li>
+					<?php endforeach; ?>
+				</ul>
+			</section>
 
 			<p class="pricing-note">
 				<?php esc_html_e( 'The discount applies automatically as homes are added.', 'thirtydayhomes' ); ?>

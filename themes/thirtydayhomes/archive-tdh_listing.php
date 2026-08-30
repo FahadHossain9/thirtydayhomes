@@ -25,13 +25,17 @@ if ( ! tdh_elementor_location( 'archive' ) ) :
 	$q = isset( $_GET['q'] ) ? sanitize_text_field( wp_unslash( $_GET['q'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- public read-only search.
 	?>
 
-	<div class="page-shell">
+	<?php
+	tdh_page_banner(
+		[
+			'eyebrow' => __( 'Pittsburgh furnished rentals', 'thirtydayhomes' ),
+			'title'   => __( 'Find a home that fits your stay.', 'thirtydayhomes' ),
+			'lead'    => __( 'Move-in ready homes for stays of 30 days and longer, close to the places you need to be.', 'thirtydayhomes' ),
+		]
+	);
+	?>
 
-		<div class="page-head">
-			<p class="overline gold"><?php esc_html_e( 'Pittsburgh furnished rentals', 'thirtydayhomes' ); ?></p>
-			<h1><?php esc_html_e( 'Find a home that fits your stay.', 'thirtydayhomes' ); ?></h1>
-			<p><?php esc_html_e( 'Move-in ready homes for stays of 30 days and longer, close to the places you need to be.', 'thirtydayhomes' ); ?></p>
-		</div>
+	<div class="page-shell">
 
 		<?php if ( '' !== $q ) : ?>
 			<p class="notice">
