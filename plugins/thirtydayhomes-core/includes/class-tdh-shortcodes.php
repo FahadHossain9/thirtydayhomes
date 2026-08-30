@@ -38,6 +38,12 @@ final class Shortcodes {
 		add_shortcode( 'tdh_owner_cta', [ $this, 'owner_cta' ] );
 		add_shortcode( 'tdh_pricing', [ $this, 'pricing' ] );
 
+		// No attributes. Every string in the About body is a default in
+		// Render::about(), which is one place to edit when the client signs
+		// the copy off; an attribute list long enough to express four bands
+		// would be unreadable in the editor and nobody would use it.
+		add_shortcode( 'tdh_about', [ $this, 'about' ] );
+
 		// Account screens. No attributes: these render one thing each, and
 		// an attribute would only be a way to configure them into a state
 		// the form handler does not accept.
@@ -47,6 +53,17 @@ final class Shortcodes {
 		add_shortcode( 'tdh_reset_password', [ Account_Render::class, 'reset_password' ] );
 		add_shortcode( 'tdh_account', [ Account_Render::class, 'dashboard' ] );
 		add_shortcode( 'tdh_profile', [ Account_Render::class, 'profile' ] );
+	}
+
+	/**
+	 * The About page body.
+	 *
+	 * @param array<string,string>|string $atts Unused.
+	 */
+	public function about( $atts ): string {
+		unset( $atts );
+
+		return Render::about();
 	}
 
 	/**

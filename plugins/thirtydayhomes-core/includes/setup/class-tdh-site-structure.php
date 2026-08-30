@@ -29,13 +29,7 @@ final class Site_Structure {
 		$ids = [];
 
 		foreach ( $this->pages() as $slug => $page ) {
-			$id = $this->upsert_page(
-				$slug,
-				$page['title'],
-				$page['content'],
-				! empty( $page['noindex'] ),
-				! empty( $page['full'] )
-			);
+			$id = $this->upsert_page( $slug, $page );
 
 			if ( $id ) {
 				$ids[ $slug ] = $id;
@@ -116,8 +110,23 @@ final class Site_Structure {
 	 *
 	 * Not by slug: WordPress appends -2 when a slug collides, so a lookup
 	 * that misses silently produces a duplicate rather than an error.
+	 *
+	 * The definition arrives as the array from pages() rather than as a list
+	 * of arguments. Seven positional booleans and strings had already become
+	 * a row of `false, false, '', ''` at most call sites, which is the point
+	 * at which the next one gets passed in the wrong slot.
+	 *
+	 * @param array<string,mixed> $page One entry from pages().
 	 */
-	private function upsert_page( string $slug, string $title, string $content, bool $noindex = false, bool $full = false ): int {
+	private function upsert_page( string $slug, array $page ): int {
+
+		$title    = (string) $page['title'];
+		$content  = (string) $page['content'];
+		$noindex  = ! empty( $page['noindex'] );
+		$full     = ! empty( $page['full'] );
+		$wide     = ! empty( $page['wide'] );
+		$headline = (string) ( $page['headline'] ?? '' );
+		$lead     = (string) ( $page['lead'] ?? '' );
 
 		$existing = get_posts(
 			[
@@ -169,6 +178,36 @@ final class Site_Structure {
 			delete_post_meta( (int) $id, '_tdh_full_layout' );
 		}
 
+		/*
+		 * The third layout. `full` gives a page the whole canvas and no
+		 * banner; the default wraps the content in the narrow prose column.
+		 * `wide` sits between them: the page keeps the banner every inner
+		 * page opens on, and its content is released from the 1040px prose
+		 * column so a block can run edge to edge. About needs it — its bands
+		 * carry their own grounds, and a tinted band inside a padded column
+		 * is a grey rectangle floating in white.
+		 */
+		if ( $wide ) {
+			update_post_meta( (int) $id, '_tdh_wide_body', 1 );
+		} else {
+			delete_post_meta( (int) $id, '_tdh_wide_body' );
+		}
+
+		/*
+		 * A page can carry its own banner headline and lead. Without them
+		 * the banner falls back to the page title, which is a label — "About"
+		 * — where the approved design has a sentence: "A monthly home should
+		 * still feel like home." Keeping them separate means the menu and the
+		 * browser tab stay short while the page itself opens properly.
+		 */
+		foreach ( [ '_tdh_headline' => $headline, '_tdh_lead' => $lead ] as $key => $value ) {
+			if ( '' !== $value ) {
+				update_post_meta( (int) $id, $key, $value );
+			} else {
+				delete_post_meta( (int) $id, $key );
+			}
+		}
+
 		return (int) $id;
 	}
 
@@ -206,9 +245,26 @@ final class Site_Structure {
 				'full'    => true,
 			],
 			'about' => [
-				'title'   => __( 'About', 'thirtydayhomes' ),
-				'content' => '<h2>A monthly home should still feel like home.</h2>'
-					. '<p>ThirtyDayHomes connects traveling professionals and families with verified furnished homes near the places they need to be — starting in Pittsburgh, and built to expand.</p>' . $draft,
+				'title'    => __( 'About', 'thirtydayhomes' ),
+
+				// The headline goes in the banner; the menu and the browser
+				// tab keep the one-word title.
+				'headline' => __( 'A monthly home should still feel like home.', 'thirtydayhomes' ),
+
+				/*
+				 * Short on purpose. The banner lead is capped at a reading
+				 * measure and centred, so anything past roughly one line
+				 * breaks into two ragged centred lines under a large serif
+				 * heading — which is exactly how this page looked when the
+				 * 168-character statement sat here. That statement now opens
+				 * the body, where it has the room it wants.
+				 */
+				'lead'     => __( 'Verified furnished homes, starting in Pittsburgh.', 'thirtydayhomes' ),
+
+				// The body is one block, and the draft notice is part of it.
+				// Its copy lives in Render::about().
+				'content'  => '[tdh_about]',
+				'wide'     => true,
 			],
 			'contact' => [
 				'title'   => __( 'Contact', 'thirtydayhomes' ),

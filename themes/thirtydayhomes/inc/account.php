@@ -89,3 +89,16 @@ function tdh_is_full_layout_page(): bool {
 
 	return is_page() && (bool) get_post_meta( get_queried_object_id(), '_tdh_full_layout', true );
 }
+
+/**
+ * Does this page render its own bands, but still want the banner?
+ *
+ * The middle setting between a full-layout page and an ordinary one. The
+ * page keeps the banner that opens every inner page, and its content is
+ * released from the narrow prose column so a block can run edge to edge.
+ * About uses it: its sections carry their own backgrounds, and a tinted
+ * band inside a 1040px column is a grey rectangle floating in white.
+ */
+function tdh_is_wide_body_page(): bool {
+	return is_page() && (bool) get_post_meta( get_queried_object_id(), '_tdh_wide_body', true );
+}

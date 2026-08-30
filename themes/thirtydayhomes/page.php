@@ -23,14 +23,36 @@ if ( ! tdh_elementor_location( 'single' ) ) :
 		?>
 		<?php
 		// Full-bleed, so it sits outside the padded shell below.
-		// 'narrow' because the prose below sits in the narrow shell, and the
-		// heading has to share its left edge.
+		/*
+		 * A page may carry its own banner headline and lead. Without them
+		 * the banner falls back to the page title — fine for Terms, wrong
+		 * for About, where the design opens on a sentence rather than the
+		 * one-word label the menu needs.
+		 *
+		 * 'narrow' because the prose below sits in the narrow shell, and
+		 * the heading has to share its left edge.
+		 */
+		$page_id = get_the_ID();
+
+		/*
+		 * A wide-body page brings its own full-bleed sections, so the banner
+		 * takes the standard container to line up with them, and the content
+		 * is printed without the prose column.
+		 */
+		$wide = tdh_is_wide_body_page();
+
 		tdh_page_banner(
 			[
-				'title' => get_the_title(),
-				'width' => 'narrow',
+				'title' => (string) ( get_post_meta( $page_id, '_tdh_headline', true ) ?: get_the_title() ),
+				'lead'  => (string) get_post_meta( $page_id, '_tdh_lead', true ),
+				'width' => $wide ? 'wide' : 'narrow',
 			]
 		);
+
+		if ( $wide ) {
+			the_content();
+			continue;
+		}
 		?>
 
 		<div class="page-shell narrow">

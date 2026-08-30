@@ -895,4 +895,263 @@ final class Render {
 		<?php
 		return (string) ob_get_clean();
 	}
+
+	/**
+	 * The About page body.
+	 *
+	 * Four bands, not a column of prose. Two headings and two short
+	 * paragraphs left three quarters of the screen empty and answered
+	 * neither of the questions people actually arrive with: a renter asking
+	 * whether this is a real service, and an owner asking whether it is
+	 * worth paying for. Each band answers one thing, and the page ends by
+	 * sending each of those two visitors somewhere.
+	 *
+	 * The approved design's copy is kept — its statement, its "What to
+	 * expect", its "Rules and regulations" paragraph. What is added only
+	 * describes behaviour the site already has: itemised costs on a listing,
+	 * inquiries that go to the owner, distance search, review before
+	 * publication, and the Fair Housing rule the listing form enforces.
+	 * Nothing here claims anything the product does not do.
+	 *
+	 * @param array<string,mixed> $args
+	 */
+	public static function about( array $args = [] ): string {
+
+		$pricing = get_page_by_path( 'pricing' );
+		$fair    = get_page_by_path( 'fair-housing' );
+		$homes   = (string) get_post_type_archive_link( Post_Types::LISTING );
+
+		$args = wp_parse_args(
+			$args,
+			[
+				/*
+				 * The statement that used to sit under the banner heading.
+				 * It moved down here because at 168 characters it wrapped to
+				 * two ragged centred lines inside a 13rem band; on a light
+				 * ground with room around it, its length is an asset.
+				 */
+				'statement'       => __( 'ThirtyDayHomes connects traveling professionals and families with verified furnished homes near the places they need to be — starting in Pittsburgh, and built to expand.', 'thirtydayhomes' ),
+
+				/*
+				 * Subject set large, predicate small, so the three read as
+				 * sentences rather than as a stat block. They are facts about
+				 * how the marketplace works, not achievements — this site has
+				 * no users yet, and a rail of invented numbers on the About
+				 * page is the first thing a careful visitor disbelieves.
+				 */
+				'facts'           => [
+					[
+						'value' => __( '30+ nights', 'thirtydayhomes' ),
+						'label' => __( 'is the minimum stay — long enough to unpack, short of signing a year.', 'thirtydayhomes' ),
+					],
+					[
+						'value' => __( 'Pittsburgh', 'thirtydayhomes' ),
+						'label' => __( 'is the first market. The platform is built to add more.', 'thirtydayhomes' ),
+					],
+					[
+						'value' => __( 'Every listing', 'thirtydayhomes' ),
+						'label' => __( 'is reviewed before it goes live on the site.', 'thirtydayhomes' ),
+					],
+				],
+
+				'expect_eyebrow'  => __( 'For renters and owners', 'thirtydayhomes' ),
+				'expect_heading'  => __( 'What to expect', 'thirtydayhomes' ),
+				'expect_intro'    => __( 'Clear information, direct communication, and a thoughtfully designed experience for extended stays.', 'thirtydayhomes' ),
+				'expect_cards'    => [
+					[
+						'icon'  => 'shield-check',
+						'title' => __( 'Clear information', 'thirtydayhomes' ),
+						'copy'  => __( 'Rent, deposits, application and pet fees are itemised on every listing, so the full cost of a stay is visible before you get in touch.', 'thirtydayhomes' ),
+					],
+					[
+						'icon'  => 'key-round',
+						'title' => __( 'Direct communication', 'thirtydayhomes' ),
+						'copy'  => __( 'Inquiries go to the owner of the home. No agent in the middle, and no booking fee for renters.', 'thirtydayhomes' ),
+					],
+					[
+						'icon'  => 'bed-double',
+						'title' => __( 'Built for extended stays', 'thirtydayhomes' ),
+						'copy'  => __( 'Furnished homes you can search by distance from the hospital, campus or site you are working at.', 'thirtydayhomes' ),
+					],
+				],
+
+				'rules_eyebrow'   => __( 'The ground rules', 'thirtydayhomes' ),
+				'rules_heading'   => __( 'Rules and regulations', 'thirtydayhomes' ),
+				'rules_intro'     => __( 'Renters and landlords must provide accurate information, communicate respectfully, follow Fair Housing requirements, and acknowledge property-specific rules before an inquiry is sent.', 'thirtydayhomes' ),
+				'rules'           => [
+					[
+						'title' => __( 'Accurate information', 'thirtydayhomes' ),
+						'copy'  => __( 'Describe the home, the terms and the stay as they actually are.', 'thirtydayhomes' ),
+					],
+					[
+						'title' => __( 'Respectful communication', 'thirtydayhomes' ),
+						'copy'  => __( 'There is a person at the other end of every inquiry, on both sides of it.', 'thirtydayhomes' ),
+					],
+					[
+						'title' => __( 'Fair Housing', 'thirtydayhomes' ),
+						'copy'  => __( 'Listings describe the property, not the ideal renter.', 'thirtydayhomes' ),
+					],
+					[
+						'title' => __( 'Property rules', 'thirtydayhomes' ),
+						'copy'  => __( 'Pets, parking, smoking and guests are acknowledged before an inquiry is sent.', 'thirtydayhomes' ),
+					],
+				],
+				'rules_link_text' => __( 'Read our Fair Housing commitment', 'thirtydayhomes' ),
+				'rules_link_url'  => $fair ? (string) get_permalink( $fair ) : '',
+
+				/*
+				 * The page ends on the fork the whole marketplace is built
+				 * around. Two doors rather than one call to action, because
+				 * About is the page both audiences read, and sending a renter
+				 * to the membership plans is the wrong door.
+				 */
+				'doors'           => [
+					[
+						'icon'  => 'search',
+						'title' => __( 'Looking for a home', 'thirtydayhomes' ),
+						'copy'  => __( 'Search furnished homes by neighborhood, ZIP code or hospital, and see the full cost before you inquire.', 'thirtydayhomes' ),
+						'cta'   => __( 'Find a home', 'thirtydayhomes' ),
+						'url'   => $homes,
+					],
+					[
+						'icon'  => 'key-round',
+						'title' => __( 'Have a property to list', 'thirtydayhomes' ),
+						'copy'  => __( 'Join as a member, publish your furnished home, and take inquiries directly from renters.', 'thirtydayhomes' ),
+						'cta'   => __( 'See membership options', 'thirtydayhomes' ),
+						'url'   => $pricing ? (string) get_permalink( $pricing ) : '',
+					],
+				],
+
+				// Every placeholder page on this site says so on its face.
+				// About stays placeholder until the client signs the copy off.
+				'note'            => __( 'Draft copy, to be reviewed and approved before launch.', 'thirtydayhomes' ),
+			]
+		);
+
+		$icon = static fn( string $name, int $size = 19 ): string =>
+			function_exists( 'tdh_icon' ) ? tdh_icon( $name, $size, 2 ) : '';
+
+		ob_start();
+		?>
+
+		<section class="section about-intro">
+			<div class="about-inner about-intro-grid">
+
+				<?php if ( '' !== $args['statement'] ) : ?>
+					<p class="about-statement"><?php echo esc_html( (string) $args['statement'] ); ?></p>
+				<?php endif; ?>
+
+				<?php if ( ! empty( $args['facts'] ) ) : ?>
+					<ul class="about-facts">
+						<?php foreach ( (array) $args['facts'] as $fact ) : ?>
+							<li>
+								<b><?php echo esc_html( (string) ( $fact['value'] ?? '' ) ); ?></b>
+								<span><?php echo esc_html( (string) ( $fact['label'] ?? '' ) ); ?></span>
+							</li>
+						<?php endforeach; ?>
+					</ul>
+				<?php endif; ?>
+
+			</div>
+		</section>
+
+		<section class="section about-expect">
+			<div class="about-inner">
+
+				<div class="section-title">
+					<div>
+						<?php if ( '' !== $args['expect_eyebrow'] ) : ?>
+							<p class="overline gold"><?php echo esc_html( (string) $args['expect_eyebrow'] ); ?></p>
+						<?php endif; ?>
+						<h2><?php echo esc_html( (string) $args['expect_heading'] ); ?></h2>
+						<?php if ( '' !== $args['expect_intro'] ) : ?>
+							<p><?php echo esc_html( (string) $args['expect_intro'] ); ?></p>
+						<?php endif; ?>
+					</div>
+				</div>
+
+				<div class="about-cards">
+					<?php foreach ( (array) $args['expect_cards'] as $card ) : ?>
+						<article>
+							<i><?php echo $icon( (string) ( $card['icon'] ?? 'check' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+							<h3><?php echo esc_html( (string) ( $card['title'] ?? '' ) ); ?></h3>
+							<p><?php echo esc_html( (string) ( $card['copy'] ?? '' ) ); ?></p>
+						</article>
+					<?php endforeach; ?>
+				</div>
+
+			</div>
+		</section>
+
+		<section class="section about-rules">
+			<div class="about-inner about-rules-grid">
+
+				<div class="about-rules-head">
+					<div class="section-title">
+						<div>
+							<?php if ( '' !== $args['rules_eyebrow'] ) : ?>
+								<?php // No .gold here: that modifier is the deep gold for light grounds, and this band is navy. ?>
+								<p class="overline"><?php echo esc_html( (string) $args['rules_eyebrow'] ); ?></p>
+							<?php endif; ?>
+							<h2><?php echo esc_html( (string) $args['rules_heading'] ); ?></h2>
+							<?php if ( '' !== $args['rules_intro'] ) : ?>
+								<p><?php echo esc_html( (string) $args['rules_intro'] ); ?></p>
+							<?php endif; ?>
+						</div>
+					</div>
+
+					<?php if ( '' !== $args['rules_link_text'] && '' !== $args['rules_link_url'] ) : ?>
+						<a class="about-rules-link" href="<?php echo esc_url( (string) $args['rules_link_url'] ); ?>">
+							<?php echo esc_html( (string) $args['rules_link_text'] ); ?>
+							<?php echo $icon( 'arrow-right', 14 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+						</a>
+					<?php endif; ?>
+				</div>
+
+				<ul class="about-rules-list">
+					<?php foreach ( (array) $args['rules'] as $rule ) : ?>
+						<li>
+							<?php echo $icon( 'check', 16 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+							<div>
+								<b><?php echo esc_html( (string) ( $rule['title'] ?? '' ) ); ?></b>
+								<p><?php echo esc_html( (string) ( $rule['copy'] ?? '' ) ); ?></p>
+							</div>
+						</li>
+					<?php endforeach; ?>
+				</ul>
+
+			</div>
+		</section>
+
+		<section class="section about-doors">
+			<div class="about-inner">
+
+				<div class="about-doors-grid">
+					<?php
+					foreach ( (array) $args['doors'] as $door ) :
+						if ( empty( $door['url'] ) ) {
+							continue;
+						}
+						?>
+						<a class="about-door" href="<?php echo esc_url( (string) $door['url'] ); ?>">
+							<i><?php echo $icon( (string) ( $door['icon'] ?? 'arrow-right' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+							<h3><?php echo esc_html( (string) ( $door['title'] ?? '' ) ); ?></h3>
+							<p><?php echo esc_html( (string) ( $door['copy'] ?? '' ) ); ?></p>
+							<span class="about-door-cta">
+								<?php echo esc_html( (string) ( $door['cta'] ?? '' ) ); ?>
+								<?php echo $icon( 'arrow-right', 14 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+							</span>
+						</a>
+					<?php endforeach; ?>
+				</div>
+
+				<?php if ( '' !== $args['note'] ) : ?>
+					<p class="about-note"><em><?php echo esc_html( (string) $args['note'] ); ?></em></p>
+				<?php endif; ?>
+
+			</div>
+		</section>
+		<?php
+		return (string) ob_get_clean();
+	}
 }

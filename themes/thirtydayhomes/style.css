@@ -605,12 +605,26 @@ img, video { max-width: 100%; height: auto; }
    lead is width-capped so it needs its own box centred too. */
 .page-banner .breadcrumb ol { justify-content: center; }
 
+/* Keep a banner lead to ONE line where the width allows it.
+   ------------------------------------------------------------------------
+   Centred text that wraps looks wrong here in a way it does not elsewhere:
+   the second line is always shorter than the first, so a ragged edge sits
+   directly under a large centred serif heading and the whole band reads as
+   unbalanced. That is what About looked like with a 168-character lead.
+
+   Two halves to the fix, and both are needed. The copy is kept short
+   enough to fit — a lead is a subtitle, not a paragraph, and the page body
+   is where a long sentence belongs. And `text-wrap: balance` handles the
+   case short copy cannot: on a phone, or in a translation, every lead
+   wraps eventually, and balanced wrapping splits it into even lines
+   instead of one long line and one stub. */
 .page-banner-lead {
 	max-width: var( --measure );
 	margin: var( --space-4 ) auto 0;
 	color: var( --color-on-dark-muted );
 	font-size: var( --text-lg );
 	line-height: var( --leading-body );
+	text-wrap: balance;
 }
 
 /* The trail sits over a photograph here, not flat navy, so it takes the
@@ -2445,4 +2459,316 @@ img, video { max-width: 100%; height: auto; }
 	.quick-facts { grid-template-columns: 1fr 1fr; gap: var( --space-5 ); }
 	.quick-facts li:nth-child( 2 ) { border-right: 0; }
 	.amenities { grid-template-columns: 1fr; }
+}
+
+/* =========================================================================
+   ABOUT
+
+   Four bands, each on its own ground, so the page has a rhythm instead of
+   one white column with two headings floating in it.
+
+   Every selector here is prefixed `about-`, and none of them touches a
+   shared rule. The bands borrow `.section` for the site's 85px padding and
+   `.section-title` for its heading rhythm rather than restating either —
+   which is why there is no padding and no h2 sizing in this block.
+   ========================================================================= */
+
+/* The bands run full-bleed; their contents do not. --container is the same
+   measure as .page-banner-inner, so the statement below the banner starts
+   on the same left edge as the heading above it. */
+.about-inner {
+	max-width: var( --container );
+	margin-inline: auto;
+}
+
+/* --- The statement, and the three facts beside it ------------------------ */
+
+.about-intro { background: var( --bg-surface ); }
+
+.about-intro-grid {
+	display: grid;
+	grid-template-columns: 1.4fr 1fr;
+	gap: var( --space-10 );
+	align-items: center;
+}
+
+/* Set in the heading face at h3 size. It is the page's thesis and it was
+   written to be read as a sentence, not as body copy. The gold rule is the
+   only ornament: it marks the line as stated rather than narrated. */
+.about-statement {
+	margin: 0;
+	padding-left: var( --space-6 );
+	border-left: 2px solid var( --color-gold );
+	font-family: var( --font-heading );
+	font-size: var( --text-h3 );
+	line-height: var( --leading-heading );
+	color: var( --text-default );
+	text-wrap: pretty;
+}
+
+/* Subject large, predicate small, so each row reads as one sentence rather
+   than as a number with a caption under it. */
+.about-facts {
+	display: grid;
+	gap: var( --space-5 );
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.about-facts li {
+	display: grid;
+	gap: var( --space-1 );
+	padding-bottom: var( --space-5 );
+	border-bottom: 1px solid var( --border-soft );
+}
+
+.about-facts li:last-child { padding-bottom: 0; border-bottom: 0; }
+
+.about-facts b {
+	font-family: var( --font-heading );
+	font-size: var( --text-h5 );
+	font-weight: var( --weight-bold );
+	/* The deep gold, not the brand gold: this is text on a white ground,
+	   and --color-gold does not pass contrast there. */
+	color: var( --text-accent );
+}
+
+.about-facts span {
+	font-size: var( --text-sm );
+	line-height: var( --leading-body );
+	color: var( --text-muted );
+}
+
+/* --- What to expect ------------------------------------------------------ */
+
+.about-expect { background: var( --bg-surface-tint ); }
+
+.about-cards {
+	display: grid;
+	grid-template-columns: repeat( 3, 1fr );
+	gap: var( --space-6 );
+}
+
+.about-cards article {
+	display: grid;
+	align-content: start;
+	gap: var( --space-3 );
+	padding: var( --space-8 );
+	background: var( --bg-surface );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-lg );
+	box-shadow: var( --shadow-sm );
+}
+
+/* The same icon well the audience cards use on the home page — one visual
+   language for "a card with an idea in it".
+
+   No hover lift, deliberately: these are not links, and a card that moves
+   under the cursor promises a click that does not exist. */
+.about-cards article > i {
+	display: grid;
+	place-items: center;
+	width: var( --icon-well-lg );
+	height: var( --icon-well-lg );
+	margin-bottom: var( --space-2 );
+	border-radius: var( --radius-full );
+	background: var( --bg-surface-accent );
+	color: var( --color-gold-ink );
+}
+
+.about-cards article > i .tdh-icon {
+	width: var( --icon-base );
+	height: var( --icon-base );
+}
+
+.about-cards h3 { margin: 0; font-size: var( --text-h5 ); }
+
+.about-cards p {
+	margin: 0;
+	color: var( --text-muted );
+	line-height: var( --leading-body );
+}
+
+/* --- Rules and regulations ----------------------------------------------- */
+
+/* Navy. These are the terms rather than the pitch, and the page wants one
+   dark band to keep three light ones from running together. */
+.about-rules {
+	background: var( --color-navy );
+	color: var( --text-inverse );
+}
+
+.about-rules-grid {
+	display: grid;
+	grid-template-columns: 1fr 1.15fr;
+	gap: var( --space-10 );
+	align-items: start;
+}
+
+/* .about-rules-head — the first column, holding the heading block and the
+   link out — carries no rule of its own on purpose. It is the grid cell;
+   .section-title already sets the gap inside it, and the link shrink-wraps
+   because it is inline-flex. A rule here would only be decoration. */
+
+.about-rules h2 { color: var( --text-inverse ); }
+
+/* Beats the shared `.section-title > div > p:last-child`, which sets the
+   intro in the light-ground muted ink. */
+.about-rules .section-title > div > p:last-child { color: var( --color-on-dark-lead ); }
+
+.about-rules-link {
+	display: inline-flex;
+	align-items: center;
+	gap: var( --space-2 );
+	color: var( --color-gold-light );
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+	text-decoration: none;
+}
+
+.about-rules-link:hover { text-decoration: underline; }
+.about-rules-link .tdh-icon { flex: none; }
+
+.about-rules-list {
+	display: grid;
+	gap: var( --space-4 );
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.about-rules-list li {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: var( --space-4 );
+	padding: var( --space-5 ) var( --space-6 );
+	background: var( --color-surface-on-dark );
+	border: 1px solid var( --color-border-on-dark-faint );
+	border-radius: var( --radius-md );
+}
+
+.about-rules-list .tdh-icon {
+	flex: none;
+	margin-top: 0.15em;
+	color: var( --color-gold );
+}
+
+.about-rules-list b {
+	display: block;
+	margin-bottom: var( --space-1 );
+	font-weight: var( --weight-semibold );
+	color: var( --text-inverse );
+}
+
+.about-rules-list p {
+	margin: 0;
+	font-size: var( --text-sm );
+	line-height: var( --leading-body );
+	color: var( --color-on-dark-muted );
+}
+
+/* --- The two doors ------------------------------------------------------- */
+
+.about-doors { background: var( --bg-surface-warm ); }
+
+.about-doors-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: var( --space-6 );
+}
+
+/* These are links, so they do lift. */
+.about-door {
+	display: grid;
+	align-content: start;
+	gap: var( --space-3 );
+	padding: var( --space-9 );
+	background: var( --bg-surface );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-lg );
+	color: inherit;
+	text-decoration: none;
+	transition:
+		transform var( --duration-base ) var( --ease ),
+		box-shadow var( --duration-base ) var( --ease ),
+		border-color var( --duration-base ) var( --ease );
+}
+
+.about-door:hover,
+.about-door:focus-visible {
+	transform: translateY( -3px );
+	border-color: var( --color-gold );
+	box-shadow: var( --shadow-md );
+}
+
+.about-door > i {
+	display: grid;
+	place-items: center;
+	width: var( --icon-well );
+	height: var( --icon-well );
+	border-radius: var( --radius-full );
+	background: var( --bg-surface-accent );
+	color: var( --color-gold-ink );
+}
+
+.about-door > i .tdh-icon {
+	width: var( --icon-base );
+	height: var( --icon-base );
+}
+
+.about-door h3 { margin: 0; font-size: var( --text-h4 ); }
+
+.about-door p {
+	margin: 0;
+	color: var( --text-muted );
+	line-height: var( --leading-body );
+}
+
+.about-door-cta {
+	display: inline-flex;
+	align-items: center;
+	gap: var( --space-2 );
+	margin-top: var( --space-2 );
+	color: var( --text-accent );
+	font-size: var( --text-sm );
+	font-weight: var( --weight-bold );
+}
+
+.about-door-cta .tdh-icon {
+	flex: none;
+	transition: transform var( --duration-fast ) var( --ease );
+}
+
+.about-door:hover .about-door-cta .tdh-icon { transform: translateX( 3px ); }
+
+/* The placeholder notice every draft page on this site carries. Quiet, and
+   last: it is a note to the client, not part of the page. */
+.about-note {
+	margin: var( --space-8 ) 0 0;
+	color: var( --text-subtle );
+	font-size: var( --text-sm );
+	text-align: center;
+}
+
+@media ( max-width: 62rem ) {
+	.about-intro-grid,
+	.about-rules-grid {
+		grid-template-columns: 1fr;
+		gap: var( --space-8 );
+	}
+
+	.about-cards { grid-template-columns: 1fr 1fr; }
+	.about-doors-grid { grid-template-columns: 1fr; }
+}
+
+@media ( max-width: 43.75rem ) {
+	.about-cards { grid-template-columns: 1fr; }
+
+	.about-cards article,
+	.about-door { padding: var( --space-7 ); }
+
+	.about-statement { padding-left: var( --space-5 ); }
+
+	.about-rules-list li { padding: var( --space-5 ); }
 }
