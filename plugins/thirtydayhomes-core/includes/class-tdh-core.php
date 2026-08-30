@@ -63,6 +63,11 @@ final class Core {
 			$this->modules['meta_boxes'] = new Admin\Meta_Boxes();
 			$this->modules['reference']  = new Admin\Shortcode_Reference();
 			$this->modules['importer']   = new Admin\Demo_Importer();
+
+			// The credential screen is admin-only. TDH\Billing\Stripe, which
+			// reads those credentials, is a static accessor with no hooks —
+			// checkout and the webhook load it themselves on the front end.
+			$this->modules['payments'] = new Billing\Settings();
 		}
 
 		// Client review mode. Registers nothing unless TDH_DEMO_MODE is on
