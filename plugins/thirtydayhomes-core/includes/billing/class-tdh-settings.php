@@ -52,6 +52,10 @@ final class Settings {
 
 			// Runs before any output, so a save can redirect.
 			add_action( 'load-' . $hook, [ $this, 'handle_post' ] );
+
+			// Scoped to this screen only — nothing here belongs on any other
+			// admin page.
+			add_action( 'admin_footer-' . $hook, [ $this, 'print_script' ] );
 		}
 	}
 
@@ -104,7 +108,10 @@ final class Settings {
 			return;
 		}
 
-		if ( 'test' === $action ) {
+		// "test_connection", not "test": tdh_tab already uses "test" to mean
+		// sandbox mode, and one form carrying value="test" for two unrelated
+		// meanings is a trap for whoever reads the request next.
+		if ( 'test_connection' === $action ) {
 			$this->test_connection();
 		}
 	}
@@ -385,9 +392,76 @@ final class Settings {
 
 			<?php $this->render_mode_form( $mode ); ?>
 			<?php $this->render_tabs( $tab ); ?>
-			<?php $this->render_credentials_form( $tab ); ?>
+
+			<?php
+			/*
+			 * BOTH panels are printed, and the tab click just swaps which one
+			 * is visible — no page load. They stay SEPARATE FORMS, which is
+			 * the point: sandbox and production fields are never inside one
+			 * form and so can never be submitted together, whatever the tab
+			 * script does or fails to do.
+			 *
+			 * With JavaScript off the tabs are still ordinary links, the
+			 * server decides which panel is hidden, and everything works —
+			 * one page load slower.
+			 */
+			foreach ( array_keys( Stripe::modes() ) as $panel ) {
+				$this->render_credentials_form( $panel, $panel === $tab );
+			}
+			?>
 
 		</div>
+		<?php
+	}
+
+	/**
+	 * Swap panels without a page load.
+	 *
+	 * Progressive enhancement: the tabs are real links to ?tab=…, so this
+	 * only intercepts them. If the script never runs, the links navigate and
+	 * the screen behaves exactly as before.
+	 */
+	public function print_script(): void {
+		?>
+		<script>
+		( function () {
+			var tabs   = document.querySelectorAll( '[data-tdh-tab]' );
+			var panels = document.querySelectorAll( '[data-tdh-panel]' );
+
+			if ( ! tabs.length || ! panels.length ) {
+				return;
+			}
+
+			function show( mode ) {
+				Array.prototype.forEach.call( panels, function ( panel ) {
+					panel.hidden = panel.getAttribute( 'data-tdh-panel' ) !== mode;
+				} );
+
+				Array.prototype.forEach.call( tabs, function ( tab ) {
+					var on = tab.getAttribute( 'data-tdh-tab' ) === mode;
+					tab.classList.toggle( 'nav-tab-active', on );
+					tab.setAttribute( 'aria-selected', on ? 'true' : 'false' );
+				} );
+
+				// Keep the address bar honest without navigating, so a reload
+				// or a bookmark reopens the tab actually being looked at.
+				if ( window.history && window.history.replaceState ) {
+					try {
+						var url = new URL( window.location.href );
+						url.searchParams.set( 'tab', mode );
+						window.history.replaceState( {}, '', url.toString() );
+					} catch ( e ) {}
+				}
+			}
+
+			Array.prototype.forEach.call( tabs, function ( tab ) {
+				tab.addEventListener( 'click', function ( event ) {
+					event.preventDefault();
+					show( tab.getAttribute( 'data-tdh-tab' ) );
+				} );
+			} );
+		}() );
+		</script>
 		<?php
 	}
 
@@ -426,23 +500,33 @@ final class Settings {
 
 	private function render_tabs( string $tab ): void {
 		?>
-		<h2 class="nav-tab-wrapper">
-			<a href="<?php echo esc_url( self::url( Stripe::MODE_TEST ) ); ?>"
-				class="nav-tab <?php echo Stripe::MODE_TEST === $tab ? 'nav-tab-active' : ''; ?>">
-				<?php esc_html_e( 'Test / Sandbox', 'thirtydayhomes' ); ?>
-			</a>
-			<a href="<?php echo esc_url( self::url( Stripe::MODE_LIVE ) ); ?>"
-				class="nav-tab <?php echo Stripe::MODE_LIVE === $tab ? 'nav-tab-active' : ''; ?>">
-				<?php esc_html_e( 'Live / Production', 'thirtydayhomes' ); ?>
-			</a>
+		<h2 class="nav-tab-wrapper" role="tablist">
+			<?php
+			$labels = [
+				Stripe::MODE_TEST => __( 'Test / Sandbox', 'thirtydayhomes' ),
+				Stripe::MODE_LIVE => __( 'Live / Production', 'thirtydayhomes' ),
+			];
+
+			foreach ( $labels as $mode => $label ) :
+				$active = $mode === $tab;
+				?>
+				<a href="<?php echo esc_url( self::url( $mode ) ); ?>"
+					class="nav-tab <?php echo $active ? 'nav-tab-active' : ''; ?>"
+					role="tab"
+					aria-selected="<?php echo $active ? 'true' : 'false'; ?>"
+					data-tdh-tab="<?php echo esc_attr( $mode ); ?>">
+					<?php echo esc_html( $label ); ?>
+				</a>
+			<?php endforeach; ?>
 		</h2>
 		<?php
 	}
 
-	private function render_credentials_form( string $tab ): void {
+	private function render_credentials_form( string $tab, bool $active = true ): void {
 
 		$is_live = Stripe::MODE_LIVE === $tab;
 		?>
+		<div data-tdh-panel="<?php echo esc_attr( $tab ); ?>" <?php echo $active ? '' : 'hidden'; ?>>
 		<form method="post" style="padding:1em 1.25em;background:#fff;border:1px solid #c3c4c7;border-top:0;">
 			<?php wp_nonce_field( 'tdh_stripe_credentials' ); ?>
 			<input type="hidden" name="tdh_stripe_action" value="credentials">
@@ -461,9 +545,15 @@ final class Settings {
 			<table class="form-table" role="presentation">
 				<?php foreach ( $this->fields( $tab ) as $field => $spec ) : ?>
 					<?php
-					$locked   = Stripe::is_locked( $tab, $field );
-					$stored   = Stripe::credential( $field, $tab );
-					$id       = 'tdh-' . $field;
+					$locked = Stripe::is_locked( $tab, $field );
+					$stored = Stripe::credential( $field, $tab );
+
+					// Scoped by mode: both panels are in the DOM at once, so
+					// an unscoped id would appear twice and every <label for>
+					// would point at whichever came first — clicking the live
+					// label would focus the sandbox field.
+					$id = 'tdh-' . $tab . '-' . $field;
+
 					$prefixes = Stripe::expected_prefixes( $field, $tab );
 					?>
 					<tr>
@@ -473,7 +563,9 @@ final class Settings {
 						<td>
 							<?php if ( $locked ) : ?>
 
+								<?php // Carries the id too, or the label above it points at nothing. ?>
 								<input type="text" class="regular-text code" disabled
+									id="<?php echo esc_attr( $id ); ?>"
 									value="<?php echo esc_attr( $spec['secret'] ? '••••••••••••••••' : $stored ); ?>">
 								<p class="description">
 									<?php
@@ -487,8 +579,29 @@ final class Settings {
 
 							<?php elseif ( $spec['secret'] ) : ?>
 
-								<?php // Never rendered back to the browser. Blank means keep. ?>
-								<input type="password" class="regular-text code" autocomplete="off"
+								<?php
+								/*
+								 * type="text", NOT type="password".
+								 *
+								 * A password field makes the browser offer to
+								 * save the value in its password manager — Brave
+								 * prompted to store a Stripe secret key against
+								 * the admin's own login, which would sync it to
+								 * a browser profile in the cloud. An API key does
+								 * not belong there.
+								 *
+								 * Nothing is lost by showing it: the field is
+								 * ALWAYS empty on load, because a stored secret is
+								 * never rendered. The only thing ever visible is
+								 * what the person pasting is already looking at,
+								 * and seeing it is how a truncated paste gets
+								 * caught. Stripe's own dashboard shows keys the
+								 * same way.
+								 */
+								?>
+								<input type="text" class="regular-text code"
+									autocomplete="off" spellcheck="false"
+									data-lpignore="true" data-1p-ignore
 									id="<?php echo esc_attr( $id ); ?>"
 									name="tdh_<?php echo esc_attr( $field ); ?>"
 									placeholder="<?php echo esc_attr( '' !== $stored ? '••••••••••••••••' : ( $prefixes[0] ?? '' ) . '…' ); ?>">
@@ -532,8 +645,8 @@ final class Settings {
 		</form>
 
 		<form method="post" style="margin-top:-1em;">
-			<?php wp_nonce_field( 'tdh_stripe_test' ); ?>
-			<input type="hidden" name="tdh_stripe_action" value="test">
+			<?php wp_nonce_field( 'tdh_stripe_test_connection' ); ?>
+			<input type="hidden" name="tdh_stripe_action" value="test_connection">
 			<input type="hidden" name="tdh_tab" value="<?php echo esc_attr( $tab ); ?>">
 			<?php
 			submit_button(
@@ -546,6 +659,7 @@ final class Settings {
 			);
 			?>
 		</form>
+		</div>
 		<?php
 	}
 }
