@@ -22,6 +22,36 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Site_Structure {
 
+	/**
+	 * A fingerprint of the content this importer last wrote to a page.
+	 *
+	 * ─── WHY THIS EXISTS ───────────────────────────────────────────────────
+	 *
+	 * The importer used to overwrite every page and rebuild both menus on
+	 * every run, which made it powerful and unsafe: re-running it discarded
+	 * whatever anyone had edited since. So the rule became "never run this on
+	 * a live site", and that rule then caused its own bug — a page's content
+	 * is a shortcode, deploys copy code but not database rows, and live sat
+	 * on last week's markup while running this week's code with no safe way
+	 * to reconcile it.
+	 *
+	 * The fingerprint resolves both. The importer may rewrite anything that
+	 * still hashes to what it last wrote — that is its own output, and
+	 * replacing it changes nothing a person chose. The moment the hash
+	 * differs, somebody has edited that page, and it is left alone and
+	 * reported.
+	 *
+	 * The result is a tool that is safe to run after every deploy, which is
+	 * the only way page content and code stay in step.
+	 */
+	private const META_FINGERPRINT = '_tdh_seed_fingerprint';
+
+	/** The same idea for a menu, stored per location. */
+	private const OPTION_MENU_FINGERPRINT = 'tdh_menu_fingerprint_';
+
+	/** @var array<int,string> Pages and menus left alone because they were edited. */
+	private array $protected = [];
+
 	public function __construct( private Importer $importer ) {}
 
 	public function run(): void {
@@ -43,6 +73,22 @@ final class Site_Structure {
 		$this->set_site_icon();
 
 		update_option( 'blogdescription', __( 'Furnished 30+ day homes near Pittsburgh’s medical centres', 'thirtydayhomes' ) );
+
+		/*
+		 * Say plainly what was left alone. A run that protects something and
+		 * reports nothing looks like a run that quietly did not work, and
+		 * whoever is watching would run it again — or worse, start deleting
+		 * things to force it through.
+		 */
+		if ( $this->protected ) {
+			$this->importer->log(
+				sprintf(
+					'left alone because they have been edited: %s',
+					implode( ', ', $this->protected )
+				)
+			);
+			$this->importer->log( 'to let the importer manage one of those again, revert it in the editor or delete it and re-run' );
+		}
 	}
 
 	/**
@@ -141,12 +187,33 @@ final class Site_Structure {
 		);
 
 		$args = [
-			'post_type'    => 'page',
-			'post_name'    => $slug,
-			'post_title'   => $title,
-			'post_status'  => 'publish',
-			'post_content' => $content,
+			'post_type'   => 'page',
+			'post_name'   => $slug,
+			'post_title'  => $title,
+			'post_status' => 'publish',
 		];
+
+		/*
+		 * Has anybody edited this page since we wrote it?
+		 *
+		 * A page with no fingerprint predates this check, so it is adopted:
+		 * that keeps the first run after this change behaving exactly as it
+		 * always did, and every run after it protected.
+		 */
+		$edited = false;
+
+		if ( $existing ) {
+
+			$stored = (string) get_post_meta( $existing[0]->ID, self::META_FINGERPRINT, true );
+
+			if ( '' !== $stored && ! hash_equals( $stored, md5( (string) $existing[0]->post_content ) ) ) {
+				$edited = true;
+			}
+		}
+
+		if ( ! $edited ) {
+			$args['post_content'] = $content;
+		}
 
 		if ( $existing ) {
 			$args['ID'] = $existing[0]->ID;
@@ -161,6 +228,23 @@ final class Site_Structure {
 		}
 
 		update_post_meta( (int) $id, '_tdh_seed_key', $slug );
+
+		/*
+		 * Record what we wrote — but only when we actually wrote it. Storing
+		 * a fingerprint of somebody else's edit would adopt that edit as our
+		 * own, and the next run would overwrite it: the exact loss this is
+		 * meant to prevent.
+		 *
+		 * The metadata below is NOT protected, deliberately. Headline, lead,
+		 * layout and noindex are ours: they do not appear in the editor, so a
+		 * person cannot have meant to change them, and keeping them in step
+		 * with the code is the point of re-running.
+		 */
+		if ( $edited ) {
+			$this->protected[] = sprintf( '%s (edited since import)', $slug );
+		} else {
+			update_post_meta( (int) $id, self::META_FINGERPRINT, md5( $content ) );
+		}
 
 		if ( $noindex ) {
 			update_post_meta( (int) $id, '_tdh_noindex', 1 );
@@ -399,12 +483,19 @@ final class Site_Structure {
 	}
 
 	/**
-	 * Rebuild a menu from scratch.
+	 * Rebuild a menu, unless somebody has reordered or edited it.
 	 *
-	 * Deleting and recreating rather than diffing: re-running must never
-	 * leave a menu with every item listed twice, and a menu is cheap to
-	 * rebuild. The cost is that a client's manual reordering is lost on
-	 * re-import, which is why the admin screen says so before you click.
+	 * Still delete-and-recreate rather than diffing: re-running must never
+	 * leave a menu with every item listed twice, and reconciling items one by
+	 * one is a great deal of code to get subtly wrong. A menu is cheap to
+	 * rebuild — the only real cost was destroying a person's arrangement,
+	 * and that is what the fingerprint now prevents.
+	 *
+	 * Before touching anything, the menu as it stands is fingerprinted and
+	 * compared with what this importer last produced. Identical means nobody
+	 * has been here and rebuilding changes nothing. Different means somebody
+	 * has reordered, renamed or added an item, and their menu is left exactly
+	 * as it is.
 	 *
 	 * @param array<int,array{0:string,1:string,2:string,3:string}> $items
 	 */
@@ -413,6 +504,20 @@ final class Site_Structure {
 		$existing = wp_get_nav_menu_object( $name );
 
 		if ( $existing ) {
+
+			$stored = (string) get_option( self::OPTION_MENU_FINGERPRINT . $location, '' );
+
+			// No fingerprint means the menu predates this check, so it is
+			// adopted — the first run after this change behaves as it always
+			// did, and every run after it is protected.
+			if ( '' !== $stored && ! hash_equals( $stored, $this->menu_signature( (int) $existing->term_id ) ) ) {
+
+				$this->protected[] = sprintf( '%s menu (edited since import)', $name );
+				$this->importer->log( sprintf( 'menu %s left alone — it has been edited', $name ) );
+
+				return;
+			}
+
 			wp_delete_nav_menu( $existing->term_id );
 		}
 
@@ -450,7 +555,50 @@ final class Site_Structure {
 		$locations[ $location ] = $menu_id;
 		set_theme_mod( 'nav_menu_locations', $locations );
 
+		// Recorded AFTER the items are in, so it fingerprints the finished
+		// menu rather than the empty one it started as.
+		update_option( self::OPTION_MENU_FINGERPRINT . $location, $this->menu_signature( (int) $menu_id ) );
+
 		$this->importer->log( sprintf( 'menu #%d %s → %s', $menu_id, $name, $location ) );
+	}
+
+	/**
+	 * A fingerprint of a menu as it currently stands.
+	 *
+	 * Covers what a person would actually change: which items, in what
+	 * order, pointing where, labelled how. Menu item IDs are deliberately
+	 * NOT included — they are reassigned every time the menu is rebuilt, so
+	 * including them would make every menu look edited immediately after the
+	 * importer itself created it.
+	 */
+	private function menu_signature( int $menu_id ): string {
+
+		$items = wp_get_nav_menu_items( $menu_id, [ 'update_post_term_cache' => false ] );
+
+		if ( ! $items ) {
+			return '';
+		}
+
+		$parts = [];
+
+		foreach ( $items as $item ) {
+			$classes = array_filter( (array) $item->classes );
+			sort( $classes );
+
+			$parts[] = implode(
+				'|',
+				[
+					(string) $item->type,
+					(string) $item->object_id,
+					(string) $item->url,
+					(string) $item->title,
+					implode( ' ', $classes ),
+					(string) $item->menu_item_parent,
+				]
+			);
+		}
+
+		return md5( implode( "\n", $parts ) );
 	}
 
 	/**

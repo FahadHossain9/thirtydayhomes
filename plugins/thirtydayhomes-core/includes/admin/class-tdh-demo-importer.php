@@ -127,15 +127,18 @@ final class Demo_Importer {
 				</p>
 
 				<?php if ( $imported ) : ?>
-					<div class="notice notice-warning inline" style="margin:12px 0;">
+					<div class="notice notice-info inline" style="margin:12px 0;">
 						<p>
 							<?php
 							printf(
 								/* translators: %s: date and time of the last import */
-								esc_html__( 'Demo content was already imported on %s. Running it again will overwrite the pages, both menus and the homepage layout — including any edits made since.', 'thirtydayhomes' ),
+								esc_html__( 'Demo content was last imported on %s. Running it again is safe: anything you have edited is left exactly as it is, and only pages and menus still untouched since the import are brought up to date.', 'thirtydayhomes' ),
 								esc_html( $imported )
 							);
 							?>
+						</p>
+						<p>
+							<?php esc_html_e( 'Re-run it after a deployment that changed page content — a deployment copies code, not pages, so the two can otherwise drift apart.', 'thirtydayhomes' ); ?>
 						</p>
 					</div>
 				<?php endif; ?>
@@ -171,9 +174,6 @@ final class Demo_Importer {
 							name="tdh_import_demo_submit"
 							value="1"
 							class="button button-primary button-hero"
-							<?php if ( $imported ) : ?>
-								onclick="return confirm( <?php echo esc_attr( wp_json_encode( __( 'This overwrites the pages, menus and homepage layout, including changes made since the last import. Continue?', 'thirtydayhomes' ) ) ); ?> );"
-							<?php endif; ?>
 						>
 							<?php esc_html_e( 'Import demo content', 'thirtydayhomes' ); ?>
 						</button>
@@ -194,7 +194,7 @@ final class Demo_Importer {
 					<li><?php esc_html_e( 'Any page you created that is not part of the demo set.', 'thirtydayhomes' ); ?></li>
 				</ul>
 				<p class="description">
-					<?php esc_html_e( 'Re-running is safe and does not duplicate anything. The one thing it does replace outright is the two navigation menus, which are rebuilt rather than merged — so a manual reordering will be lost.', 'thirtydayhomes' ); ?>
+					<?php esc_html_e( 'Re-running is safe and does not duplicate anything. A page or menu you have edited is fingerprinted as yours and left alone; the run reports which ones it skipped. To hand one back, revert your change and run it again.', 'thirtydayhomes' ); ?>
 				</p>
 			</div>
 		</div>

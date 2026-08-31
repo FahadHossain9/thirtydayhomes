@@ -2465,7 +2465,23 @@ img, video { max-width: 100%; height: auto; }
 	.owner-cta { flex-direction: column; align-items: flex-start; gap: var( --space-7 ); }
 }
 
-@media ( max-width: 700px ) {
+/* The navigation becomes a drawer at 62rem, NOT at 700px.
+   ------------------------------------------------------------------------
+   Six items — five links plus a padded gold call to action — need roughly
+   1000px beside the wordmark. Below that they had nowhere to go: at 950px
+   every single item wrapped onto two lines and "ThirtyDayHomes" ran
+   straight into "About" with no gap at all. The drawer only appeared at
+   700px, so there were three hundred pixels of tablet widths showing a
+   broken header on every page of the site.
+
+   62rem, matching the breakpoint the section grids already collapse at, so
+   the whole layout changes shape at one width rather than three.
+
+   Separated from the 700px block below because that one is about phone
+   layout — a hero that is too tall, grids that need one column — and those
+   are genuinely different widths. Merging them would drag the phone rules
+   up to tablet where they are wrong. */
+@media ( max-width: 62rem ) {
 	.site-header { height: var( --header-height-sm ); }
 
 	.site-nav {
@@ -2484,9 +2500,13 @@ img, video { max-width: 100%; height: auto; }
 	.site-nav a { color: var( --text-inverse ); }
 	.nav-toggle { display: block; }
 
+	/* The mark and wordmark come down with the header, or a 65px tile sits
+	   in a 72px bar with nothing above or below it. */
 	.logo > i { width: var( --logo-tile-sm ); height: calc( var( --logo-tile-sm ) * 1.15 ); }
 	.logo b, .logo strong { font-size: var( --text-xl ); }
+}
 
+@media ( max-width: 700px ) {
 	.hero { min-height: var( --hero-min-height-sm ); }
 	.hero-search { grid-template-columns: 1fr; }
 	.hero-search label {
