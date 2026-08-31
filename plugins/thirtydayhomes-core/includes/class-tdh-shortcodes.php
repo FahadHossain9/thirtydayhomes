@@ -44,6 +44,7 @@ final class Shortcodes {
 		// would be unreadable in the editor and nobody would use it.
 		add_shortcode( 'tdh_about', [ $this, 'about' ] );
 		add_shortcode( 'tdh_how_it_works', [ $this, 'how_it_works' ] );
+		add_shortcode( 'tdh_contact', [ $this, 'contact' ] );
 
 		// Account screens. No attributes: these render one thing each, and
 		// an attribute would only be a way to configure them into a state
@@ -76,6 +77,38 @@ final class Shortcodes {
 		unset( $atts );
 
 		return Render::how_it_works();
+	}
+
+	/**
+	 * The Contact page body — the message form and what to expect from it.
+	 *
+	 * The heading is an attribute so the client can retitle the page without
+	 * a developer; the three assurance cards are not, for the same reason
+	 * the audience cards are not — three cards of three fields would make an
+	 * unreadable shortcode nobody would edit correctly.
+	 *
+	 * @param array<string,string>|string $atts
+	 */
+	public function contact( $atts ): string {
+
+		$a = shortcode_atts(
+			[
+				'eyebrow' => '',
+				'heading' => '',
+			],
+			(array) $atts,
+			'tdh_contact'
+		);
+
+		$args = [];
+
+		foreach ( [ 'eyebrow', 'heading' ] as $key ) {
+			if ( '' !== $a[ $key ] ) {
+				$args[ $key ] = sanitize_text_field( $a[ $key ] );
+			}
+		}
+
+		return Render::contact( $args );
 	}
 
 	/**

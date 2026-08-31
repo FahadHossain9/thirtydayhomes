@@ -4,7 +4,7 @@ Theme URI:    https://github.com/FahadHossain9/thirtydayhomes
 Author:       Instaquirk
 Author URI:   https://instaquirk.com
 Description:  Presentation layer for the ThirtyDayHomes marketplace. Owns global design tokens, header, footer, navigation, responsive framework and Elementor integration. Holds NO marketplace business rules — those live in the ThirtyDayHomes Core plugin, so replacing this theme never costs a listing, membership, inquiry or facility.
-Version:      0.15.0
+Version:      0.19.0
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 8.1
@@ -468,7 +468,8 @@ img, video { max-width: 100%; height: auto; }
 .section-title h2,
 .audience-head h2,
 .split h2,
-.owner-cta h2 {
+.owner-cta h2,
+.contact-promise-inner h2 {
 	font-size: var( --text-h2 );
 	margin: var( --section-heading-gap ) 0;
 }
@@ -476,7 +477,8 @@ img, video { max-width: 100%; height: auto; }
 .section-title .overline,
 .audience-head .overline,
 .split .overline,
-.owner-cta .overline { margin: 0; }
+.owner-cta .overline,
+.contact-promise-inner .overline { margin: 0; }
 
 .section-title h2 + p,
 .audience-head h2 + p,
@@ -3317,4 +3319,374 @@ img, video { max-width: 100%; height: auto; }
 	.about-statement { padding-left: var( --space-5 ); }
 
 	.about-rules-list li { padding: var( --space-5 ); }
+}
+
+/* =========================================================================
+   CONTACT
+
+   One card, split down the middle: the promise on the site's navy ground,
+   the form on white. Not a form with a paragraph beside it — a single
+   object, which is why the two halves share one border, one radius and one
+   shadow rather than sitting as two cards with a gap between them.
+
+   The dark half earns its space. "How long until somebody replies" and "am
+   I even writing to the right place" are the two questions that stop people
+   sending; answering them before the first keystroke is the whole job of
+   that column.
+
+   ─── SCOPING ───────────────────────────────────────────────────────────
+
+   Every selector is prefixed `contact-` and anchored to it with a child
+   combinator wherever an element selector appears. That matters more here
+   than anywhere else on the site: this section contains the SHARED form
+   components — .form-field, .form-grid, .form-notice — so a loose
+   `.contact p` or `.contact-panel b` would reach straight into markup that
+   four other pages also render.
+   ========================================================================= */
+
+.contact-inner {
+	max-width: var( --container );
+	margin-inline: auto;
+}
+
+.contact-shell {
+	display: grid;
+	/* The form is the wider half. The promise is a preface, not a peer. */
+	grid-template-columns: 0.92fr 1.08fr;
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-lg );
+	/* The navy half runs to the rounded corner. Without this it squares
+	   itself off at the card edge and the whole thing stops reading as one
+	   object. */
+	overflow: hidden;
+	box-shadow: var( --shadow-md );
+	background: var( --bg-surface );
+}
+
+/* --- The promise --------------------------------------------------------- */
+
+.contact-promise {
+	position: relative;
+	background: var( --color-navy );
+	color: var( --text-inverse );
+	padding: var( --space-10 ) var( --space-9 );
+	overflow: hidden;
+}
+
+/* Two gold glows, well off-centre and very low in opacity: enough to keep a
+   large navy panel from reading as a flat rectangle, not enough to compete
+   with the text sitting on it. Decoration only, so it is a pseudo-element
+   rather than markup, and it is pinned behind everything. */
+.contact-promise::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background:
+		radial-gradient( 42rem 26rem at 88% -8%, rgba( 215, 185, 103, 0.20 ), transparent 62% ),
+		radial-gradient( 30rem 30rem at -12% 112%, rgba( 215, 185, 103, 0.11 ), transparent 60% );
+	pointer-events: none;
+}
+
+/* A gold hairline down the seam between the two halves — the one place the
+   card admits it is made of two parts. */
+.contact-promise::after {
+	content: "";
+	position: absolute;
+	top: 0;
+	right: 0;
+	width: 1px;
+	height: 100%;
+	background: linear-gradient(
+		to bottom,
+		transparent,
+		rgba( 215, 185, 103, 0.55 ) 20%,
+		rgba( 215, 185, 103, 0.55 ) 80%,
+		transparent
+	);
+}
+
+/* The glows are painted on ::before, which is a positioned box; the content
+   needs its own stacking position to sit above it. */
+.contact-promise-inner {
+	position: relative;
+	z-index: 1;
+}
+
+/* Size and rhythm come from the shared section-heading rule up in SECTION
+   SHELL, where this selector is registered — that block is the one place
+   every section heading on the site is set. Only the colour is local, and
+   only because this heading is the one that sits on a dark ground. */
+.contact-promise-inner > h2 { color: var( --text-inverse ); }
+
+/* Higher specificity than the shared `h2 + p { margin: 0 }`, deliberately:
+   this lead has a block below it and needs the gap. */
+.contact-promise-inner > .contact-lead {
+	margin: var( --space-4 ) 0 var( --space-8 );
+	max-width: 30ch;
+	color: var( --color-on-dark-lead );
+	line-height: var( --leading-body );
+}
+
+.contact-assurances {
+	display: grid;
+	gap: var( --space-5 );
+	margin: 0 0 var( --space-8 );
+	padding: 0;
+	list-style: none;
+}
+
+.contact-assurances > li {
+	display: flex;
+	align-items: flex-start;
+	gap: var( --space-4 );
+	padding-bottom: var( --space-5 );
+	border-bottom: 1px solid var( --color-border-on-dark-faint );
+
+	/* Each row arrives just after the one above it. --i comes from the
+	   markup, so the stagger holds for however many rows there are.
+	   `backwards` matters: without it the row paints at full opacity for
+	   one frame before its delay starts, which is a visible flash. */
+	opacity: 0;
+	animation: contact-row var( --duration-slow ) var( --ease ) backwards;
+	animation-delay: calc( var( --i, 0 ) * 90ms + 120ms );
+}
+
+.contact-assurances > li:last-child { padding-bottom: 0; border-bottom: 0; }
+
+@keyframes contact-row {
+	from { opacity: 0; transform: translateY( 10px ); }
+	to   { opacity: 1; transform: none; }
+}
+
+/* The same well the About page's doors use, restated for a dark ground:
+   translucent gold rather than sand, and the light gold glyph, because
+   --color-gold-ink is drawn to sit on cream and disappears on navy. */
+.contact-assurances > li > i {
+	display: grid;
+	place-items: center;
+	flex: none;
+	width: var( --icon-well );
+	height: var( --icon-well );
+	border-radius: var( --radius-full );
+	background: rgba( 215, 185, 103, 0.14 );
+	border: 1px solid rgba( 215, 185, 103, 0.30 );
+	color: var( --color-gold-light );
+}
+
+.contact-assurances > li > div > b {
+	display: block;
+	margin-bottom: var( --space-1 );
+	font-family: var( --font-heading );
+	font-size: var( --text-h5 );
+	font-weight: var( --weight-bold );
+	color: var( --text-inverse );
+}
+
+.contact-assurances > li > div > p {
+	margin: 0;
+	font-size: var( --text-sm );
+	line-height: var( --leading-body );
+	color: var( --color-on-dark-muted );
+}
+
+/* The response promise, as a status rather than a sentence: it is the last
+   thing read before the eye crosses to the form. */
+.contact-status {
+	display: inline-flex;
+	align-items: center;
+	gap: var( --space-3 );
+	margin: 0;
+	padding: var( --space-3 ) var( --space-5 );
+	border-radius: var( --radius-pill );
+	background: var( --color-surface-on-dark );
+	border: 1px solid var( --color-border-on-dark );
+	font-size: var( --text-sm );
+	color: var( --color-on-dark-subtle );
+}
+
+.contact-dot {
+	position: relative;
+	flex: none;
+	width: var( --space-2 );
+	height: var( --space-2 );
+	border-radius: var( --radius-full );
+	background: var( --color-gold );
+}
+
+/* The ring is a second box scaled outward, NOT a box-shadow on the dot
+   itself — a growing shadow would push the flex row's baseline around. */
+.contact-dot::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: var( --radius-full );
+	background: var( --color-gold );
+	animation: contact-pulse 2.4s var( --ease ) infinite;
+}
+
+@keyframes contact-pulse {
+	0%   { opacity: 0.55; transform: scale( 1 ); }
+	70%  { opacity: 0;    transform: scale( 3 ); }
+	100% { opacity: 0;    transform: scale( 3 ); }
+}
+
+/* --- The form ------------------------------------------------------------ */
+
+/* The panel supplies the padding, so the form itself is NOT a .form-card —
+   a card inside a card would draw a second border a few pixels in from the
+   first. The shared .form-field styles apply either way; they are not
+   nested under .form-card. */
+.contact-panel { padding: var( --space-10 ) var( --space-9 ); }
+
+/* --- Topic chips --------------------------------------------------------- */
+
+/* A fieldset ships with a border and its own padding in every browser. */
+.contact-topics {
+	margin: 0 0 var( --space-6 );
+	padding: 0;
+	border: 0;
+}
+
+.contact-topics > legend {
+	padding: 0;
+	margin-bottom: var( --space-3 );
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+}
+
+.contact-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var( --space-2 );
+}
+
+/* Positioned, so the absolutely positioned radio inside resolves against
+   its own chip. Without this it would climb the tree looking for a
+   positioned ancestor, find none, and resolve against the page. */
+.contact-chip { position: relative; }
+
+/* The radio is hidden from sight but NOT from the accessibility tree or the
+   keyboard: display:none would drop it out of tab order and out of the
+   radio group entirely. It stays focusable, and the rule below draws the
+   focus ring on the chip wrapped around it. */
+.contact-chip > input {
+	position: absolute;
+	opacity: 0;
+	width: 1px;
+	height: 1px;
+	margin: 0;
+	pointer-events: none;
+}
+
+.contact-chip > span {
+	display: block;
+	padding: var( --btn-pad-y-sm ) var( --btn-pad-x-sm );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-pill );
+	background: var( --bg-surface-tint );
+	font-size: var( --text-sm );
+	color: var( --text-muted );
+	cursor: pointer;
+	transition:
+		border-color var( --duration-fast ) var( --ease ),
+		background var( --duration-fast ) var( --ease ),
+		color var( --duration-fast ) var( --ease );
+}
+
+.contact-chip:hover > span { border-color: var( --border-strong ); }
+
+.contact-chip > input:checked + span {
+	background: var( --bg-surface-accent );
+	border-color: var( --color-gold );
+	color: var( --color-navy );
+	font-weight: var( --weight-semibold );
+}
+
+.contact-chip > input:focus-visible + span {
+	outline: 2px solid var( --border-focus );
+	outline-offset: 2px;
+}
+
+/* --- The message box and the send ---------------------------------------- */
+
+/* A textarea is inline by default, which leaves a stray descender gap under
+   it inside a flex column, and it resizes in both directions, which lets
+   somebody drag it out past the panel edge. */
+.contact-form textarea {
+	display: block;
+	min-height: 9.5rem;
+	resize: vertical;
+	line-height: var( --leading-body );
+}
+
+/* The message box sits directly above the button, so it takes the larger
+   gap rather than the between-fields one.
+
+   Named, NOT :last-of-type — the honeypot is the last div in the form, so
+   `.form-field:last-of-type` matches nothing at all. It is absolutely
+   positioned and invisible, which is exactly why that would have been a
+   silent no-op rather than something anyone noticed. */
+.contact-message { margin-bottom: var( --space-7 ); }
+
+.contact-send .tdh-icon { transition: transform var( --duration-fast ) var( --ease ); }
+.contact-send:hover .tdh-icon { transform: translateX( 3px ); }
+
+.contact-fine {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var( --space-2 );
+	margin: var( --space-5 ) 0 0;
+	font-size: var( --text-xs );
+	color: var( --text-subtle );
+}
+
+.contact-fine .tdh-icon { flex: none; }
+
+/* --- Narrow -------------------------------------------------------------- */
+
+@media ( max-width: 62rem ) {
+	.contact-shell { grid-template-columns: 1fr; }
+
+	/* Stacked, the seam is horizontal, so the gold hairline moves with it. */
+	.contact-promise::after {
+		top: auto;
+		bottom: 0;
+		right: auto;
+		left: 0;
+		width: 100%;
+		height: 1px;
+		background: linear-gradient(
+			to right,
+			transparent,
+			rgba( 215, 185, 103, 0.55 ) 20%,
+			rgba( 215, 185, 103, 0.55 ) 80%,
+			transparent
+		);
+	}
+
+	.contact-promise-inner > .contact-lead { max-width: none; }
+}
+
+@media ( max-width: 43.75rem ) {
+	.contact-promise,
+	.contact-panel { padding: var( --space-8 ) var( --space-6 ); }
+
+	/* A chip row that wraps to three lines is a list; make it one. */
+	.contact-chips { flex-direction: column; align-items: stretch; }
+	.contact-chip > span { text-align: center; }
+}
+
+/* The global reduced-motion rule collapses every DURATION, but it does not
+   touch animation-delay — so without this the assurance rows would still
+   wait their turn before appearing, which is the staircase effect somebody
+   asked not to see. Stated here rather than in the global block because
+   that block is generic and these two animations are not. */
+@media ( prefers-reduced-motion: reduce ) {
+	.contact-assurances > li {
+		animation: none;
+		opacity: 1;
+	}
+
+	.contact-dot::after { animation: none; opacity: 0; }
 }

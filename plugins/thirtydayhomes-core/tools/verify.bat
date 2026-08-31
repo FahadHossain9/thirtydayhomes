@@ -48,8 +48,15 @@ if not exist "%TDH_WP%\wp-load.php" (
 
 REM wp-cli must run from the WordPress root to find wp-config.php.
 pushd "%TDH_WP%"
+
 "%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify.php"
 set "RESULT=%ERRORLEVEL%"
+
+REM The feature suites run whatever the first one did, so one failure does
+REM not hide the state of everything else. Their exit codes are folded in.
+"%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify-contact.php"
+if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
+
 popd
 
 echo.

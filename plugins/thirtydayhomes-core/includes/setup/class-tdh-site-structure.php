@@ -355,8 +355,16 @@ final class Site_Structure {
 				'wide'     => true,
 			],
 			'contact' => [
-				'title'   => __( 'Contact', 'thirtydayhomes' ),
-				'content' => '<p>Questions about a home, membership, or an urgent stay? Get in touch and we will respond within one business day.</p>' . $draft,
+				'title'    => __( 'Contact', 'thirtydayhomes' ),
+				'headline' => __( 'Talk to a person, not a queue.', 'thirtydayhomes' ),
+				'lead'     => __( 'One form, whether you are renting or listing.', 'thirtydayhomes' ),
+
+				// The body is the form. The page previously invited people to
+				// "get in touch" and then offered no means of doing so — no
+				// form, no address, no number — which asks for something and
+				// then refuses to take it.
+				'content'  => '[tdh_contact]',
+				'wide'     => true,
 			],
 			'terms' => [
 				'title'   => __( 'Terms of Use', 'thirtydayhomes' ),

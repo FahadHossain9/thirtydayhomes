@@ -114,7 +114,35 @@ membership plans render ascending after a reorder bug put them in 1-3-2 order; a
 the price's currency symbol is set smaller and raised because Playfair's dollar
 sign was striking through the first digit.
 
-## 1.5 Release tooling
+## 1.5 Contact form — complete
+
+The Contact page invited people to "get in touch" and then offered no way to do
+it: no form, no address, no number. It now carries `[tdh_contact]`.
+
+A message is **stored first and emailed second**. Delivery is not yet proven on
+this domain — no provider, no SPF, no DKIM — and a form that only emails loses
+every message the moment a send fails, with nobody finding out until a customer
+asks why they were ignored. The record lands in **Listings → Inquiries** and
+carries `_tdh_notified` = `sent` / `failed` / `no-recipient`, so a failed send is
+a bad day rather than a lost customer.
+
+It reuses `tdh_inquiry` rather than adding a post type. An inquiry with no
+listing attached has no owner to route to, so the existing capability filter
+falls through to `read_private_posts` — administrators only, which is right for a
+message addressed to the company. Contact messages are marked
+`_tdh_inquiry_kind = contact`.
+
+Spam and abuse: nonce, an off-screen honeypot **answered with the success page**
+(telling a bot it was caught only teaches its author to stop filling that field),
+and five messages an hour per address. `Reply-To` is the sender so a reply
+reaches the person; `From` stays our own authenticated address, because a
+visitor's address there would fail SPF and put the one email that must not be
+missed into spam.
+
+`do_action( 'tdh_contact_received', $id )` is the seam the Milestone 2
+notification pipeline hooks, so adding SMS will not mean reopening this handler.
+
+## 1.6 Release tooling
 
 `tools/build-release.ps1` produces both installable zips, reads versions from
 source, and verifies its own output — single root folder, main file present,
@@ -124,8 +152,8 @@ nothing leaked from `.git`, and zero entries containing a backslash.
 
 | | |
 |---|---|
-| Code | 54 PHP files, ~10,600 lines · 2,628 lines CSS |
-| Shortcodes | 13 |
+| Code | 55 PHP files, ~10,900 lines · 2,930 lines CSS |
+| Shortcodes | 14 |
 | Post types / statuses | 3 / 6 (3 custom) |
 | Seeded pages | 14 |
 | Admin screens | Meta boxes · Shortcodes · Import Demo Content · **Payments** |
@@ -150,7 +178,7 @@ nothing leaked from `.git`, and zero entries containing a backslash.
 | 8 | Proximity engine | 🟡 Haversine and caching exist; no renter-facing facility control |
 | 9 | Landlord front-end submission | ⬜ **No way to create a listing except the admin.** Biggest functional gap |
 | 10 | Billing: checkout, webhook, membership lifecycle | ⬜ **Next** |
-| 11 | Inquiry pipeline + transactional email | ⬜ |
+| 11 | Inquiry pipeline + transactional email | 🟡 Contact form stores and notifies; listing enquiries and a real sending provider are still open |
 | 12 | SMS + A2P registration | 🔴 Blocked on the client's EIN |
 | 13 | Admin: approval queue, facilities, inquiries | ⬜ |
 | 14 | SEO, performance, accessibility pass | ⬜ |
@@ -264,14 +292,26 @@ production, and the review bar refuses to render there regardless.
 ## 4.1 Automated — start here
 
 ```powershell
-cd D:\xampp\htdocs\thirtydayhomes
-D:\xampp\php\php.exe D:\xampp\wp-cli.phar eval-file `
-  "D:\fahad vi backup\thirtydayhomes-main\plugins\thirtydayhomes-core\tools\verify.php"
+D:\xampp\htdocs\thirtydayhomes\wp-content\plugins\thirtydayhomes-core\tools\verify.bat
 ```
 
-**34 assertions**, self-cleaning, safe on a populated site. Covers cross-landlord
-ownership, listing visibility, membership defaults, proximity maths, and that the
-account pages stay out of search results. Expect `all 34 checks passed`.
+That runs both suites and finds the binaries for you. **105 assertions**,
+self-cleaning, safe on a populated site.
+
+| Suite | Covers | Expect |
+|---|---|---|
+| `verify.php` | Cross-landlord ownership, listing visibility, membership defaults, proximity maths, account pages out of search | `all 34 checks passed` |
+| `verify-contact.php` | The contact form end to end: nonce and honeypot, validation, storage, who can read a message, the notification's headers, rate limiting | `PASSED  71 passed, 0 failed` |
+
+Neither ever sends a real email — `pre_wp_mail` is intercepted throughout.
+
+To run one on its own:
+
+```powershell
+cd D:\xampp\htdocs\thirtydayhomes
+D:\xampp\php\php.exe D:\xampp\wp-cli.phar eval-file `
+  "wp-content/plugins/thirtydayhomes-core/tools/verify-contact.php"
+```
 
 Build the release zips, which verify their own output:
 
@@ -318,8 +358,36 @@ mismatches and the amounts.
 | `/register/` while signed in | *"You are already signed in"* with a way out |
 | `/account/` while signed out | A sign-in wall, not an error |
 
-Password reset on XAMPP: mail is written to disk. Request a reset, then open the
-newest file in `D:\xampp\mailoutput\` — the link is inside.
+Password reset on XAMPP: nothing is actually sent. `sendmail_path` is a Unix-only
+setting, so on Windows PHP falls back to `SMTP=localhost:25`, nothing is listening
+there, and `wp_mail()` simply returns false. `TDH\Mail` therefore **captures**
+outside production and writes each message to a file instead. Request a reset,
+then open the newest file in:
+
+```
+%TEMP%\thirtydayhomes-mail\
+```
+
+The link is inside. Those files are in the system temp directory and **not** under
+`wp-content` on purpose — they carry live one-time reset tokens, and anything
+under `wp-content` is reachable over HTTP.
+
+## 4.4b Contact form — by hand
+
+Go to `/contact/`.
+
+| Do this | Expect |
+|---|---|
+| Submit with everything blank | Three errors listed above the form |
+| Type a broken address (`dana@`) and submit | It is refused — and the broken address is **still in the field** to correct, not blanked |
+| Send a real message | Green notice; the record appears under **Listings → Inquiries** |
+| Open that record | Name, email, phone, topic in the meta; `_tdh_notified` says `sent` |
+| Check `%TEMP%\thirtydayhomes-mail\` | A notification to the site admin, `Reply-To` the sender, `From` **not** the sender |
+| Send six messages in a row | The sixth is asked to wait |
+| Sign in as a landlord and open Inquiries | The contact message is **not** listed |
+| Narrow the browser below ~990px | The navy half stacks above the form; the gold seam moves from the side to the join |
+
+The whole of the above is also automated — see §4.1.
 
 ## 4.5 Pages — by eye
 

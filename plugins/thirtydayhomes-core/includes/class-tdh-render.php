@@ -974,6 +974,229 @@ final class Render {
 	}
 
 	/**
+	 * The Contact page body.
+	 *
+	 * The page used to say "get in touch" and then offer no way to do it —
+	 * no form, no address, no number. That is worse than a page with nothing
+	 * on it, because it asks for something and then refuses to take it.
+	 *
+	 * One card split in two: the promise on a navy ground, the form on white.
+	 * The dark half is not decoration. "How long until somebody answers" and
+	 * "am I even writing to the right place" are the two questions that stop
+	 * people sending, and answering them before the first keystroke costs
+	 * nothing. Putting them on the site's own dark ground makes the pair read
+	 * as one object rather than as a form with a paragraph beside it.
+	 *
+	 * @param array<string,mixed> $args
+	 */
+	public static function contact( array $args = [] ): string {
+
+		$args = wp_parse_args(
+			$args,
+			[
+				'eyebrow'  => __( 'We read every message', 'thirtydayhomes' ),
+				'heading'  => __( 'Tell us what you need.', 'thirtydayhomes' ),
+				'lead'     => __( 'A real person answers this, in Pittsburgh, from the same team that reviews every home on the site.', 'thirtydayhomes' ),
+				'status'   => __( 'Someone reads this inbox every business day', 'thirtydayhomes' ),
+				'assurances' => [
+					[
+						'icon'  => 'calendar-days',
+						'title' => __( 'One business day', 'thirtydayhomes' ),
+						'copy'  => __( 'That is how long a reply takes. If it is urgent, say so in the message and it moves up the pile.', 'thirtydayhomes' ),
+					],
+					[
+						'icon'  => 'key-round',
+						'title' => __( 'Renting or listing', 'thirtydayhomes' ),
+						'copy'  => __( 'Both come here. Choosing what it is about only routes it to whoever answers fastest.', 'thirtydayhomes' ),
+					],
+					[
+						'icon'  => 'shield-check',
+						'title' => __( 'Only we see it', 'thirtydayhomes' ),
+						'copy'  => __( 'Your message is not published anywhere and your address is never passed on.', 'thirtydayhomes' ),
+					],
+				],
+			]
+		);
+
+		$icon = static fn( string $name, int $size = 19 ): string =>
+			function_exists( 'tdh_icon' ) ? tdh_icon( $name, $size, 2 ) : '';
+
+		// What was typed before a rejected submission, so it is not retyped.
+		$stash  = Contact::take();
+		$values = $stash['values'];
+		$errors = $stash['errors'];
+
+		$old = static fn( string $key ): string => (string) ( $values[ $key ] ?? '' );
+
+		// The outcome key from the redirect, looked up locally — never
+		// printed from the URL.
+		$notice = '';
+		$kind   = '';
+
+		if ( isset( $_GET['tdh_contact'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$reason = sanitize_key( wp_unslash( (string) $_GET['tdh_contact'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$notice = (string) ( Contact::messages()[ $reason ] ?? '' );
+			$kind   = 'sent' === $reason ? 'ok' : 'error';
+		}
+
+		ob_start();
+		?>
+
+		<section class="section contact">
+			<div class="contact-inner">
+				<div class="contact-shell">
+
+					<aside class="contact-promise">
+						<div class="contact-promise-inner">
+							<p class="overline"><?php echo esc_html( (string) $args['eyebrow'] ); ?></p>
+							<h2><?php echo esc_html( (string) $args['heading'] ); ?></h2>
+							<p class="contact-lead"><?php echo esc_html( (string) $args['lead'] ); ?></p>
+
+							<ul class="contact-assurances">
+								<?php foreach ( (array) $args['assurances'] as $i => $item ) : ?>
+									<?php
+									/*
+									 * The rows arrive one after another rather than
+									 * all at once. --i drives the delay from CSS, so
+									 * adding a fourth assurance needs no new rule —
+									 * and the reduced-motion query zeroes the whole
+									 * thing without this markup knowing about it.
+									 */
+									?>
+									<li style="--i: <?php echo (int) $i; ?>">
+										<i><?php echo $icon( (string) $item['icon'] ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+										<div>
+											<b><?php echo esc_html( (string) $item['title'] ); ?></b>
+											<p><?php echo esc_html( (string) $item['copy'] ); ?></p>
+										</div>
+									</li>
+								<?php endforeach; ?>
+							</ul>
+
+							<p class="contact-status">
+								<span class="contact-dot" aria-hidden="true"></span>
+								<?php echo esc_html( (string) $args['status'] ); ?>
+							</p>
+						</div>
+					</aside>
+
+					<div class="contact-panel">
+
+						<?php if ( '' !== $notice ) : ?>
+							<div class="form-notice form-notice--<?php echo esc_attr( 'ok' === $kind ? 'ok' : 'error' ); ?>" role="status">
+								<?php echo $icon( 'ok' === $kind ? 'check' : 'shield-check', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+								<p><?php echo esc_html( $notice ); ?></p>
+							</div>
+						<?php endif; ?>
+
+						<?php if ( $errors ) : ?>
+							<div class="form-notice form-notice--error" role="alert">
+								<?php echo $icon( 'shield-check', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+								<div>
+									<?php foreach ( $errors as $error ) : ?>
+										<p><?php echo esc_html( (string) $error ); ?></p>
+									<?php endforeach; ?>
+								</div>
+							</div>
+						<?php endif; ?>
+
+						<form class="contact-form" method="post">
+
+							<?php echo Contact::form_fields(); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+
+							<?php
+							/*
+							 * The topic is a set of chips, not a dropdown. Four
+							 * options is below the count at which a select earns
+							 * its collapse, and a dropdown hides them all behind
+							 * a tap — so nobody discovers that "listing my
+							 * property" is a route until they go looking. The
+							 * posted value is identical either way: the handler
+							 * reads tdh_topic and checks it against topics().
+							 */
+							?>
+							<fieldset class="contact-topics">
+								<legend><?php esc_html_e( 'What is it about?', 'thirtydayhomes' ); ?></legend>
+
+								<div class="contact-chips">
+									<?php
+									$chosen = $old( 'topic' );
+									$chosen = array_key_exists( $chosen, Contact::topics() ) ? $chosen : 'renting';
+									?>
+									<?php foreach ( Contact::topics() as $key => $label ) : ?>
+										<label class="contact-chip">
+											<input type="radio" name="tdh_topic"
+												value="<?php echo esc_attr( $key ); ?>"
+												<?php checked( $chosen, $key ); ?>>
+											<span><?php echo esc_html( $label ); ?></span>
+										</label>
+									<?php endforeach; ?>
+								</div>
+							</fieldset>
+
+							<div class="form-grid">
+								<div class="form-field">
+									<label for="tdh-c-name"><?php esc_html_e( 'Your name', 'thirtydayhomes' ); ?></label>
+									<input id="tdh-c-name" name="tdh_name" type="text" autocomplete="name" required
+										value="<?php echo esc_attr( $old( 'name' ) ); ?>">
+								</div>
+
+								<div class="form-field">
+									<label for="tdh-c-email"><?php esc_html_e( 'Email address', 'thirtydayhomes' ); ?></label>
+									<input id="tdh-c-email" name="tdh_email" type="email" autocomplete="email" required
+										value="<?php echo esc_attr( $old( 'email' ) ); ?>">
+								</div>
+							</div>
+
+							<div class="form-field">
+								<label for="tdh-c-phone">
+									<?php esc_html_e( 'Phone', 'thirtydayhomes' ); ?>
+									<span class="label-note"><?php esc_html_e( '(optional)', 'thirtydayhomes' ); ?></span>
+								</label>
+								<input id="tdh-c-phone" name="tdh_phone" type="tel" autocomplete="tel"
+									value="<?php echo esc_attr( $old( 'phone' ) ); ?>">
+							</div>
+
+							<div class="form-field contact-message">
+								<label for="tdh-c-message"><?php esc_html_e( 'Message', 'thirtydayhomes' ); ?></label>
+								<textarea id="tdh-c-message" name="tdh_message" rows="7" required
+									placeholder="<?php esc_attr_e( 'Dates, neighborhood, how many people — whatever you already know.', 'thirtydayhomes' ); ?>"><?php echo esc_textarea( $old( 'message' ) ); ?></textarea>
+							</div>
+
+							<?php
+							/*
+							 * The honeypot. Off-screen and out of the tab order, so
+							 * a person never meets it and a bot fills it like every
+							 * other field. aria-hidden keeps a screen reader from
+							 * reading out a field its user must not complete.
+							 */
+							?>
+							<div class="tdh-hp" aria-hidden="true">
+								<label for="tdh-c-website"><?php esc_html_e( 'Leave this empty', 'thirtydayhomes' ); ?></label>
+								<input id="tdh-c-website" name="tdh_website" type="text" tabindex="-1" autocomplete="off">
+							</div>
+
+							<button class="gold-btn full contact-send" type="submit">
+								<?php esc_html_e( 'Send message', 'thirtydayhomes' ); ?>
+								<?php echo $icon( 'arrow-right', 17 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+							</button>
+
+							<p class="contact-fine">
+								<?php echo $icon( 'shield-check', 15 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+								<?php esc_html_e( 'Your details go to us and nobody else.', 'thirtydayhomes' ); ?>
+							</p>
+
+						</form>
+					</div>
+
+				</div>
+			</div>
+		</section>
+		<?php
+		return (string) ob_get_clean();
+	}
+
+	/**
 	 * The How it works page body.
 	 *
 	 * The prose version threw away the one thing this page's content actually

@@ -69,6 +69,10 @@ final class Core {
 
 			// Front end: the pricing page posts to it.
 			'checkout'   => new Billing\Checkout(),
+
+			// Front end: the contact page posts to itself, and the handler
+			// runs on template_redirect before any output.
+			'contact'    => new Contact(),
 		];
 
 		// Admin-only modules. Loading the editing UI on every front-end
