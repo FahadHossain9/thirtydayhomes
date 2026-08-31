@@ -56,7 +56,8 @@ final class Page_Layouts {
 	 */
 	private function layouts(): array {
 		return [
-			'about' => [ 'tdh-about' ],
+			'about'        => [ 'tdh-about' ],
+			'how-it-works' => [ 'tdh-how-it-works' ],
 		];
 	}
 

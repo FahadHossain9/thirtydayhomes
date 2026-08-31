@@ -82,6 +82,7 @@ final class Registrar {
 		// which made them uneditable by the person who owns the site —
 		// handoff principle 2, and Milestone 1 acceptance test 6.
 		$manager->register( new Widgets\About() );
+		$manager->register( new Widgets\How_It_Works() );
 	}
 
 	/**

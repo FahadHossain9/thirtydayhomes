@@ -1215,80 +1215,105 @@ final class Render {
 	 *
 	 * @param array<string,mixed> $args
 	 */
-	public static function how_it_works( array $args = [] ): string {
+	/**
+	 * The two tracks the page is built around.
+	 *
+	 * Public and separate so the Elementor widget seeds itself from exactly
+	 * what the shortcode renders — see the note on default_about_facts().
+	 *
+	 * Two tracks, not a list: the marketplace has exactly two audiences, and
+	 * the page's whole job is telling a renter and an owner apart before
+	 * either reads the other's steps.
+	 *
+	 * @return array<int,array<string,mixed>>
+	 */
+	public static function default_hiw_tracks(): array {
 
 		$homes   = (string) get_post_type_archive_link( Post_Types::LISTING );
 		$pricing = get_page_by_path( 'pricing' );
+
+		return [
+			[
+				'icon'    => 'search',
+				'eyebrow' => __( 'If you need a home', 'thirtydayhomes' ),
+				'heading' => __( 'For renters', 'thirtydayhomes' ),
+				'steps'   => [
+					[
+						'title' => __( 'Search', 'thirtydayhomes' ),
+						'copy'  => __( 'By neighborhood, by ZIP code, or by the hospital you are working at.', 'thirtydayhomes' ),
+					],
+					[
+						'title' => __( 'Compare', 'thirtydayhomes' ),
+						'copy'  => __( 'Homes are ordered by distance from where you need to be, and the full cost of a stay is on the listing before you inquire.', 'thirtydayhomes' ),
+					],
+					[
+						'title' => __( 'Get in touch', 'thirtydayhomes' ),
+						'copy'  => __( 'Contact the owner of the home directly. No agent in the middle, and no booking fee.', 'thirtydayhomes' ),
+					],
+				],
+				'cta'     => __( 'Find a home', 'thirtydayhomes' ),
+				'url'     => $homes,
+			],
+			[
+				'icon'    => 'key-round',
+				'eyebrow' => __( 'If you have a home', 'thirtydayhomes' ),
+				'heading' => __( 'For property owners', 'thirtydayhomes' ),
+				'steps'   => [
+					[
+						'title' => __( 'Join', 'thirtydayhomes' ),
+						'copy'  => __( 'Choose a membership for the number of homes you plan to list.', 'thirtydayhomes' ),
+					],
+					[
+						'title' => __( 'Publish', 'thirtydayhomes' ),
+						'copy'  => __( 'Add your furnished home. Every listing is reviewed before it goes live.', 'thirtydayhomes' ),
+					],
+					[
+						'title' => __( 'Take inquiries', 'thirtydayhomes' ),
+						'copy'  => __( 'Renters contact you directly, and you agree the terms between you.', 'thirtydayhomes' ),
+					],
+				],
+				'cta'     => __( 'See membership options', 'thirtydayhomes' ),
+				'url'     => $pricing ? (string) get_permalink( $pricing ) : '',
+			],
+		];
+	}
+
+	/**
+	 * @return array<int,array<string,string>>
+	 */
+	public static function default_hiw_faq(): array {
+		return [
+			[
+				'q' => __( 'How are search results ordered?', 'thirtydayhomes' ),
+				'a' => __( 'When you search by location or ZIP code, homes appear closest to farthest.', 'thirtydayhomes' ),
+			],
+			[
+				'q' => __( 'How do I know a home is available?', 'thirtydayhomes' ),
+				'a' => __( 'Each listing shows its available date and any blocked date ranges.', 'thirtydayhomes' ),
+			],
+			[
+				'q' => __( 'Are there extra fees?', 'thirtydayhomes' ),
+				'a' => __( 'Application, pet and refundable deposit amounts are itemised on every listing.', 'thirtydayhomes' ),
+			],
+			[
+				'q' => __( 'Why is the exact address not shown?', 'thirtydayhomes' ),
+				'a' => __( 'Listings show the neighborhood and an approximate map area. The full address is shared by the owner after you make contact — a deliberate choice, because a furnished home that is often empty should not have its address published.', 'thirtydayhomes' ),
+			],
+		];
+	}
+
+	public static function how_it_works( array $args = [] ): string {
+
 		$contact = get_page_by_path( 'contact' );
 
 		$args = wp_parse_args(
 			$args,
 			[
-				'tracks'      => [
-					[
-						'icon'    => 'search',
-						'eyebrow' => __( 'If you need a home', 'thirtydayhomes' ),
-						'heading' => __( 'For renters', 'thirtydayhomes' ),
-						'steps'   => [
-							[
-								'title' => __( 'Search', 'thirtydayhomes' ),
-								'copy'  => __( 'By neighborhood, by ZIP code, or by the hospital you are working at.', 'thirtydayhomes' ),
-							],
-							[
-								'title' => __( 'Compare', 'thirtydayhomes' ),
-								'copy'  => __( 'Homes are ordered by distance from where you need to be, and the full cost of a stay is on the listing before you inquire.', 'thirtydayhomes' ),
-							],
-							[
-								'title' => __( 'Get in touch', 'thirtydayhomes' ),
-								'copy'  => __( 'Contact the owner of the home directly. No agent in the middle, and no booking fee.', 'thirtydayhomes' ),
-							],
-						],
-						'cta'     => __( 'Find a home', 'thirtydayhomes' ),
-						'url'     => $homes,
-					],
-					[
-						'icon'    => 'key-round',
-						'eyebrow' => __( 'If you have a home', 'thirtydayhomes' ),
-						'heading' => __( 'For property owners', 'thirtydayhomes' ),
-						'steps'   => [
-							[
-								'title' => __( 'Join', 'thirtydayhomes' ),
-								'copy'  => __( 'Choose a membership for the number of homes you plan to list.', 'thirtydayhomes' ),
-							],
-							[
-								'title' => __( 'Publish', 'thirtydayhomes' ),
-								'copy'  => __( 'Add your furnished home. Every listing is reviewed before it goes live.', 'thirtydayhomes' ),
-							],
-							[
-								'title' => __( 'Take inquiries', 'thirtydayhomes' ),
-								'copy'  => __( 'Renters contact you directly, and you agree the terms between you.', 'thirtydayhomes' ),
-							],
-						],
-						'cta'     => __( 'See membership options', 'thirtydayhomes' ),
-						'url'     => $pricing ? (string) get_permalink( $pricing ) : '',
-					],
-				],
+				'tracks'      => self::default_hiw_tracks(),
 
 				'faq_eyebrow' => __( 'Before you ask', 'thirtydayhomes' ),
 				'faq_heading' => __( 'Frequently asked questions', 'thirtydayhomes' ),
-				'faq'         => [
-					[
-						'q' => __( 'How are search results ordered?', 'thirtydayhomes' ),
-						'a' => __( 'When you search by location or ZIP code, homes appear closest to farthest.', 'thirtydayhomes' ),
-					],
-					[
-						'q' => __( 'How do I know a home is available?', 'thirtydayhomes' ),
-						'a' => __( 'Each listing shows its available date and any blocked date ranges.', 'thirtydayhomes' ),
-					],
-					[
-						'q' => __( 'Are there extra fees?', 'thirtydayhomes' ),
-						'a' => __( 'Application, pet and refundable deposit amounts are itemised on every listing.', 'thirtydayhomes' ),
-					],
-					[
-						'q' => __( 'Why is the exact address not shown?', 'thirtydayhomes' ),
-						'a' => __( 'Listings show the neighborhood and an approximate map area. The full address is shared by the owner after you make contact — a deliberate choice, because a furnished home that is often empty should not have its address published.', 'thirtydayhomes' ),
-					],
-				],
+				'faq'         => self::default_hiw_faq(),
 
 				'ask_heading' => __( 'Still not sure?', 'thirtydayhomes' ),
 				'ask_copy'    => __( 'Ask us. We answer within one business day.', 'thirtydayhomes' ),
