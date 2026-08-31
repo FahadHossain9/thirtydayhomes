@@ -1071,11 +1071,25 @@ final class Render {
 				 * find-in-page can search inside a closed one; and it still
 				 * works with every script on the page blocked. No library
 				 * earns its place against that.
+				 *
+				 * The shared `name` makes the group exclusive — opening one
+				 * closes the rest, the way radio buttons work — and that is
+				 * also native, so it costs nothing. A browser too old to know
+				 * the attribute simply lets two stay open, which is a lesser
+				 * version rather than a broken one.
+				 *
+				 * The name is unique per render: two of these blocks on one
+				 * page would otherwise form a single group, and opening a
+				 * question in the second would silently close one in the
+				 * first.
 				 */
+				static $group = 0;
+				++$group;
+				$name = 'tdh-faq-' . $group;
 				?>
 				<div class="hiw-faq-list">
 					<?php foreach ( (array) $args['faq'] as $item ) : ?>
-						<details class="hiw-q">
+						<details class="hiw-q" name="<?php echo esc_attr( $name ); ?>">
 							<summary>
 								<span><?php echo esc_html( (string) $item['q'] ); ?></span>
 								<i aria-hidden="true"></i>

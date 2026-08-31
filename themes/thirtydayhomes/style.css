@@ -42,7 +42,11 @@ html { scroll-behavior: smooth; }
 	html { scroll-behavior: auto; }
 	*,
 	*::before,
-	*::after {
+	*::after,
+	/* ::details-content is NOT matched by the universal selector, so the FAQ
+	   accordion kept animating for someone who had asked it not to. Listed
+	   explicitly because there is no wildcard that covers it. */
+	::details-content {
 		animation-duration: 0.01ms !important;
 		animation-iteration-count: 1 !important;
 		transition-duration: 0.01ms !important;
@@ -2625,13 +2629,46 @@ img, video { max-width: 100%; height: auto; }
 
 /* --- The questions ------------------------------------------------------- */
 
-.hiw-faq { background: var( --bg-surface-tint ); }
+.hiw-faq {
+	background: var( --bg-surface-tint );
+
+	/* Lets a transition run TO `auto`, which height has never been able to
+	   animate to — the reason accordions have historically needed JavaScript
+	   to measure the panel first. Set here rather than on :root because the
+	   property inherits, so this scopes it to the FAQ and nothing else on
+	   the site changes behaviour. */
+	interpolate-size: allow-keywords;
+}
 
 .hiw-faq-list {
 	display: grid;
 	gap: var( --space-3 );
 	max-width: var( --container-form );
 }
+
+/* The open and close animation.
+   ------------------------------------------------------------------------
+   ::details-content is the box the browser wraps around everything after
+   the <summary>. Animating it needs two properties, not one:
+
+   block-size does the visible sliding.
+
+   content-visibility must be transitioned `allow-discrete`, because the
+   browser flips it to `hidden` the instant a <details> closes. Without
+   that, the panel vanishes on frame one and the closing animation plays
+   against an already-empty box — it looks like a snap, not a slide.
+
+   Both are progressive. A browser that knows neither opens the panel
+   instantly, which is exactly what this did before and is still correct. */
+.hiw-q::details-content {
+	block-size: 0;
+	overflow: hidden;
+	transition:
+		block-size var( --duration-base ) var( --ease ),
+		content-visibility var( --duration-base ) allow-discrete;
+}
+
+.hiw-q[open]::details-content { block-size: auto; }
 
 .hiw-q {
 	background: var( --bg-surface );
