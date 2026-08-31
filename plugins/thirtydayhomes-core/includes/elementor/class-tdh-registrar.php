@@ -76,6 +76,12 @@ final class Registrar {
 		$manager->register( new Widgets\Property_Grid() );
 		$manager->register( new Widgets\Split_Feature() );
 		$manager->register( new Widgets\Owner_CTA() );
+
+		// Whole-page widgets. These exist because the pages they cover
+		// shipped as bare shortcodes with every string as a PHP default,
+		// which made them uneditable by the person who owns the site —
+		// handoff principle 2, and Milestone 1 acceptance test 6.
+		$manager->register( new Widgets\About() );
 	}
 
 	/**

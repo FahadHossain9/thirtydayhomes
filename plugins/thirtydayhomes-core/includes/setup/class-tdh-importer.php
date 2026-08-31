@@ -62,8 +62,8 @@ final class Importer {
 				'description' => __( 'Five Pittsburgh medical facilities and four furnished listings with photographs — one live, one pending review, one hidden for billing.', 'thirtydayhomes' ),
 			],
 			'homepage'  => [
-				'label'       => __( 'Homepage layout', 'thirtydayhomes' ),
-				'description' => __( 'Builds the homepage as Elementor sections. Skipped when Elementor is not active; the shortcode version still renders.', 'thirtydayhomes' ),
+				'label'       => __( 'Editable page layouts', 'thirtydayhomes' ),
+				'description' => __( 'Builds the Home and About pages as Elementor sections, so their headings, copy and calls to action can be edited without a developer. A page already edited in Elementor is left alone. Skipped when Elementor is not active; the shortcode versions still render.', 'thirtydayhomes' ),
 			],
 		];
 	}
@@ -95,7 +95,7 @@ final class Importer {
 				match ( $step ) {
 					'structure' => ( new Site_Structure( $this ) )->run(),
 					'content'   => ( new Sample_Content( $this ) )->run(),
-					'homepage'  => ( new Homepage_Layout( $this ) )->run(),
+					'homepage'  => ( new Page_Layouts( $this ) )->run(),
 					default     => $this->warn( "unknown step: {$step}" ),
 				};
 			} catch ( \Throwable $e ) {

@@ -1432,11 +1432,120 @@ final class Render {
 	 *
 	 * @param array<string,mixed> $args
 	 */
-	public static function about( array $args = [] ): string {
+	/**
+	 * The three facts beside the statement.
+	 *
+	 * Public and separate so the Elementor widget seeds its repeater from
+	 * exactly what the shortcode renders. Two copies of this list would
+	 * drift the first time somebody edited one of them.
+	 *
+	 * Subject set large, predicate small, so the three read as sentences
+	 * rather than as a stat block. They are facts about how the marketplace
+	 * works, not achievements — this site has no users yet, and a rail of
+	 * invented numbers on the About page is the first thing a careful
+	 * visitor disbelieves.
+	 *
+	 * @return array<int,array<string,string>>
+	 */
+	public static function default_about_facts(): array {
+		return [
+			[
+				'value' => __( '30+ nights', 'thirtydayhomes' ),
+				'label' => __( 'is the minimum stay — long enough to unpack, short of signing a year.', 'thirtydayhomes' ),
+			],
+			[
+				'value' => __( 'Pittsburgh', 'thirtydayhomes' ),
+				'label' => __( 'is the first market. The platform is built to add more.', 'thirtydayhomes' ),
+			],
+			[
+				'value' => __( 'Every listing', 'thirtydayhomes' ),
+				'label' => __( 'is reviewed before it goes live on the site.', 'thirtydayhomes' ),
+			],
+		];
+	}
+
+	/**
+	 * @return array<int,array<string,string>>
+	 */
+	public static function default_about_cards(): array {
+		return [
+			[
+				'icon'  => 'shield-check',
+				'title' => __( 'Clear information', 'thirtydayhomes' ),
+				'copy'  => __( 'Rent, deposits, application and pet fees are itemised on every listing, so the full cost of a stay is visible before you get in touch.', 'thirtydayhomes' ),
+			],
+			[
+				'icon'  => 'key-round',
+				'title' => __( 'Direct communication', 'thirtydayhomes' ),
+				'copy'  => __( 'Inquiries go to the owner of the home. No agent in the middle, and no booking fee for renters.', 'thirtydayhomes' ),
+			],
+			[
+				'icon'  => 'bed-double',
+				'title' => __( 'Built for extended stays', 'thirtydayhomes' ),
+				'copy'  => __( 'Furnished homes you can search by distance from the hospital, campus or site you are working at.', 'thirtydayhomes' ),
+			],
+		];
+	}
+
+	/**
+	 * @return array<int,array<string,string>>
+	 */
+	public static function default_about_rules(): array {
+		return [
+			[
+				'title' => __( 'Accurate information', 'thirtydayhomes' ),
+				'copy'  => __( 'Describe the home, the terms and the stay as they actually are.', 'thirtydayhomes' ),
+			],
+			[
+				'title' => __( 'Respectful communication', 'thirtydayhomes' ),
+				'copy'  => __( 'There is a person at the other end of every inquiry, on both sides of it.', 'thirtydayhomes' ),
+			],
+			[
+				'title' => __( 'Fair Housing', 'thirtydayhomes' ),
+				'copy'  => __( 'Listings describe the property, not the ideal renter.', 'thirtydayhomes' ),
+			],
+			[
+				'title' => __( 'Property rules', 'thirtydayhomes' ),
+				'copy'  => __( 'Pets, parking, smoking and guests are acknowledged before an inquiry is sent.', 'thirtydayhomes' ),
+			],
+		];
+	}
+
+	/**
+	 * The two doors the page ends on.
+	 *
+	 * Two rather than one call to action, because About is the page both
+	 * audiences read, and sending a renter to the membership plans is the
+	 * wrong door.
+	 *
+	 * @return array<int,array<string,string>>
+	 */
+	public static function default_about_doors(): array {
 
 		$pricing = get_page_by_path( 'pricing' );
-		$fair    = get_page_by_path( 'fair-housing' );
 		$homes   = (string) get_post_type_archive_link( Post_Types::LISTING );
+
+		return [
+			[
+				'icon'  => 'search',
+				'title' => __( 'Looking for a home', 'thirtydayhomes' ),
+				'copy'  => __( 'Search furnished homes by neighborhood, ZIP code or hospital, and see the full cost before you inquire.', 'thirtydayhomes' ),
+				'cta'   => __( 'Find a home', 'thirtydayhomes' ),
+				'url'   => $homes,
+			],
+			[
+				'icon'  => 'key-round',
+				'title' => __( 'Have a property to list', 'thirtydayhomes' ),
+				'copy'  => __( 'Join as a member, publish your furnished home, and take inquiries directly from renters.', 'thirtydayhomes' ),
+				'cta'   => __( 'See membership options', 'thirtydayhomes' ),
+				'url'   => $pricing ? (string) get_permalink( $pricing ) : '',
+			],
+		];
+	}
+
+	public static function about( array $args = [] ): string {
+
+		$fair = get_page_by_path( 'fair-housing' );
 
 		$args = wp_parse_args(
 			$args,
@@ -1449,95 +1558,21 @@ final class Render {
 				 */
 				'statement'       => __( 'ThirtyDayHomes connects traveling professionals and families with verified furnished homes near the places they need to be — starting in Pittsburgh, and built to expand.', 'thirtydayhomes' ),
 
-				/*
-				 * Subject set large, predicate small, so the three read as
-				 * sentences rather than as a stat block. They are facts about
-				 * how the marketplace works, not achievements — this site has
-				 * no users yet, and a rail of invented numbers on the About
-				 * page is the first thing a careful visitor disbelieves.
-				 */
-				'facts'           => [
-					[
-						'value' => __( '30+ nights', 'thirtydayhomes' ),
-						'label' => __( 'is the minimum stay — long enough to unpack, short of signing a year.', 'thirtydayhomes' ),
-					],
-					[
-						'value' => __( 'Pittsburgh', 'thirtydayhomes' ),
-						'label' => __( 'is the first market. The platform is built to add more.', 'thirtydayhomes' ),
-					],
-					[
-						'value' => __( 'Every listing', 'thirtydayhomes' ),
-						'label' => __( 'is reviewed before it goes live on the site.', 'thirtydayhomes' ),
-					],
-				],
+				'facts'           => self::default_about_facts(),
 
 				'expect_eyebrow'  => __( 'For renters and owners', 'thirtydayhomes' ),
 				'expect_heading'  => __( 'What to expect', 'thirtydayhomes' ),
 				'expect_intro'    => __( 'Clear information, direct communication, and a thoughtfully designed experience for extended stays.', 'thirtydayhomes' ),
-				'expect_cards'    => [
-					[
-						'icon'  => 'shield-check',
-						'title' => __( 'Clear information', 'thirtydayhomes' ),
-						'copy'  => __( 'Rent, deposits, application and pet fees are itemised on every listing, so the full cost of a stay is visible before you get in touch.', 'thirtydayhomes' ),
-					],
-					[
-						'icon'  => 'key-round',
-						'title' => __( 'Direct communication', 'thirtydayhomes' ),
-						'copy'  => __( 'Inquiries go to the owner of the home. No agent in the middle, and no booking fee for renters.', 'thirtydayhomes' ),
-					],
-					[
-						'icon'  => 'bed-double',
-						'title' => __( 'Built for extended stays', 'thirtydayhomes' ),
-						'copy'  => __( 'Furnished homes you can search by distance from the hospital, campus or site you are working at.', 'thirtydayhomes' ),
-					],
-				],
+				'expect_cards'    => self::default_about_cards(),
 
 				'rules_eyebrow'   => __( 'The ground rules', 'thirtydayhomes' ),
 				'rules_heading'   => __( 'Rules and regulations', 'thirtydayhomes' ),
 				'rules_intro'     => __( 'Renters and landlords must provide accurate information, communicate respectfully, follow Fair Housing requirements, and acknowledge property-specific rules before an inquiry is sent.', 'thirtydayhomes' ),
-				'rules'           => [
-					[
-						'title' => __( 'Accurate information', 'thirtydayhomes' ),
-						'copy'  => __( 'Describe the home, the terms and the stay as they actually are.', 'thirtydayhomes' ),
-					],
-					[
-						'title' => __( 'Respectful communication', 'thirtydayhomes' ),
-						'copy'  => __( 'There is a person at the other end of every inquiry, on both sides of it.', 'thirtydayhomes' ),
-					],
-					[
-						'title' => __( 'Fair Housing', 'thirtydayhomes' ),
-						'copy'  => __( 'Listings describe the property, not the ideal renter.', 'thirtydayhomes' ),
-					],
-					[
-						'title' => __( 'Property rules', 'thirtydayhomes' ),
-						'copy'  => __( 'Pets, parking, smoking and guests are acknowledged before an inquiry is sent.', 'thirtydayhomes' ),
-					],
-				],
+				'rules'           => self::default_about_rules(),
 				'rules_link_text' => __( 'Read our Fair Housing commitment', 'thirtydayhomes' ),
 				'rules_link_url'  => $fair ? (string) get_permalink( $fair ) : '',
 
-				/*
-				 * The page ends on the fork the whole marketplace is built
-				 * around. Two doors rather than one call to action, because
-				 * About is the page both audiences read, and sending a renter
-				 * to the membership plans is the wrong door.
-				 */
-				'doors'           => [
-					[
-						'icon'  => 'search',
-						'title' => __( 'Looking for a home', 'thirtydayhomes' ),
-						'copy'  => __( 'Search furnished homes by neighborhood, ZIP code or hospital, and see the full cost before you inquire.', 'thirtydayhomes' ),
-						'cta'   => __( 'Find a home', 'thirtydayhomes' ),
-						'url'   => $homes,
-					],
-					[
-						'icon'  => 'key-round',
-						'title' => __( 'Have a property to list', 'thirtydayhomes' ),
-						'copy'  => __( 'Join as a member, publish your furnished home, and take inquiries directly from renters.', 'thirtydayhomes' ),
-						'cta'   => __( 'See membership options', 'thirtydayhomes' ),
-						'url'   => $pricing ? (string) get_permalink( $pricing ) : '',
-					],
-				],
+				'doors'           => self::default_about_doors(),
 
 				// Every placeholder page on this site says so on its face.
 				// About stays placeholder until the client signs the copy off.
