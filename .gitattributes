@@ -27,6 +27,14 @@
 *.bat   text eol=crlf
 *.cmd   text eol=crlf
 
+# And the opposite exception, which the deploy depends on. A shell script
+# checked out with CRLF fails on the server with
+#     /usr/bin/env: 'bash\r': No such file or directory
+# because the carriage return becomes part of the interpreter's name. The
+# rule at the top already gives LF, but this states it where someone editing
+# a .sh on Windows will see it.
+*.sh    text eol=lf
+
 # Binary — never touch these.
 *.webp  binary
 *.png   binary

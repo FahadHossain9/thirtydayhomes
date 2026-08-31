@@ -1,0 +1,96 @@
+name: Deploy to thirtydayhomes.com
+
+# Every push to main goes live.
+#
+# workflow_dispatch is here too, so a deploy can be re-run by hand from the
+# Actions tab without inventing an empty commit — useful when a deploy failed
+# for a reason outside the code, such as the host being briefly unreachable.
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+# One deploy at a time. Two overlapping rsyncs into the same directory can
+# interleave and leave a half-written plugin serving requests. Later pushes
+# queue rather than cancel, so the newest commit is always the one that ends
+# up live.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the commit being deployed
+        uses: actions/checkout@v4
+
+      # Fail early and loudly on the one mistake that silently half-deploys:
+      # changing the plugin without bumping its version. Core::maybe_upgrade()
+      # only reinstalls roles and tables when the stored version is behind, so
+      # a capability change shipped without a bump leaves the live site
+      # running new code against old permissions.
+      - name: Check the plugin version was bumped
+        run: |
+          HEADER=$(grep -oP '^\s*\*\s*Version:\s*\K[0-9.]+' plugins/thirtydayhomes-core/thirtydayhomes-core.php)
+          CONST=$(grep -oP "const VERSION\s*=\s*'\K[0-9.]+" plugins/thirtydayhomes-core/thirtydayhomes-core.php)
+
+          echo "plugin header: $HEADER"
+          echo "VERSION const: $CONST"
+
+          if [ "$HEADER" != "$CONST" ]; then
+            echo "::error::Plugin header says $HEADER but VERSION says $CONST. Make them match."
+            exit 1
+          fi
+
+          if git rev-parse HEAD~1 >/dev/null 2>&1; then
+            CHANGED=$(git diff --name-only HEAD~1 HEAD -- plugins/thirtydayhomes-core || true)
+            PREV=$(git show HEAD~1:plugins/thirtydayhomes-core/thirtydayhomes-core.php 2>/dev/null | grep -oP "const VERSION\s*=\s*'\K[0-9.]+" || echo "")
+
+            if [ -n "$CHANGED" ] && [ "$PREV" = "$CONST" ]; then
+              echo "::warning::The plugin changed but VERSION is still $CONST. Roles and tables will not be re-registered."
+            fi
+          fi
+
+      - name: Load the deploy key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      # Pinning the host key rather than accepting whatever answers. Without
+      # this, StrictHostKeyChecking has to be turned off, and a deploy would
+      # happily hand its key to any machine that took over the address.
+      - name: Trust the server's host key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          REPO_DIR: ${{ secrets.REPO_DIR }}
+          WP_DIR: ${{ secrets.WP_DIR }}
+        run: |
+          ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            "REPO_DIR='$REPO_DIR' WP_DIR='$WP_DIR' BRANCH=main bash '$REPO_DIR/tools/deploy.sh'"
+
+      - name: Check the site still answers
+        env:
+          SITE: ${{ secrets.SITE_URL }}
+        run: |
+          # A deploy that leaves a fatal error is worse than one that fails,
+          # because nothing tells you. Three tries, because a shared host can
+          # be slow to recycle PHP workers right after files change.
+          for i in 1 2 3; do
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$SITE" || echo 000)
+            echo "attempt $i: HTTP $CODE"
+            [ "$CODE" = "200" ] && exit 0
+            sleep 5
+          done
+
+          echo "::error::$SITE did not return 200 after the deploy."
+          exit 1

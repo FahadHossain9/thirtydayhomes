@@ -256,7 +256,7 @@ final class Webhook {
 	}
 
 	/**
-	 * Someone finished paying. Link the customer to the user.
+	 * Someone finished paying. Link the customer, then apply the subscription.
 	 *
 	 * @param array<string,mixed> $session
 	 */
@@ -277,14 +277,25 @@ final class Webhook {
 			Membership::apply( $user_id, [ 'customer' => $customer ] );
 		}
 
-		// The subscription itself carries the price, period end and status,
-		// and arrives as its own event moments later. Nothing is granted
-		// here, so a malformed or partial session cannot hand out allowance.
+		/*
+		 * And then apply the subscription from here too, rather than waiting
+		 * for its own event.
+		 *
+		 * The subscription events for a first payment can arrive BEFORE this
+		 * one, and until this runs there is no customer id to look the user
+		 * up by — so those events find nobody and return without granting
+		 * anything. Doing the work here as well means the allowance lands
+		 * whichever of the two arrives last.
+		 */
+		$subscription_id = is_string( $session['subscription'] ?? null ) ? (string) $session['subscription'] : '';
+
+		if ( '' !== $subscription_id ) {
+			$this->apply_subscription( $user_id, $subscription_id, $mode );
+		}
 	}
 
 	/**
-	 * The subscription changed. This is what actually grants or removes
-	 * allowance.
+	 * The subscription changed.
 	 *
 	 * @param array<string,mixed> $subscription
 	 */
@@ -294,48 +305,121 @@ final class Webhook {
 		$user_id  = Membership::user_for_customer( $customer );
 
 		if ( ! $user_id ) {
+			// No link yet. checkout.session.completed carries it and will do
+			// this work itself when it arrives.
 			return;
 		}
 
-		$price_id = (string) ( $subscription['items']['data'][0]['price']['id'] ?? '' );
-		$plan     = Stripe::plan_for_price( $price_id, $mode );
-
-		$period_end = (int) ( $subscription['current_period_end'] ?? 0 );
-		$cancelling = ! empty( $subscription['cancel_at_period_end'] );
-
-		$changes = [
-			'subscription' => (string) ( $subscription['id'] ?? '' ),
-			'expires'      => $period_end,
-		];
+		$id = (string) ( $subscription['id'] ?? '' );
 
 		if ( 'customer.subscription.deleted' === $type ) {
-			// Gone for good. Allowance goes to zero the moment it ends rather
-			// than being left for a cron to notice.
+			/*
+			 * Deletion is the one case not to re-fetch. The object is gone,
+			 * so a lookup would 404 and leave a cancelled member publishing.
+			 * The event itself is authoritative here: it says it is over.
+			 */
 			Membership::apply(
 				$user_id,
-				array_merge( $changes, [ 'status' => Membership::EXPIRED, 'quota' => 0 ] )
+				[
+					'subscription' => $id,
+					'status'       => Membership::EXPIRED,
+					'quota'        => 0,
+					'expires'      => self::period_end( $subscription ),
+				]
 			);
 
 			return;
 		}
 
-		$changes['status'] = self::map_status( (string) ( $subscription['status'] ?? '' ), $cancelling );
+		$this->apply_subscription( $user_id, $id, $mode, $subscription );
+	}
+
+	/**
+	 * Write membership from the subscription's CURRENT state.
+	 *
+	 * ─── WHY THIS RE-FETCHES INSTEAD OF USING THE PAYLOAD ──────────────────
+	 *
+	 * Stripe does not guarantee the order events arrive in, and a first
+	 * payment fires several within the same second. In testing,
+	 * `customer.subscription.created` — carrying status `incomplete`, which
+	 * is what a subscription is before its first payment settles — arrived
+	 * AFTER `customer.subscription.updated` carrying `active`. Applied in
+	 * arrival order, the older snapshot won: the landlord had paid, and the
+	 * dashboard said "No active plan" with an allowance of zero.
+	 *
+	 * Each event body is a snapshot of the moment it was created, so no
+	 * amount of care in reading it fixes this. Asking the API for the
+	 * subscription gives the state as it is NOW, which is the same answer
+	 * whichever event prompted the question. Late, duplicated and reordered
+	 * deliveries all converge on the truth.
+	 *
+	 * @param array<string,mixed> $fallback Event payload, used only if the
+	 *                                      API cannot be reached.
+	 */
+	private function apply_subscription( int $user_id, string $subscription_id, string $mode, array $fallback = [] ): void {
+
+		if ( '' === $subscription_id ) {
+			return;
+		}
+
+		$response = Stripe::api_get( 'subscriptions/' . rawurlencode( $subscription_id ), $mode );
+
+		if ( $response['ok'] ) {
+			$subscription = $response['body'];
+		} elseif ( $fallback ) {
+			// Stripe unreachable. The snapshot is worse than the live object
+			// but far better than ignoring a payment.
+			$subscription = $fallback;
+		} else {
+			return;
+		}
+
+		$price_id   = (string) ( $subscription['items']['data'][0]['price']['id'] ?? '' );
+		$plan       = Stripe::plan_for_price( $price_id, $mode );
+		$status     = self::map_status( (string) ( $subscription['status'] ?? '' ), ! empty( $subscription['cancel_at_period_end'] ) );
+
+		$changes = [
+			'subscription' => $subscription_id,
+			'expires'      => self::period_end( $subscription ),
+			'status'       => $status,
+		];
 
 		/*
-		 * Quota follows the plan, and only when the subscription is one that
-		 * should be publishing. An unrecognised Price grants nothing — see
-		 * Stripe::plan_for_price(). A past-due member keeps their listings on
-		 * hold rather than losing the allowance outright, so paying restores
-		 * them without republishing anything.
+		 * Quota follows the plan, and only while the subscription should be
+		 * publishing. An unrecognised Price grants nothing — see
+		 * Stripe::plan_for_price(). A past-due member KEEPS their allowance,
+		 * so paying restores their listings without republishing anything.
 		 */
-		if ( null !== $plan && Membership::ACTIVE === $changes['status'] ) {
+		if ( null !== $plan && Membership::ACTIVE === $status ) {
 			$changes['quota'] = (int) $plan['listings'];
 			$changes['plan']  = (string) $plan['label'];
-		} elseif ( in_array( $changes['status'], [ Membership::EXPIRED, Membership::NONE ], true ) ) {
+		} elseif ( in_array( $status, [ Membership::EXPIRED, Membership::NONE ], true ) ) {
 			$changes['quota'] = 0;
 		}
 
 		Membership::apply( $user_id, $changes );
+	}
+
+	/**
+	 * When the paid period ends.
+	 *
+	 * Read from the subscription, then from its first item. Stripe has been
+	 * moving period fields down onto items, and an account on a newer API
+	 * version can send one shape while another sends the other. Missing it
+	 * silently stores an expiry of zero, which reads on the dashboard as
+	 * "Renews: Not yet" for somebody who has actually paid.
+	 *
+	 * @param array<string,mixed> $subscription
+	 */
+	private static function period_end( array $subscription ): int {
+
+		$end = $subscription['current_period_end'] ?? null;
+
+		if ( null === $end ) {
+			$end = $subscription['items']['data'][0]['current_period_end'] ?? null;
+		}
+
+		return (int) $end;
 	}
 
 	/**
