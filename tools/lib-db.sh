@@ -83,6 +83,20 @@ tdh_db_defaults_file() {
 	echo "$cnf"
 }
 
+# Which route the last export or import actually took. Read it AFTER the
+# call, never before.
+#
+# There was a tdh_db_method() here that tried to work this out in advance by
+# running `wp db size`. It was wrong every time: `db size` is a plain SQL
+# query through PHP's mysqli and never touches proc_open, so it succeeded on
+# a host where `db export` could not run, and the backup log cheerfully
+# announced "via wp-cli" while every dump was going through the fallback.
+#
+# A log line that is confidently wrong is worse than no log line — it is the
+# one thing someone will believe at 2am. So this is set by the code that
+# actually did the work.
+TDH_DB_VIA="not run yet"
+
 # Dump the database to $1. Returns non-zero on failure.
 tdh_db_export() {
 
@@ -90,8 +104,11 @@ tdh_db_export() {
 
 	# Preferred. Works wherever proc_open is allowed.
 	if "$WP_CLI" --path="$WP_DIR" db export "$out" --add-drop-table --quiet 2>/dev/null; then
+		TDH_DB_VIA="wp-cli"
 		return 0
 	fi
+
+	TDH_DB_VIA="mysqldump directly (PHP's proc_open is disabled on this host)"
 
 	db="$(tdh_db_conf DB_NAME)"
 	[ -n "$db" ] || return 1
@@ -139,8 +156,11 @@ tdh_db_import() {
 	local file="$1" cnf db
 
 	if "$WP_CLI" --path="$WP_DIR" db import "$file" --quiet 2>/dev/null; then
+		TDH_DB_VIA="wp-cli"
 		return 0
 	fi
+
+	TDH_DB_VIA="mysql directly (PHP's proc_open is disabled on this host)"
 
 	db="$(tdh_db_conf DB_NAME)"
 	[ -n "$db" ] || return 1
@@ -156,11 +176,3 @@ tdh_db_import() {
 	return 1
 }
 
-# Which route will actually be used, for the log.
-tdh_db_method() {
-	if "$WP_CLI" --path="$WP_DIR" db size --quiet >/dev/null 2>&1; then
-		echo "wp-cli"
-	else
-		echo "mysqldump directly (PHP's proc_open is disabled on this host)"
-	fi
-}

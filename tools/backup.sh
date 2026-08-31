@@ -35,6 +35,23 @@
 set -euo pipefail
 
 # ─── settings ──────────────────────────────────────────────────────────────
+#
+# cron runs with almost no environment — often no HOME and a PATH of just
+# /usr/bin:/bin. Every path below is built from $HOME, so if it is missing
+# they all resolve to "/domains/..." and the job fails at 03:17 with nobody
+# watching. Derived from the passwd entry when it is not set, which is what
+# an interactive login would have done.
+if [ -z "${HOME:-}" ]; then
+	HOME="$(getent passwd "$(id -u)" 2>/dev/null | cut -d: -f6)"
+	export HOME
+fi
+
+[ -n "${HOME:-}" ] || { echo "backup FAILED: HOME is not set and could not be determined" >&2; exit 1; }
+
+# wp-cli is usually in ~/bin, which is on an interactive PATH and not on
+# cron's.
+PATH="$HOME/bin:$PATH"
+export PATH
 
 WP_DIR="${WP_DIR:-$HOME/domains/thirtydayhomes.com/public_html}"
 DEST="${DEST:-$HOME/backups/thirtydayhomes}"
@@ -76,9 +93,10 @@ say "backing up to $RUN"
 
 say "database"
 
-echo "  via $(tdh_db_method)"
-
 tdh_db_export "$RUN/database.sql" || die "database export failed"
+
+# Reported AFTER the fact, by the code that did the work — see lib-db.sh.
+echo "  via $TDH_DB_VIA"
 
 # An empty or near-empty file is a failure that reported success. mysqldump
 # can exit 0 having written only its header if it is refused a table.

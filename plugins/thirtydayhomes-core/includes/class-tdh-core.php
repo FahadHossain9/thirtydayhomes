@@ -102,6 +102,11 @@ final class Core {
 			// Reads and writes the SMTP settings TDH\Smtp sends with. Admin
 			// only: it is a screen, and the sender itself is registered above.
 			$this->modules['email'] = new Admin\Mail_Settings();
+
+			// The security baseline, for everyone without a terminal. Its
+			// one instruction is "run this again after any change", which
+			// was useless while it needed SSH.
+			$this->modules['security'] = new Admin\Security_Screen();
 		}
 
 		// Client review mode. Registers nothing unless TDH_DEMO_MODE is on
