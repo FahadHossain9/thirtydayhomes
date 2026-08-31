@@ -712,14 +712,20 @@ final class Render {
 		$args = wp_parse_args(
 			$args,
 			[
-				'eyebrow'  => __( 'Simple, transparent membership', 'thirtydayhomes' ),
-				'heading'  => __( 'More listings. Better value.', 'thirtydayhomes' ),
-				'intro'    => __( 'Automatic volume pricing rewards landlords who publish more than one home.', 'thirtydayhomes' ),
-				'currency' => '$',
+				'eyebrow'          => __( 'Simple, transparent membership', 'thirtydayhomes' ),
+				'heading'          => __( 'More listings. Better value.', 'thirtydayhomes' ),
+				'intro'            => __( 'Automatic volume pricing rewards landlords who publish more than one home.', 'thirtydayhomes' ),
+				'currency'         => '$',
+
+				'included_heading' => __( 'Included in every plan', 'thirtydayhomes' ),
+				'features'         => self::plan_features(),
+
+				'note'             => __( 'The discount applies automatically as homes are added.', 'thirtydayhomes' ),
+				'note_emphasis'    => __( 'Prices shown are not final and are awaiting client confirmation.', 'thirtydayhomes' ),
 			]
 		);
 
-		$features  = self::plan_features();
+		$features = (array) $args['features'];
 		$signed_in = is_user_logged_in();
 
 		/*
@@ -951,22 +957,28 @@ final class Render {
 				<?php endforeach; ?>
 			</div>
 
-			<section class="plan-included">
-				<h2><?php esc_html_e( 'Included in every plan', 'thirtydayhomes' ); ?></h2>
-				<ul>
-					<?php foreach ( $features as $feature ) : ?>
-						<li>
-							<?php echo $icon( 'check', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
-							<span><?php echo esc_html( (string) $feature ); ?></span>
-						</li>
-					<?php endforeach; ?>
-				</ul>
-			</section>
+			<?php if ( $features ) : ?>
+				<section class="plan-included">
+					<h2><?php echo esc_html( (string) $args['included_heading'] ); ?></h2>
+					<ul>
+						<?php foreach ( $features as $feature ) : ?>
+							<li>
+								<?php echo $icon( 'check', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+								<span><?php echo esc_html( (string) $feature ); ?></span>
+							</li>
+						<?php endforeach; ?>
+					</ul>
+				</section>
+			<?php endif; ?>
 
-			<p class="pricing-note">
-				<?php esc_html_e( 'The discount applies automatically as homes are added.', 'thirtydayhomes' ); ?>
-				<strong><?php esc_html_e( 'Prices shown are not final and are awaiting client confirmation.', 'thirtydayhomes' ); ?></strong>
-			</p>
+			<?php if ( '' !== $args['note'] || '' !== $args['note_emphasis'] ) : ?>
+				<p class="pricing-note">
+					<?php echo esc_html( (string) $args['note'] ); ?>
+					<?php if ( '' !== $args['note_emphasis'] ) : ?>
+						<strong><?php echo esc_html( (string) $args['note_emphasis'] ); ?></strong>
+					<?php endif; ?>
+				</p>
+			<?php endif; ?>
 
 		</div>
 		<?php
@@ -989,32 +1001,44 @@ final class Render {
 	 *
 	 * @param array<string,mixed> $args
 	 */
+	/**
+	 * The three assurances beside the form.
+	 *
+	 * Public and separate so the Elementor widget seeds itself from exactly
+	 * what the shortcode renders — see the note on default_about_facts().
+	 *
+	 * @return array<int,array<string,string>>
+	 */
+	public static function default_contact_assurances(): array {
+		return [
+			[
+				'icon'  => 'calendar-days',
+				'title' => __( 'One business day', 'thirtydayhomes' ),
+				'copy'  => __( 'That is how long a reply takes. If it is urgent, say so in the message and it moves up the pile.', 'thirtydayhomes' ),
+			],
+			[
+				'icon'  => 'key-round',
+				'title' => __( 'Renting or listing', 'thirtydayhomes' ),
+				'copy'  => __( 'Both come here. Choosing what it is about only routes it to whoever answers fastest.', 'thirtydayhomes' ),
+			],
+			[
+				'icon'  => 'shield-check',
+				'title' => __( 'Only we see it', 'thirtydayhomes' ),
+				'copy'  => __( 'Your message is not published anywhere and your address is never passed on.', 'thirtydayhomes' ),
+			],
+		];
+	}
+
 	public static function contact( array $args = [] ): string {
 
 		$args = wp_parse_args(
 			$args,
 			[
-				'eyebrow'  => __( 'We read every message', 'thirtydayhomes' ),
-				'heading'  => __( 'Tell us what you need.', 'thirtydayhomes' ),
-				'lead'     => __( 'A real person answers this, in Pittsburgh, from the same team that reviews every home on the site.', 'thirtydayhomes' ),
-				'status'   => __( 'Someone reads this inbox every business day', 'thirtydayhomes' ),
-				'assurances' => [
-					[
-						'icon'  => 'calendar-days',
-						'title' => __( 'One business day', 'thirtydayhomes' ),
-						'copy'  => __( 'That is how long a reply takes. If it is urgent, say so in the message and it moves up the pile.', 'thirtydayhomes' ),
-					],
-					[
-						'icon'  => 'key-round',
-						'title' => __( 'Renting or listing', 'thirtydayhomes' ),
-						'copy'  => __( 'Both come here. Choosing what it is about only routes it to whoever answers fastest.', 'thirtydayhomes' ),
-					],
-					[
-						'icon'  => 'shield-check',
-						'title' => __( 'Only we see it', 'thirtydayhomes' ),
-						'copy'  => __( 'Your message is not published anywhere and your address is never passed on.', 'thirtydayhomes' ),
-					],
-				],
+				'eyebrow'    => __( 'We read every message', 'thirtydayhomes' ),
+				'heading'    => __( 'Tell us what you need.', 'thirtydayhomes' ),
+				'lead'       => __( 'A real person answers this, in Pittsburgh, from the same team that reviews every home on the site.', 'thirtydayhomes' ),
+				'status'     => __( 'Someone reads this inbox every business day', 'thirtydayhomes' ),
+				'assurances' => self::default_contact_assurances(),
 			]
 		);
 

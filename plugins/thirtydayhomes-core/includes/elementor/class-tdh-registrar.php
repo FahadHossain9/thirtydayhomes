@@ -83,6 +83,8 @@ final class Registrar {
 		// handoff principle 2, and Milestone 1 acceptance test 6.
 		$manager->register( new Widgets\About() );
 		$manager->register( new Widgets\How_It_Works() );
+		$manager->register( new Widgets\Pricing() );
+		$manager->register( new Widgets\Contact() );
 	}
 
 	/**

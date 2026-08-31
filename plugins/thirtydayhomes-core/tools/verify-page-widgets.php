@@ -103,6 +103,24 @@ $pages = [
 		'expect'    => [ 'If you are moving', 'Common questions' ],
 		'keeps'     => 'For property owners',
 	],
+	'Pricing'       => [
+		'widget'    => 'tdh-pricing',
+		'shortcode' => '[tdh_pricing]',
+		'hooks'     => [ 'pricing-grid', 'plan-tier', 'plan-price', 'plan-included', 'pricing-note' ],
+		'controls'  => [ 'eyebrow', 'heading', 'intro', 'included_heading', 'features', 'note', 'note_emphasis' ],
+		'edit'      => [ 'heading' => 'One home or ten', 'included_heading' => 'Every plan includes' ],
+		'expect'    => [ 'One home or ten', 'Every plan includes' ],
+		'keeps'     => 'per home',
+	],
+	'Contact'       => [
+		'widget'    => 'tdh-contact',
+		'shortcode' => '[tdh_contact]',
+		'hooks'     => [ 'contact-shell', 'contact-promise', 'contact-assurances', 'contact-status', 'contact-panel', 'contact-form' ],
+		'controls'  => [ 'eyebrow', 'heading', 'lead', 'assurances', 'status' ],
+		'edit'      => [ 'heading' => 'Say hello.', 'status' => 'Answered every weekday' ],
+		'expect'    => [ 'Say hello.', 'Answered every weekday' ],
+		'keeps'     => 'Send message',
+	],
 ];
 
 foreach ( $pages as $name => $page ) {

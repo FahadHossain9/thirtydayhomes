@@ -58,6 +58,8 @@ final class Page_Layouts {
 		return [
 			'about'        => [ 'tdh-about' ],
 			'how-it-works' => [ 'tdh-how-it-works' ],
+			'pricing'      => [ 'tdh-pricing' ],
+			'contact'      => [ 'tdh-contact' ],
 		];
 	}
 
