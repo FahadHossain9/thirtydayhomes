@@ -2484,27 +2484,205 @@ img, video { max-width: 100%; height: auto; }
 @media ( max-width: 62rem ) {
 	.site-header { height: var( --header-height-sm ); }
 
-	.site-nav {
-		display: none;
-		position: absolute;
-		top: var( --header-height-sm );
-		left: var( --space-3 );
-		right: var( --space-3 );
-		padding: var( --space-5 );
-		background: var( --bg-inverse );
-		box-shadow: var( --shadow-md );
-	}
-
-	.site-nav.open { display: block; }
-	.site-nav ul { flex-direction: column; align-items: stretch; gap: var( --space-4 ); }
-	.site-nav a { color: var( --text-inverse ); }
 	.nav-toggle { display: block; }
 
 	/* The mark and wordmark come down with the header, or a 65px tile sits
 	   in a 72px bar with nothing above or below it. */
 	.logo > i { width: var( --logo-tile-sm ); height: calc( var( --logo-tile-sm ) * 1.15 ); }
 	.logo b, .logo strong { font-size: var( --text-xl ); }
+
+	/* --- The drawer ---------------------------------------------------
+	   ------------------------------------------------------------------
+	   NOT display:none/block, which is what the first version used and why
+	   nothing could animate — display is not an animatable property, so the
+	   panel simply appeared. visibility plus opacity plus transform can all
+	   transition, and visibility:hidden still removes it from the tab order
+	   and from a screen reader, which opacity:0 alone would not.
+
+	   Everything here is inside `.has-js`. Without JavaScript there is no
+	   way to open a drawer, so hiding the navigation would leave a phone
+	   visitor with no way to reach any page at all; unstyled, it falls back
+	   to a plain stacked list that works. */
+	.has-js .site-nav {
+		position: absolute;
+		top: var( --header-height-sm );
+		left: 0;
+		right: 0;
+		/* Above the header's own children, not above the page: the header
+		   is a stacking context, so this number only ever competes with
+		   its siblings inside it. The backdrop is positioned relative to
+		   the header instead — see .nav-backdrop. */
+		z-index: 1;
+
+		visibility: hidden;
+		opacity: 0;
+		transform: translateY( -0.5rem );
+
+		padding: var( --space-5 ) var( --gutter-narrow ) var( --space-7 );
+		background: var( --color-navy );
+		border-top: 1px solid var( --color-border-on-dark-faint );
+		box-shadow: var( --shadow-lg );
+
+		transition:
+			opacity var( --duration-base ) var( --ease ),
+			transform var( --duration-base ) var( --ease ),
+			visibility 0s linear var( --duration-base );
+	}
+
+	.has-js .site-nav.open {
+		visibility: visible;
+		opacity: 1;
+		transform: translateY( 0 );
+		/* No delay on the way in, or the panel waits before appearing. */
+		transition-delay: 0s, 0s, 0s;
+	}
+
+	/* A gold hairline where the panel meets the header — the same accent
+	   that closes the page banner, so the two read as one system. */
+	.has-js .site-nav::before {
+		content: "";
+		position: absolute;
+		inset-inline: 0;
+		top: -1px;
+		height: 2px;
+		background: linear-gradient(
+			to right,
+			var( --color-gold ) 0%,
+			rgba( 215, 185, 103, 0.25 ) 38%,
+			transparent 70%
+		);
+	}
+
+	.site-nav ul {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 0;
+	}
+
+	/* A hairline between rows rather than a gap. Big empty gaps read as
+	   items that have drifted apart; a rule reads as a list. */
+	.has-js .site-nav li + li { border-top: 1px solid var( --color-border-on-dark-faint ); }
+
+	.has-js .site-nav a {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		/* 52px of height, so a thumb hits the row and not the word. */
+		padding: var( --space-4 ) var( --space-2 );
+		color: var( --text-inverse );
+		font-size: var( --text-h5 );
+		font-family: var( --font-heading );
+	}
+
+	/* NO chevron on the rows.
+	   ------------------------------------------------------------------
+	   There was one, and it was a lie. A right-pointing chevron on a menu
+	   item means "this opens a submenu" — that is what the convention has
+	   meant for twenty years. These rows have no submenu and cannot have
+	   one: the menu is rendered with depth => 1, so a child item would not
+	   appear even if the client added it in Appearance → Menus.
+
+	   An affordance promising something that does not exist is worse than
+	   none. The row is full width, separated by a rule, and turns gold
+	   under a finger; nothing about it is ambiguous. */
+	.has-js .site-nav a:hover,
+	.has-js .site-nav a:focus-visible { color: var( --color-gold-light ); }
+
+	/* The row itself lights up, so the target is the whole strip and not
+	   the few characters of the word. */
+	.has-js .site-nav li:not( .nav-cta ) > a {
+		margin-inline: calc( var( --space-2 ) * -1 );
+		padding-inline: var( --space-2 );
+		border-radius: var( --radius-sm );
+		transition: background-color var( --duration-fast ) var( --ease ),
+			color var( --duration-fast ) var( --ease );
+	}
+
+	.has-js .site-nav li:not( .nav-cta ) > a:hover,
+	.has-js .site-nav li:not( .nav-cta ) > a:focus-visible {
+		background: var( --color-surface-on-dark );
+	}
+
+	/* The call to action keeps its gold block and takes the full width, so
+	   the panel ends on the one thing we want pressed. */
+	.has-js .site-nav .nav-cta { border-top: 0; margin-top: var( --space-5 ); }
+
+	.has-js .site-nav .nav-cta > a {
+		justify-content: center;
+		padding: var( --btn-pad-y-lg ) var( --btn-pad-x-lg );
+		color: var( --color-navy );
+		font-family: var( --font-body );
+		font-size: var( --text-base );
+	}
+
+	/* Each row arrives just after the one above it. Small numbers on
+	   purpose — a stagger you notice is a stagger that is in the way. */
+	.has-js .site-nav.open li {
+		animation: tdh-nav-in var( --duration-base ) var( --ease ) backwards;
+	}
+
+	.has-js .site-nav.open li:nth-child( 1 ) { animation-delay: 0.02s; }
+	.has-js .site-nav.open li:nth-child( 2 ) { animation-delay: 0.05s; }
+	.has-js .site-nav.open li:nth-child( 3 ) { animation-delay: 0.08s; }
+	.has-js .site-nav.open li:nth-child( 4 ) { animation-delay: 0.11s; }
+	.has-js .site-nav.open li:nth-child( 5 ) { animation-delay: 0.14s; }
+	.has-js .site-nav.open li:nth-child( 6 ) { animation-delay: 0.17s; }
+
+	@keyframes tdh-nav-in {
+		from { opacity: 0; transform: translateY( -0.375rem ); }
+		to   { opacity: 1; transform: none; }
+	}
+
+	/* The page behind, dimmed. Clicking it closes the panel — a menu with
+	   no way out but the button it came from is a trap on a phone.
+
+	   BELOW the header, not below the drawer, and the difference matters.
+	   `.site-header` sets both position and a z-index, so it opens its own
+	   stacking context: everything inside it — the drawer included — is
+	   pinned at the header's level of 10 no matter what z-index the child
+	   asks for. A backdrop at 49 therefore painted OVER the menu rather
+	   than under it, which dimmed the panel and, worse, swallowed every
+	   click: tapping a link hit the backdrop and merely closed the menu.
+
+	   One under the header covers the page and nothing else. */
+	.nav-backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: calc( var( --z-header ) - 1 );
+		background: rgba( 7, 17, 31, 0.55 );
+		opacity: 0;
+		visibility: hidden;
+		transition:
+			opacity var( --duration-base ) var( --ease ),
+			visibility 0s linear var( --duration-base );
+	}
+
+	.nav-backdrop.open {
+		opacity: 1;
+		visibility: visible;
+		transition-delay: 0s, 0s;
+	}
 }
+
+/* --- The toggle, which becomes a close button ---------------------------
+   Three lines that fold into a cross. transform-box/transform-origin are
+   both needed: an SVG path rotates about the origin of its own coordinate
+   system otherwise, and the arms swing off the button instead of crossing
+   in the middle of it. */
+.nav-toggle svg path {
+	transform-box: view-box;
+	transform-origin: 12px 12px;
+	transition:
+		transform var( --duration-base ) var( --ease ),
+		opacity var( --duration-fast ) var( --ease );
+}
+
+.nav-toggle[aria-expanded="true"] svg path:nth-child( 1 ) { transform: translateY( 7px ) rotate( 45deg ); }
+.nav-toggle[aria-expanded="true"] svg path:nth-child( 2 ) { opacity: 0; }
+.nav-toggle[aria-expanded="true"] svg path:nth-child( 3 ) { transform: translateY( -7px ) rotate( -45deg ); }
+
+/* The panel is fixed, so the page behind must not scroll under it. */
+.tdh-nav-open { overflow: hidden; }
 
 @media ( max-width: 700px ) {
 	.hero { min-height: var( --hero-min-height-sm ); }

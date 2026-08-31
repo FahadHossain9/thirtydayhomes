@@ -56,6 +56,12 @@ final class Core {
 			'accounts'   => new Accounts(),
 			'shortcodes' => new Shortcodes(),
 
+			// Registered before anything that sends: the From filters have to
+			// be in place by the time the first wp_mail() runs, and a
+			// registration email goes out during the request that creates the
+			// account.
+			'mail'       => new Mail(),
+
 			// NOT admin-only. Stripe posts to the REST API as nobody, so
 			// registering this behind is_admin() would mean the endpoint did
 			// not exist for the only caller that ever uses it.

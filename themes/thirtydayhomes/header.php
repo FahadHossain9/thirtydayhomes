@@ -21,6 +21,21 @@ defined( 'ABSPATH' ) || exit;
 	<meta charset="<?php bloginfo( 'charset' ); ?>">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="profile" href="https://gmpg.org/xfn/11">
+	<?php
+	/*
+	 * Marks the document as scripted, before anything paints.
+	 *
+	 * The mobile drawer is hidden in CSS and opened by script, so if that
+	 * script never runs — blocked, failed, still loading — a phone visitor
+	 * would be left with a hamburger that does nothing and no way to reach
+	 * any page on the site. Hiding it only under `.has-js` means the
+	 * fallback is a plain stacked list that works.
+	 *
+	 * Inline and in the head deliberately: from the footer it would land
+	 * after first paint and the menu would flash open on every load.
+	 */
+	?>
+	<script>document.documentElement.className += ' has-js';</script>
 	<?php wp_head(); ?>
 </head>
 
