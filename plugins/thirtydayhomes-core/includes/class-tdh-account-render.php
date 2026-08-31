@@ -64,6 +64,21 @@ final class Account_Render {
 			</div>
 			<?php
 		endif;
+
+		/*
+		 * A third state, not a green one. "We are confirming your payment"
+		 * is neither a success nor a failure, and dressing it in the success
+		 * colour would tell someone their plan is live seconds before they
+		 * refresh and find it is not.
+		 */
+		if ( ! empty( $notice['info'] ) ) :
+			?>
+			<div class="form-notice form-notice--info" role="status">
+				<?php echo function_exists( 'tdh_icon' ) ? tdh_icon( 'calendar-days', 18 ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput ?>
+				<p><?php echo esc_html( (string) $notice['info'] ); ?></p>
+			</div>
+			<?php
+		endif;
 	}
 
 	/**
@@ -526,6 +541,23 @@ final class Account_Render {
 		$user     = wp_get_current_user();
 		$user_id  = (int) $user->ID;
 		$notice   = Accounts::take_notice();
+
+		/*
+		 * Someone returning from Stripe. This reads the real membership
+		 * rather than the URL, so pasting ?tdh_checkout=success into the
+		 * address bar is told accurately that nothing is active — and a
+		 * genuine payment whose webhook has not landed yet is told to wait
+		 * rather than being shown a failure.
+		 */
+		$checkout = Billing\Checkout::return_notice();
+
+		if ( null !== $checkout ) {
+			if ( 'success' === $checkout[0] ) {
+				$notice['success'] = $checkout[1];
+			} else {
+				$notice['info'] = $checkout[1];
+			}
+		}
 
 		$status   = Membership::status( $user_id );
 		$labels   = Membership::labels();

@@ -60,6 +60,9 @@ final class Core {
 			// registering this behind is_admin() would mean the endpoint did
 			// not exist for the only caller that ever uses it.
 			'webhook'    => new Billing\Webhook(),
+
+			// Front end: the pricing page posts to it.
+			'checkout'   => new Billing\Checkout(),
 		];
 
 		// Admin-only modules. Loading the editing UI on every front-end

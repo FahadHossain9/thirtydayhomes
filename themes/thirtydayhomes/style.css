@@ -1706,6 +1706,38 @@ img, video { max-width: 100%; height: auto; }
 	color: var( --color-success );
 }
 
+/* Neither green nor red. "We are confirming your payment" is not a success —
+   dressing it in the success colour tells someone their plan is live seconds
+   before they refresh and find it is not — and it is not a failure either.
+   Uses the neutral semantic pair, which exists for exactly this. */
+.form-notice--info {
+	background: var( --color-neutral-bg );
+	color: var( --color-neutral );
+}
+
+/* The buy button is wrapped in a form, so the form is what has to be pinned
+   to the bottom of the card — `.plan > .gold-btn` no longer matches it. The
+   button inside stretches on its own: it carries .full, which is already
+   width:100% globally, and the form stretches because .plan is a column
+   flex container. Nothing else needed. */
+.plan-buy { margin-top: auto; }
+
+/* Only an administrator sees this: the reason a plan cannot be bought, said
+   plainly to the one person who can fix it. */
+.plan-admin-note {
+	display: block;
+	margin-top: var( --space-2 );
+	color: var( --text-subtle );
+	font-size: var( --text-2xs );
+	line-height: var( --leading-snug );
+	text-align: center;
+}
+
+.pricing-notice {
+	max-width: var( --container-form );
+	margin-inline: auto;
+}
+
 /* --- Dashboard -------------------------------------------------------- */
 
 /* The dashboard opens on a dark band rather than a bare white page, so the

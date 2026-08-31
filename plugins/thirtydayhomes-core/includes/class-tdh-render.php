@@ -723,6 +723,24 @@ final class Render {
 		$signed_in = is_user_logged_in();
 
 		/*
+		 * PAST_DUE counts as having a plan. They are mid-retry, not
+		 * unsubscribed, and selling them a second subscription while the
+		 * first is still being collected would bill one account twice.
+		 */
+		$status       = $signed_in ? Membership::status() : Membership::NONE;
+		$has_plan     = in_array( $status, [ Membership::ACTIVE, Membership::PAST_DUE, Membership::CANCELLED ], true );
+		$current_plan = $has_plan ? Membership::plan() : '';
+
+		// Someone sent back here by the checkout handler. The reason arrives
+		// as a key and is looked up locally — never printed from the URL.
+		$checkout_error = '';
+
+		if ( isset( $_GET['tdh_checkout_error'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$reason         = sanitize_key( wp_unslash( (string) $_GET['tdh_checkout_error'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$checkout_error = (string) ( Billing\Checkout::messages()[ $reason ] ?? '' );
+		}
+
+		/*
 		 * Ascending, exactly as plans() lists them. NOT reordered to put the
 		 * recommended plan in the middle.
 		 *
@@ -768,6 +786,13 @@ final class Render {
 		}
 		?>
 		<div class="pricing">
+
+			<?php if ( '' !== $checkout_error ) : ?>
+				<div class="form-notice form-notice--error pricing-notice">
+					<?php echo function_exists( 'tdh_icon' ) ? tdh_icon( 'shield-check', 18 ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput ?>
+					<p><?php echo esc_html( $checkout_error ); ?></p>
+				</div>
+			<?php endif; ?>
 
 			<div class="pricing-grid">
 				<?php foreach ( $plans as $plan ) : ?>
@@ -861,20 +886,65 @@ final class Render {
 
 						<?php
 						/*
-						 * Checkout does not exist yet. Rather than a button
-						 * that silently does nothing, a signed-in landlord
-						 * is told plainly; a visitor is sent to the step
-						 * that IS built, which is creating an account.
+						 * Four states, and each one is a different thing to
+						 * say. A single disabled button for all of them is
+						 * how a landlord ends up staring at a dead control
+						 * with no idea whether the fault is theirs.
 						 */
-						?>
-						<?php if ( $signed_in ) : ?>
-							<button class="<?php echo $is_featured ? 'gold-btn' : 'secondary'; ?> full" type="button" disabled>
-								<?php esc_html_e( 'Checkout coming soon', 'thirtydayhomes' ); ?>
-							</button>
-						<?php else : ?>
-							<a class="<?php echo $is_featured ? 'gold-btn' : 'secondary'; ?> full" href="<?php echo esc_url( Accounts::url( 'register' ) ); ?>">
+						$button_class = ( $is_featured ? 'gold-btn' : 'secondary' ) . ' full';
+
+						if ( ! $signed_in ) :
+							// Nothing to attach a subscription to yet.
+							?>
+							<a class="<?php echo esc_attr( $button_class ); ?>" href="<?php echo esc_url( Accounts::url( 'register' ) ); ?>">
 								<?php esc_html_e( 'Create an account', 'thirtydayhomes' ); ?>
 							</a>
+
+						<?php elseif ( $has_plan ) : ?>
+							<?php // Already paying. Buying again would bill them twice for one account. ?>
+							<button class="<?php echo esc_attr( $button_class ); ?>" type="button" disabled>
+								<?php
+								echo esc_html(
+									$current_plan === $plan['label']
+										? __( 'Your current plan', 'thirtydayhomes' )
+										: __( 'You have a plan', 'thirtydayhomes' )
+								);
+								?>
+							</button>
+
+						<?php elseif ( ! Billing\Checkout::is_ready( $listings ) ) : ?>
+							<?php
+							/*
+							 * Keys or this plan's Price are missing. Shown as
+							 * unavailable rather than as a button that would
+							 * bounce them back with an error — and the reason
+							 * is only spelled out for someone who can fix it.
+							 */
+							?>
+							<button class="<?php echo esc_attr( $button_class ); ?>" type="button" disabled>
+								<?php esc_html_e( 'Not available yet', 'thirtydayhomes' ); ?>
+							</button>
+							<?php if ( current_user_can( 'manage_options' ) ) : ?>
+								<small class="plan-admin-note">
+									<?php esc_html_e( 'Admin: add this plan’s Price ID under Listings → Payments.', 'thirtydayhomes' ); ?>
+								</small>
+							<?php endif; ?>
+
+						<?php else : ?>
+							<?php
+							/*
+							 * A POST, not a link. Starting a subscription is
+							 * not a safe repeatable read, and must not be
+							 * reachable by a crawler or a prefetch following
+							 * a URL.
+							 */
+							?>
+							<form method="post" class="plan-buy">
+								<?php echo Billing\Checkout::form_fields( $listings ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+								<button class="<?php echo esc_attr( $button_class ); ?>" type="submit">
+									<?php esc_html_e( 'Choose this plan', 'thirtydayhomes' ); ?>
+								</button>
+							</form>
 						<?php endif; ?>
 
 					</div>

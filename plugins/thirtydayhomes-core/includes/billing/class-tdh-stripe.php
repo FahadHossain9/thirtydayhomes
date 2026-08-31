@@ -304,6 +304,85 @@ final class Stripe {
 	}
 
 	/**
+	 * One authenticated POST against the Stripe API.
+	 *
+	 * Stripe takes form-encoded bodies, not JSON, and nests with square
+	 * brackets — `line_items[0][price]`. http_build_query produces exactly
+	 * that shape, which is why the body is built with it rather than by hand.
+	 *
+	 * @param array<string,mixed> $body           Form fields.
+	 * @param string|null         $idempotency_key Makes a repeated call return
+	 *                                             the FIRST result instead of
+	 *                                             creating a second object.
+	 * @return array{ok:bool,code:int,body:array<string,mixed>,error:string}
+	 */
+	public static function api_post( string $path, array $body, ?string $mode = null, ?string $idempotency_key = null ): array {
+
+		$mode   = self::normalise_mode( $mode );
+		$secret = self::secret_key( $mode );
+
+		if ( '' === $secret ) {
+			return [
+				'ok'    => false,
+				'code'  => 0,
+				'body'  => [],
+				'error' => __( 'No secret key is saved for this mode.', 'thirtydayhomes' ),
+			];
+		}
+
+		$headers = [
+			'Authorization'  => 'Bearer ' . $secret,
+			'Stripe-Version' => '2024-06-20',
+			'Content-Type'   => 'application/x-www-form-urlencoded',
+		];
+
+		/*
+		 * Without this, a double-clicked button creates two Checkout Sessions
+		 * and can end with someone holding two subscriptions for one home.
+		 * Stripe remembers the key for 24 hours and replays the first
+		 * response, so the second click is harmless.
+		 */
+		if ( null !== $idempotency_key && '' !== $idempotency_key ) {
+			$headers['Idempotency-Key'] = $idempotency_key;
+		}
+
+		$response = wp_remote_post(
+			'https://api.stripe.com/v1/' . ltrim( $path, '/' ),
+			[
+				'timeout' => 30,
+				'headers' => $headers,
+				'body'    => http_build_query( $body ),
+			]
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return [
+				'ok'    => false,
+				'code'  => 0,
+				'body'  => [],
+				'error' => sprintf(
+					/* translators: %s: network error */
+					__( 'Could not reach Stripe: %s', 'thirtydayhomes' ),
+					$response->get_error_message()
+				),
+			];
+		}
+
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		$data = json_decode( (string) wp_remote_retrieve_body( $response ), true );
+		$data = is_array( $data ) ? $data : [];
+
+		return [
+			'ok'    => $code >= 200 && $code < 300,
+			'code'  => $code,
+			'body'  => $data,
+			'error' => ( $code >= 200 && $code < 300 )
+				? ''
+				: ( isset( $data['error']['message'] ) ? (string) $data['error']['message'] : __( 'no reason given', 'thirtydayhomes' ) ),
+		];
+	}
+
+	/**
 	 * Does this mode's secret key work, and which Stripe does it belong to?
 	 *
 	 * /v1/balance is the cheapest authenticated call Stripe offers, and its
