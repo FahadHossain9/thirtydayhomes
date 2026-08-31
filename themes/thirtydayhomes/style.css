@@ -4,7 +4,7 @@ Theme URI:    https://github.com/FahadHossain9/thirtydayhomes
 Author:       Instaquirk
 Author URI:   https://instaquirk.com
 Description:  Presentation layer for the ThirtyDayHomes marketplace. Owns global design tokens, header, footer, navigation, responsive framework and Elementor integration. Holds NO marketplace business rules — those live in the ThirtyDayHomes Core plugin, so replacing this theme never costs a listing, membership, inquiry or facility.
-Version:      0.19.0
+Version:      0.19.1
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 8.1
@@ -3441,17 +3441,37 @@ img, video { max-width: 100%; height: auto; }
 	gap: var( --space-4 );
 	padding-bottom: var( --space-5 );
 	border-bottom: 1px solid var( --color-border-on-dark-faint );
-
-	/* Each row arrives just after the one above it. --i comes from the
-	   markup, so the stagger holds for however many rows there are.
-	   `backwards` matters: without it the row paints at full opacity for
-	   one frame before its delay starts, which is a visible flash. */
-	opacity: 0;
-	animation: contact-row var( --duration-slow ) var( --ease ) backwards;
-	animation-delay: calc( var( --i, 0 ) * 90ms + 120ms );
 }
 
 .contact-assurances > li:last-child { padding-bottom: 0; border-bottom: 0; }
+
+/* Each row arrives just after the one above it. --i comes from the markup,
+   so the stagger holds for however many rows there are.
+   ─────────────────────────────────────────────────────────────────────
+   THE HIDING AND THE REVEALING ARE IN THE SAME QUERY, DELIBERATELY.
+
+   The resting state of this list is VISIBLE. Nothing outside this block
+   sets opacity, so the rows can only ever be hidden in the one situation
+   where something is guaranteed to bring them back.
+
+   An `opacity: 0` sitting on the rule itself, with an animation as the
+   only thing that undoes it, is a row that disappears completely the
+   moment that animation does not run — and there are several ways for it
+   not to run. This section shipped once with exactly that: fill-mode
+   `backwards` holds the first keyframe during the delay but releases the
+   last one when the animation ends, so all three rows faded in and then
+   reverted to opacity 0, leaving a large empty rectangle of navy.
+
+   `both` is still correct and still needed — backwards for the delay,
+   forwards for afterwards — but it is no longer the only thing standing
+   between the client and three invisible paragraphs. */
+@media ( prefers-reduced-motion: no-preference ) {
+	.contact-assurances > li {
+		opacity: 0;
+		animation: contact-row var( --duration-slow ) var( --ease ) both;
+		animation-delay: calc( var( --i, 0 ) * 90ms + 120ms );
+	}
+}
 
 @keyframes contact-row {
 	from { opacity: 0; transform: translateY( 10px ); }
@@ -3677,16 +3697,13 @@ img, video { max-width: 100%; height: auto; }
 	.contact-chip > span { text-align: center; }
 }
 
-/* The global reduced-motion rule collapses every DURATION, but it does not
-   touch animation-delay — so without this the assurance rows would still
-   wait their turn before appearing, which is the staircase effect somebody
-   asked not to see. Stated here rather than in the global block because
-   that block is generic and these two animations are not. */
-@media ( prefers-reduced-motion: reduce ) {
-	.contact-assurances > li {
-		animation: none;
-		opacity: 1;
-	}
+/* The assurance rows need nothing here — their animation lives entirely
+   inside a `no-preference` query, so under `reduce` they are simply visible
+   with no animation to suppress.
 
+   The pulse does need saying. The global reduced-motion rule collapses its
+   DURATION to 0.01ms, which leaves the ring frozen on its last keyframe
+   rather than stopped, and it does not touch animation-delay at all. */
+@media ( prefers-reduced-motion: reduce ) {
 	.contact-dot::after { animation: none; opacity: 0; }
 }
