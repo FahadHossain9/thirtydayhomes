@@ -79,6 +79,12 @@ final class Core {
 			// Front end: the contact page posts to itself, and the handler
 			// runs on template_redirect before any output.
 			'contact'    => new Contact(),
+
+			// Keeps the host's page cache off the account pages. NOT
+			// optional and not admin-only: a cached /register/ swallows
+			// every validation error, and a cached /account/ serves one
+			// landlord's dashboard to the next visitor.
+			'no_cache'   => new No_Cache(),
 		];
 
 		// Admin-only modules. Loading the editing UI on every front-end
