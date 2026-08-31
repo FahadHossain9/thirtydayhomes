@@ -43,6 +43,7 @@ final class Shortcodes {
 		// the copy off; an attribute list long enough to express four bands
 		// would be unreadable in the editor and nobody would use it.
 		add_shortcode( 'tdh_about', [ $this, 'about' ] );
+		add_shortcode( 'tdh_how_it_works', [ $this, 'how_it_works' ] );
 
 		// Account screens. No attributes: these render one thing each, and
 		// an attribute would only be a way to configure them into a state
@@ -64,6 +65,17 @@ final class Shortcodes {
 		unset( $atts );
 
 		return Render::about();
+	}
+
+	/**
+	 * The How it works page body.
+	 *
+	 * @param array<string,string>|string $atts Unused.
+	 */
+	public function how_it_works( $atts ): string {
+		unset( $atts );
+
+		return Render::how_it_works();
 	}
 
 	/**

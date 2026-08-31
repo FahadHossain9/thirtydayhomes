@@ -904,6 +904,209 @@ final class Render {
 	}
 
 	/**
+	 * The How it works page body.
+	 *
+	 * The prose version threw away the one thing this page's content actually
+	 * has: shape. Two audiences, each with a SEQUENCE, and then a list of
+	 * questions. As three headings and five paragraphs, a renter had to read
+	 * the owner's paragraph to find out it was not theirs.
+	 *
+	 * The steps are numbered, and that is a deliberate difference from the
+	 * About cards, which are not. Numbering has to encode something true:
+	 * search, then compare, then make contact is an order — you cannot
+	 * compare before you search. About's three cards are a set, not a
+	 * sequence, so numbering them there would have been decoration.
+	 *
+	 * Every claim below is in the approved copy already; only its shape has
+	 * changed.
+	 *
+	 * @param array<string,mixed> $args
+	 */
+	public static function how_it_works( array $args = [] ): string {
+
+		$homes   = (string) get_post_type_archive_link( Post_Types::LISTING );
+		$pricing = get_page_by_path( 'pricing' );
+		$contact = get_page_by_path( 'contact' );
+
+		$args = wp_parse_args(
+			$args,
+			[
+				'tracks'      => [
+					[
+						'icon'    => 'search',
+						'eyebrow' => __( 'If you need a home', 'thirtydayhomes' ),
+						'heading' => __( 'For renters', 'thirtydayhomes' ),
+						'steps'   => [
+							[
+								'title' => __( 'Search', 'thirtydayhomes' ),
+								'copy'  => __( 'By neighborhood, by ZIP code, or by the hospital you are working at.', 'thirtydayhomes' ),
+							],
+							[
+								'title' => __( 'Compare', 'thirtydayhomes' ),
+								'copy'  => __( 'Homes are ordered by distance from where you need to be, and the full cost of a stay is on the listing before you inquire.', 'thirtydayhomes' ),
+							],
+							[
+								'title' => __( 'Get in touch', 'thirtydayhomes' ),
+								'copy'  => __( 'Contact the owner of the home directly. No agent in the middle, and no booking fee.', 'thirtydayhomes' ),
+							],
+						],
+						'cta'     => __( 'Find a home', 'thirtydayhomes' ),
+						'url'     => $homes,
+					],
+					[
+						'icon'    => 'key-round',
+						'eyebrow' => __( 'If you have a home', 'thirtydayhomes' ),
+						'heading' => __( 'For property owners', 'thirtydayhomes' ),
+						'steps'   => [
+							[
+								'title' => __( 'Join', 'thirtydayhomes' ),
+								'copy'  => __( 'Choose a membership for the number of homes you plan to list.', 'thirtydayhomes' ),
+							],
+							[
+								'title' => __( 'Publish', 'thirtydayhomes' ),
+								'copy'  => __( 'Add your furnished home. Every listing is reviewed before it goes live.', 'thirtydayhomes' ),
+							],
+							[
+								'title' => __( 'Take inquiries', 'thirtydayhomes' ),
+								'copy'  => __( 'Renters contact you directly, and you agree the terms between you.', 'thirtydayhomes' ),
+							],
+						],
+						'cta'     => __( 'See membership options', 'thirtydayhomes' ),
+						'url'     => $pricing ? (string) get_permalink( $pricing ) : '',
+					],
+				],
+
+				'faq_eyebrow' => __( 'Before you ask', 'thirtydayhomes' ),
+				'faq_heading' => __( 'Frequently asked questions', 'thirtydayhomes' ),
+				'faq'         => [
+					[
+						'q' => __( 'How are search results ordered?', 'thirtydayhomes' ),
+						'a' => __( 'When you search by location or ZIP code, homes appear closest to farthest.', 'thirtydayhomes' ),
+					],
+					[
+						'q' => __( 'How do I know a home is available?', 'thirtydayhomes' ),
+						'a' => __( 'Each listing shows its available date and any blocked date ranges.', 'thirtydayhomes' ),
+					],
+					[
+						'q' => __( 'Are there extra fees?', 'thirtydayhomes' ),
+						'a' => __( 'Application, pet and refundable deposit amounts are itemised on every listing.', 'thirtydayhomes' ),
+					],
+					[
+						'q' => __( 'Why is the exact address not shown?', 'thirtydayhomes' ),
+						'a' => __( 'Listings show the neighborhood and an approximate map area. The full address is shared by the owner after you make contact — a deliberate choice, because a furnished home that is often empty should not have its address published.', 'thirtydayhomes' ),
+					],
+				],
+
+				'ask_heading' => __( 'Still not sure?', 'thirtydayhomes' ),
+				'ask_copy'    => __( 'Ask us. We answer within one business day.', 'thirtydayhomes' ),
+				'ask_cta'     => __( 'Contact us', 'thirtydayhomes' ),
+				'ask_url'     => $contact ? (string) get_permalink( $contact ) : '',
+			]
+		);
+
+		$icon = static fn( string $name, int $size = 19 ): string =>
+			function_exists( 'tdh_icon' ) ? tdh_icon( $name, $size, 2 ) : '';
+
+		ob_start();
+		?>
+
+		<section class="section hiw-tracks">
+			<div class="hiw-inner hiw-tracks-grid">
+				<?php foreach ( (array) $args['tracks'] as $track ) : ?>
+					<article class="hiw-track">
+
+						<header>
+							<i><?php echo $icon( (string) $track['icon'] ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+							<p class="overline gold"><?php echo esc_html( (string) $track['eyebrow'] ); ?></p>
+							<h2><?php echo esc_html( (string) $track['heading'] ); ?></h2>
+						</header>
+
+						<?php
+						/*
+						 * An ordered list, because the order IS the content.
+						 * The numbers on screen come from the markup rather
+						 * than from CSS counters, so they survive a stylesheet
+						 * that fails to load and a screen reader announces
+						 * "3 items" rather than three unrelated headings.
+						 */
+						?>
+						<ol class="hiw-steps">
+							<?php foreach ( (array) $track['steps'] as $i => $step ) : ?>
+								<li>
+									<span class="hiw-step-n" aria-hidden="true"><?php echo esc_html( (string) ( $i + 1 ) ); ?></span>
+									<div>
+										<b><?php echo esc_html( (string) $step['title'] ); ?></b>
+										<p><?php echo esc_html( (string) $step['copy'] ); ?></p>
+									</div>
+								</li>
+							<?php endforeach; ?>
+						</ol>
+
+						<?php if ( ! empty( $track['url'] ) && ! empty( $track['cta'] ) ) : ?>
+							<a class="hiw-track-cta" href="<?php echo esc_url( (string) $track['url'] ); ?>">
+								<?php echo esc_html( (string) $track['cta'] ); ?>
+								<?php echo $icon( 'arrow-right', 14 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+							</a>
+						<?php endif; ?>
+
+					</article>
+				<?php endforeach; ?>
+			</div>
+		</section>
+
+		<section class="section hiw-faq">
+			<div class="hiw-inner">
+
+				<div class="section-title">
+					<div>
+						<p class="overline gold"><?php echo esc_html( (string) $args['faq_eyebrow'] ); ?></p>
+						<h2><?php echo esc_html( (string) $args['faq_heading'] ); ?></h2>
+					</div>
+				</div>
+
+				<?php
+				/*
+				 * <details>, not a JavaScript accordion. It opens with a
+				 * click, with Enter, and with the keyboard alone; a browser's
+				 * find-in-page can search inside a closed one; and it still
+				 * works with every script on the page blocked. No library
+				 * earns its place against that.
+				 */
+				?>
+				<div class="hiw-faq-list">
+					<?php foreach ( (array) $args['faq'] as $item ) : ?>
+						<details class="hiw-q">
+							<summary>
+								<span><?php echo esc_html( (string) $item['q'] ); ?></span>
+								<i aria-hidden="true"></i>
+							</summary>
+							<p><?php echo esc_html( (string) $item['a'] ); ?></p>
+						</details>
+					<?php endforeach; ?>
+				</div>
+
+			</div>
+		</section>
+
+		<?php if ( '' !== $args['ask_url'] ) : ?>
+			<section class="section hiw-ask">
+				<div class="hiw-inner hiw-ask-inner">
+					<div>
+						<h2><?php echo esc_html( (string) $args['ask_heading'] ); ?></h2>
+						<p><?php echo esc_html( (string) $args['ask_copy'] ); ?></p>
+					</div>
+					<a class="gold-btn" href="<?php echo esc_url( (string) $args['ask_url'] ); ?>">
+						<?php echo esc_html( (string) $args['ask_cta'] ); ?>
+						<?php echo $icon( 'arrow-right', 16 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+					</a>
+				</div>
+			</section>
+		<?php endif; ?>
+		<?php
+		return (string) ob_get_clean();
+	}
+
+	/**
 	 * The About page body.
 	 *
 	 * Four bands, not a column of prose. Two headings and two short

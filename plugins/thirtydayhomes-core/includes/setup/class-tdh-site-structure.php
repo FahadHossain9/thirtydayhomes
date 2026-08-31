@@ -227,14 +227,18 @@ final class Site_Structure {
 				'content' => "[tdh_hero_search]\n\n[tdh_audience]\n\n[tdh_property_grid count=\"3\" columns=\"3\" eyebrow=\"Explore Pittsburgh\" heading=\"Homes ready when you are\" show_link=\"yes\"]\n\n[tdh_split_feature]\n\n[tdh_owner_cta]",
 			],
 			'how-it-works' => [
-				'title'   => __( 'How it works', 'thirtydayhomes' ),
-				'content' => '<h2>For renters</h2><p>Search by neighborhood, ZIP code or hospital. Compare homes by distance from where you will be working, review the full cost before you enquire, and contact the owner directly.</p>'
-					. '<h2>For property owners</h2><p>Join as a member, publish your furnished home, and receive enquiries directly from renters. Every listing is reviewed before it goes live.</p>'
-					. '<h2>Frequently asked questions</h2>'
-					. '<h3>How are search results ordered?</h3><p>When you search by location or ZIP code, homes appear closest to farthest.</p>'
-					. '<h3>How do I know a home is available?</h3><p>Each listing shows its available date and any blocked date ranges.</p>'
-					. '<h3>Are there extra fees?</h3><p>Application, pet and refundable deposit amounts are itemised on every listing.</p>'
-					. '<h3>Why is the exact address not shown?</h3><p>Listings show the neighborhood and an approximate map area. The full address is shared by the owner after you make contact — a deliberate choice, because a furnished home that is often empty should not have its address published.</p>',
+				'title'    => __( 'How it works', 'thirtydayhomes' ),
+
+				// Both audiences in four words, because this is the one page
+				// a renter and an owner are equally likely to open.
+				'headline' => __( 'Find a home, or fill one.', 'thirtydayhomes' ),
+				'lead'     => __( 'The whole process, both sides of it.', 'thirtydayhomes' ),
+
+				// One block. The copy lives in Render::how_it_works(), where
+				// the two tracks and the questions are structured data rather
+				// than a wall of headings someone can break by editing.
+				'content'  => '[tdh_how_it_works]',
+				'wide'     => true,
 			],
 			'pricing' => [
 				'title'   => __( 'Membership', 'thirtydayhomes' ),

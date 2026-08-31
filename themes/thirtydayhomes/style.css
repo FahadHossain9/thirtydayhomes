@@ -2478,6 +2478,262 @@ img, video { max-width: 100%; height: auto; }
 }
 
 /* =========================================================================
+   HOW IT WORKS
+
+   Two tracks side by side, then the questions, then a way to ask.
+
+   Side by side rather than stacked, deliberately: a renter and an owner are
+   equally likely to open this page, and two columns let each find their own
+   track in one glance. Stacked, one of them scrolls past the wrong half
+   first. They collapse to one column below 62rem, renters first.
+
+   Every selector is prefixed `hiw-`, and none of them touches a shared rule.
+   ========================================================================= */
+
+.hiw-inner {
+	max-width: var( --container );
+	margin-inline: auto;
+}
+
+/* --- The two tracks ------------------------------------------------------ */
+
+.hiw-tracks { background: var( --bg-surface ); }
+
+.hiw-tracks-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: var( --space-10 );
+	align-items: start;
+}
+
+/* A hairline between the two, not a box around each. The tracks are two
+   halves of one process, and boxing them makes them read as competing
+   offers rather than as "yours" and "theirs". */
+.hiw-tracks-grid > .hiw-track + .hiw-track {
+	padding-left: var( --space-10 );
+	border-left: 1px solid var( --border-soft );
+}
+
+.hiw-track > header { margin-bottom: var( --section-title-gap ); }
+
+.hiw-track > header > i {
+	display: grid;
+	place-items: center;
+	width: var( --icon-well-lg );
+	height: var( --icon-well-lg );
+	margin-bottom: var( --space-5 );
+	border-radius: var( --radius-full );
+	background: var( --bg-surface-accent );
+	color: var( --color-gold-ink );
+}
+
+.hiw-track > header > i .tdh-icon {
+	width: var( --icon-base );
+	height: var( --icon-base );
+}
+
+.hiw-track > header h2 {
+	font-size: var( --text-h3 );
+	margin: var( --section-heading-gap ) 0 0;
+}
+
+/* --- The numbered steps -------------------------------------------------- */
+
+.hiw-steps {
+	display: grid;
+	gap: var( --space-7 );
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.hiw-steps li {
+	position: relative;
+	display: grid;
+	grid-template-columns: var( --icon-well ) 1fr;
+	gap: var( --space-5 );
+	align-items: start;
+}
+
+/* The line joining one step to the next. It stops at the last step, because
+   a line trailing off the end suggests a step that is not there. Centred on
+   the marker by halving the marker's own width, so the two cannot drift
+   apart when the token changes. */
+.hiw-steps li:not( :last-child )::before {
+	content: "";
+	position: absolute;
+	left: calc( var( --icon-well ) / 2 );
+	top: var( --icon-well );
+	bottom: calc( var( --space-7 ) * -1 );
+	width: 1px;
+	background: var( --border-default );
+}
+
+.hiw-step-n {
+	display: grid;
+	place-items: center;
+	width: var( --icon-well );
+	height: var( --icon-well );
+	border-radius: var( --radius-full );
+	background: var( --color-navy );
+	color: var( --text-inverse );
+	font-family: var( --font-heading );
+	font-size: var( --text-lg );
+	line-height: 1;
+	/* Sits above the connecting line rather than being crossed by it. */
+	position: relative;
+	z-index: 1;
+}
+
+.hiw-steps b {
+	display: block;
+	margin-bottom: var( --space-2 );
+	font-size: var( --text-h5 );
+	font-family: var( --font-heading );
+	font-weight: var( --weight-bold );
+	/* Optical: the marker is a circle whose digit sits on its centre line,
+	   while the title starts at the top of its own line box. Raw px, same
+	   reasoning as the audience arrow. */
+	padding-top: 7px;
+}
+
+.hiw-steps p {
+	margin: 0;
+	color: var( --text-muted );
+	line-height: var( --leading-body );
+}
+
+.hiw-track-cta {
+	display: inline-flex;
+	align-items: center;
+	gap: var( --space-2 );
+	margin-top: var( --space-8 );
+	color: var( --text-accent );
+	font-size: var( --text-sm );
+	font-weight: var( --weight-bold );
+	text-decoration: none;
+}
+
+.hiw-track-cta:hover { text-decoration: underline; }
+
+.hiw-track-cta .tdh-icon {
+	flex: none;
+	transition: transform var( --duration-fast ) var( --ease );
+}
+
+.hiw-track-cta:hover .tdh-icon { transform: translateX( 3px ); }
+
+/* --- The questions ------------------------------------------------------- */
+
+.hiw-faq { background: var( --bg-surface-tint ); }
+
+.hiw-faq-list {
+	display: grid;
+	gap: var( --space-3 );
+	max-width: var( --container-form );
+}
+
+.hiw-q {
+	background: var( --bg-surface );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-lg );
+}
+
+.hiw-q summary {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var( --space-5 );
+	padding: var( --space-5 ) var( --space-6 );
+	cursor: pointer;
+	font-size: var( --text-h5 );
+	font-family: var( --font-heading );
+	font-weight: var( --weight-bold );
+	color: var( --text-default );
+	/* Both are needed: the first kills the triangle in Firefox and Chrome,
+	   the second in Safari, which ignores list-style on a summary. */
+	list-style: none;
+}
+
+.hiw-q summary::-webkit-details-marker { display: none; }
+
+.hiw-q summary:hover { color: var( --text-accent ); }
+
+/* The chevron is drawn in CSS rather than shipped as an icon: it has to
+   rotate with the open state, and a border triangle rotates cleanly at any
+   size without a second asset to keep in sync. */
+.hiw-q summary > i {
+	flex: none;
+	width: 0.5rem;
+	height: 0.5rem;
+	border-right: 2px solid var( --color-gold-deep );
+	border-bottom: 2px solid var( --color-gold-deep );
+	transform: rotate( 45deg );
+	transform-origin: center;
+	transition: transform var( --duration-fast ) var( --ease );
+	/* Nudged up so the arrowhead, not its bounding box, reads as centred. */
+	margin-top: -0.25rem;
+}
+
+.hiw-q[open] summary > i {
+	transform: rotate( -135deg );
+	margin-top: 0.125rem;
+}
+
+.hiw-q > p {
+	margin: 0;
+	padding: 0 var( --space-6 ) var( --space-6 );
+	max-width: var( --measure );
+	color: var( --text-muted );
+	line-height: var( --leading-body );
+}
+
+/* --- Still not sure? ----------------------------------------------------- */
+
+.hiw-ask {
+	background: var( --color-navy );
+	color: var( --text-inverse );
+}
+
+.hiw-ask-inner {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var( --space-7 );
+}
+
+.hiw-ask h2 {
+	margin: 0 0 var( --type-gap );
+	font-size: var( --text-h3 );
+	color: var( --text-inverse );
+}
+
+.hiw-ask p {
+	margin: 0;
+	color: var( --color-on-dark-lead );
+}
+
+@media ( max-width: 62rem ) {
+	.hiw-tracks-grid { grid-template-columns: 1fr; gap: var( --space-9 ); }
+
+	/* The rule becomes a horizontal one once they stack — a left border on a
+	   full-width block is a stray vertical line, not a separator. */
+	.hiw-tracks-grid > .hiw-track + .hiw-track {
+		padding-left: 0;
+		padding-top: var( --space-9 );
+		border-left: 0;
+		border-top: 1px solid var( --border-soft );
+	}
+}
+
+@media ( max-width: 43.75rem ) {
+	.hiw-q summary { padding: var( --space-4 ) var( --space-5 ); }
+	.hiw-q > p { padding: 0 var( --space-5 ) var( --space-5 ); }
+	.hiw-ask-inner { align-items: flex-start; }
+}
+
+/* =========================================================================
    ABOUT
 
    Four bands, each on its own ground, so the page has a rhythm instead of
