@@ -107,6 +107,11 @@ final class Core {
 			// one instruction is "run this again after any change", which
 			// was useless while it needed SSH.
 			$this->modules['security'] = new Admin\Security_Screen();
+
+			// Says "this page is built with Elementor" to anyone who opened
+			// the block editor on one of our layout pages and found a lone
+			// shortcode staring back.
+			$this->modules['editor_hint'] = new Admin\Editor_Hint();
 		}
 
 		// Client review mode. Registers nothing unless TDH_DEMO_MODE is on
