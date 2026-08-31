@@ -146,7 +146,78 @@ constant, and both fail open if it is wrong.
 
 ---
 
-## 5. Known findings
+## 5. Monitoring — what exists, and what does not
+
+Being blunt, because "we have monitoring" is the second most commonly believed
+untrue thing about a website.
+
+| | State |
+|---|---|
+| Deploy breaks the site | ✅ The GitHub Action checks for a 200 after deploying and fails loudly |
+| Code rollback | ✅ Revert the commit and push — `DEPLOY.md` |
+| Database rollback after a migration | ✅ Snapshot taken before every deploy — `DEPLOY.md` |
+| Nightly backup | 🟡 Written, **not installed on the server** |
+| Security posture check | 🟡 `baseline.php` — a manual check, **not monitoring** |
+| **Uptime monitoring** | ❌ none |
+| **Error logging** | ❌ none |
+| **Login / file-integrity alerting** | ❌ none |
+
+The last three are **Milestone 3** in the handoff ("Backup and restore test,
+uptime monitoring, and error logging" under Production readiness). They are not
+Milestone 1 scope. But the site is already live, so the useful ones are worth
+starting early — and handoff §8 requires the provider, owner, usage, cost and
+free-tier assumptions to be stated before anything paid is switched on. Here
+they are.
+
+### Error logging — free, do this first
+
+Nothing to buy. In `wp-config.php`, **above** the "stop editing" line:
+
+```php
+define( 'WP_DEBUG',         true  );
+define( 'WP_DEBUG_LOG',     '/home/<user>/logs/wp-errors.log' );
+define( 'WP_DEBUG_DISPLAY', false );  // never show a visitor a stack trace
+@ini_set( 'display_errors', '0' );
+```
+
+The path must be **outside `public_html`**. The default writes to
+`wp-content/debug.log`, which is downloadable by anyone who guesses the URL and
+which leaks file paths, queries and occasionally credentials.
+
+`WP_DEBUG_DISPLAY` false with `WP_DEBUG` true is the combination that logs
+without showing anything — `baseline.php` checks for exactly that.
+
+### Uptime monitoring — free tier is enough
+
+| Provider | Free tier | Owner |
+|---|---|---|
+| **UptimeRobot** (recommended) | 50 monitors, 5-minute checks, email + SMS alerts | **Rob's account, not ours** |
+| Better Stack | 10 monitors, 3-minute checks | Rob |
+| Hostinger's own | included, but only tells you the server is up, not the site | Rob |
+
+Monitor `https://thirtydayhomes.com/` for **200 + a string on the page**, not just
+a 200 — a WordPress fatal error can still return 200 with a white page.
+
+It must be **Rob's account**, per handoff §11: no essential function may depend
+on a developer-owned account.
+
+### Security monitoring — decide at launch, not now
+
+The honest position: real file-integrity and malware monitoring means Wordfence
+or Sucuri, and the useful tiers are paid — which this client has declined. The
+free Wordfence tier gives login-attempt visibility and file-change scanning with
+delayed signatures, and it is heavy.
+
+What is already in place without any of that: login throttling (5 per account,
+20 per IP), a honeypot and rate limit on the contact form, capability checks on
+every record, and `baseline.php` to re-check posture after any change.
+
+**Recommendation:** run `baseline.php` at launch and after every change; add
+UptimeRobot and error logging now because they are free; revisit paid security
+monitoring only once there are real members to protect, and price it to Rob then
+rather than assuming.
+
+## 6. Known findings
 
 Carried here so they are not forgotten, and so nobody has to re-derive them.
 

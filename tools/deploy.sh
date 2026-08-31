@@ -45,6 +45,52 @@ command -v rsync >/dev/null 2>&1 || { echo "rsync is not installed on this serve
 echo "  repo : $REPO_DIR"
 echo "  site : $WP_DIR"
 
+# ─── a snapshot to go back to ──────────────────────────────────────────────
+#
+# Reverting the commit and pushing rolls the CODE back, and that is most of
+# what goes wrong. It does not roll back the DATABASE.
+#
+# Core::maybe_upgrade() runs migrations whenever the plugin's version
+# constant is higher than the stored one — it re-registers roles and
+# capabilities and can install tables. Once that has run, going back to the
+# old code leaves the migrated database in place, and the old code is not
+# expecting it. That is the deploy that cannot be undone by a git revert.
+#
+# So: a database snapshot before anything is written, every time. It costs a
+# couple of seconds and a few megabytes, and it is the difference between
+# "roll it back" and "restore last night's backup and lose today".
+#
+# Deliberately NOT fatal. A missing mysqldump on some host must not stop
+# deployments — it only means this particular safety net is absent, and the
+# nightly backup still exists. The deploy says so loudly rather than
+# pretending.
+
+SNAP_DIR="$HOME/backups/thirtydayhomes/pre-deploy"
+WP_CLI="${WP_CLI:-$(command -v wp || true)}"
+
+say "snapshotting the database first"
+
+if [ -n "$WP_CLI" ] && command -v mysqldump >/dev/null 2>&1; then
+
+	mkdir -p "$SNAP_DIR"
+	SNAP="$SNAP_DIR/$(date -u +%Y%m%d-%H%M%S)-before-deploy.sql"
+
+	if "$WP_CLI" --path="$WP_DIR" db export "$SNAP" --add-drop-table --quiet 2>/dev/null; then
+		gzip -9 "$SNAP"
+		echo "  $SNAP.gz  ($(du -h "$SNAP.gz" | cut -f1))"
+
+		# Keep a week of these. They are a rollback aid, not an archive —
+		# the nightly backup in tools/backup.sh is the archive.
+		find "$SNAP_DIR" -maxdepth 1 -type f -name '*-before-deploy.sql.gz' -mtime +7 -delete
+	else
+		echo "  !! the database export FAILED — deploying anyway, but there is"
+		echo "     no snapshot to roll back to if a migration runs"
+	fi
+else
+	echo "  !! wp-cli or mysqldump not found — no pre-deploy snapshot taken."
+	echo "     A code revert will NOT undo a database migration. See tools/BACKUPS.md"
+fi
+
 # ─── fetch ─────────────────────────────────────────────────────────────────
 
 say "fetching $BRANCH"

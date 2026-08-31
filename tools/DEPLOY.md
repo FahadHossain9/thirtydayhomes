@@ -201,8 +201,51 @@ Nothing else. Watch Actions if you want to see it happen.
 **Deploy by hand** — Actions tab → *Deploy to thirtydayhomes.com* → **Run
 workflow**. Useful when a deploy failed for a reason outside the code.
 
-**Roll back** — revert the commit and push. The server does `reset --hard`,
-so it lands exactly on whatever the branch says, including going backwards.
+---
+
+## Rolling back
+
+There are two things to roll back, and they are not the same.
+
+### The code — revert the commit and push
+
+The server does `git reset --hard origin/main`, so it lands exactly on whatever
+the branch says, including going backwards. This is the fast path and it covers
+most of what goes wrong.
+
+### The database — restore the pre-deploy snapshot
+
+**A code revert does not undo a database change.** `Core::maybe_upgrade()` runs
+whenever the plugin's version constant is higher than the stored one: it
+re-registers roles and capabilities and can install tables. Once that has run,
+going back to the old code leaves the migrated database behind it, and the old
+code is not expecting it.
+
+So every deploy takes a database snapshot **before** it writes anything:
+
+```
+~/backups/thirtydayhomes/pre-deploy/20260831-141500-before-deploy.sql.gz
+```
+
+A week of them is kept. To go back:
+
+```bash
+cd ~/backups/thirtydayhomes/pre-deploy
+ls -lt | head                       # the newest is the one from the bad deploy
+gunzip -c <file>.sql.gz > /tmp/rb.sql
+wp --path=~/domains/thirtydayhomes.com/public_html db import /tmp/rb.sql
+rm /tmp/rb.sql
+```
+
+Then revert the commit and push, so the code matches the database again.
+
+If the snapshot step printed `!!` during the deploy, there is no snapshot — the
+nightly backup in `tools/BACKUPS.md` is then the only way back, and it costs
+everything since it ran.
+
+### After any rollback
+
+Purge the LiteSpeed cache. Old cached pages survive a deploy and a restore both.
 
 ---
 
