@@ -55,6 +55,11 @@ final class Core {
 			'proximity'  => new Proximity(),
 			'accounts'   => new Accounts(),
 			'shortcodes' => new Shortcodes(),
+
+			// NOT admin-only. Stripe posts to the REST API as nobody, so
+			// registering this behind is_admin() would mean the endpoint did
+			// not exist for the only caller that ever uses it.
+			'webhook'    => new Billing\Webhook(),
 		];
 
 		// Admin-only modules. Loading the editing UI on every front-end

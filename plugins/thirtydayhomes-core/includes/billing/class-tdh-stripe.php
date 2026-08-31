@@ -217,6 +217,93 @@ final class Stripe {
 	}
 
 	/**
+	 * Which plan is this Price for?
+	 *
+	 * The reverse of price_id(). A webhook arrives carrying a Price and has
+	 * to work out what allowance it grants — the subscription itself has no
+	 * idea this site sells listing quota.
+	 *
+	 * Returns null for a Price we do not recognise, and the caller must treat
+	 * that as "grant nothing". Defaulting to the smallest plan would hand out
+	 * an allowance for a product we cannot account for.
+	 *
+	 * @return array{listings:int,label:string,price:float}|null
+	 */
+	public static function plan_for_price( string $price_id, ?string $mode = null ): ?array {
+
+		if ( '' === $price_id ) {
+			return null;
+		}
+
+		$mode = self::normalise_mode( $mode );
+
+		foreach ( self::plans() as $plan ) {
+			if ( hash_equals( self::price_id( $plan['listings'], $mode ), $price_id ) ) {
+				return $plan;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * One authenticated GET against the Stripe API.
+	 *
+	 * @return array{ok:bool,code:int,body:array<string,mixed>,error:string}
+	 */
+	public static function api_get( string $path, ?string $mode = null, ?string $secret = null ): array {
+
+		$mode   = self::normalise_mode( $mode );
+		$secret = null === $secret ? self::secret_key( $mode ) : $secret;
+
+		if ( '' === $secret ) {
+			return [
+				'ok'    => false,
+				'code'  => 0,
+				'body'  => [],
+				'error' => __( 'No secret key is saved for this mode.', 'thirtydayhomes' ),
+			];
+		}
+
+		$response = wp_remote_get(
+			'https://api.stripe.com/v1/' . ltrim( $path, '/' ),
+			[
+				'timeout' => 20,
+				'headers' => [
+					'Authorization'  => 'Bearer ' . $secret,
+					'Stripe-Version' => '2024-06-20',
+				],
+			]
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return [
+				'ok'    => false,
+				'code'  => 0,
+				'body'  => [],
+				'error' => sprintf(
+					/* translators: %s: network error */
+					__( 'Could not reach Stripe: %s', 'thirtydayhomes' ),
+					$response->get_error_message()
+				),
+			];
+		}
+
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		$body = json_decode( (string) wp_remote_retrieve_body( $response ), true );
+		$body = is_array( $body ) ? $body : [];
+
+		return [
+			'ok'    => 200 === $code,
+			'code'  => $code,
+			'body'  => $body,
+			'error' => 200 === $code
+				? ''
+				: ( isset( $body['error']['message'] ) ? (string) $body['error']['message'] : __( 'no reason given', 'thirtydayhomes' ) ),
+		];
+	}
+
+	/**
 	 * Does this mode's secret key work, and which Stripe does it belong to?
 	 *
 	 * /v1/balance is the cheapest authenticated call Stripe offers, and its

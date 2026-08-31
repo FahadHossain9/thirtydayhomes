@@ -6,14 +6,14 @@
  * needs to know whether a landlord may publish — the dashboard, the listing
  * form, the visibility rule — asks this class and nothing else.
  *
- * Billing has not been built yet. That is deliberate and it is why this
- * class exists now: when the WooCommerce renewal layer lands it writes to
- * these four meta keys and nothing else in the codebase has to change. A
- * dashboard that read WooCommerce order tables directly would have to be
- * rewritten the day the client switches processor.
+ * Nothing outside this class knows that Stripe exists. The webhook writes
+ * these meta keys through apply() and every reader — the dashboard, the
+ * listing form, the visibility rule — asks the getters. A dashboard that
+ * queried Stripe directly would have to be rewritten the day the client
+ * changes processor, and would be making a network call to render a page.
  *
- * Until then every landlord is NONE, and the dashboard says so plainly
- * rather than showing an invented "active" state.
+ * A landlord with no plan is NONE with a quota of zero, and the dashboard
+ * says so plainly rather than showing an invented "active" state.
  *
  * @package ThirtyDayHomes
  */
@@ -49,6 +49,17 @@ final class Membership {
 	public const META_PLAN    = '_tdh_membership_plan';
 	public const META_EXPIRES = '_tdh_membership_expires';
 	public const META_QUOTA   = '_tdh_listing_quota';
+
+	/**
+	 * The link back to the payment processor.
+	 *
+	 * Stored per user so a webhook carrying only a customer id can find who
+	 * it is about. Kept separate from the status keys above because these
+	 * two are the only place the processor's vocabulary appears — everything
+	 * else in the codebase reads the status, not the subscription.
+	 */
+	public const META_CUSTOMER     = '_tdh_stripe_customer_id';
+	public const META_SUBSCRIPTION = '_tdh_stripe_subscription_id';
 
 	/**
 	 * Listings allowed when no plan sets an explicit quota.
@@ -233,5 +244,108 @@ final class Membership {
 		$quota   = self::quota( $user_id );
 
 		return $quota > 0 && self::listing_count( $user_id ) < $quota;
+	}
+
+	/* ---------------------------------------------------------------------
+	 * Writing — only the billing layer should call these
+	 * ------------------------------------------------------------------ */
+
+	/**
+	 * Record a membership change.
+	 *
+	 * ONE method rather than four setters, because these values are only ever
+	 * meaningful together. Set the status to ACTIVE without also setting the
+	 * quota and a landlord is active with an allowance of zero; set the quota
+	 * without the expiry and a lapsed member keeps publishing. A single call
+	 * makes a half-applied state something you would have to write on purpose.
+	 *
+	 * Only the keys present in $changes are touched, so an invoice event that
+	 * knows the new expiry but not the plan does not blank the plan.
+	 *
+	 * @param int                  $user_id Landlord.
+	 * @param array<string,mixed>  $changes status, plan, expires, quota,
+	 *                                      customer, subscription.
+	 */
+	public static function apply( int $user_id, array $changes ): void {
+
+		if ( ! $user_id ) {
+			return;
+		}
+
+		$before = [
+			'status' => self::status( $user_id ),
+			'quota'  => self::quota( $user_id ),
+		];
+
+		$map = [
+			'status'       => self::META_STATUS,
+			'plan'         => self::META_PLAN,
+			'expires'      => self::META_EXPIRES,
+			'quota'        => self::META_QUOTA,
+			'customer'     => self::META_CUSTOMER,
+			'subscription' => self::META_SUBSCRIPTION,
+		];
+
+		foreach ( $map as $key => $meta ) {
+
+			if ( ! array_key_exists( $key, $changes ) ) {
+				continue;
+			}
+
+			$value = $changes[ $key ];
+
+			if ( 'status' === $key && ! array_key_exists( (string) $value, self::labels() ) ) {
+				// An unknown status would read as NONE through the getter
+				// anyway; refusing to store it keeps the database honest.
+				continue;
+			}
+
+			if ( in_array( $key, [ 'expires', 'quota' ], true ) ) {
+				$value = max( 0, (int) $value );
+			}
+
+			update_user_meta( $user_id, $meta, $value );
+		}
+
+		/**
+		 * Fires after a membership changes.
+		 *
+		 * The seam for everything that should react rather than poll: putting
+		 * a landlord's listings on billing hold when they go past due,
+		 * restoring them when they pay, emailing a receipt.
+		 *
+		 * @param int                 $user_id Landlord.
+		 * @param array<string,mixed> $changes What was applied.
+		 * @param array<string,mixed> $before  status and quota beforehand.
+		 */
+		do_action( 'tdh_membership_changed', $user_id, $changes, $before );
+	}
+
+	/**
+	 * Find the landlord behind a Stripe customer id.
+	 *
+	 * Returns 0 when nobody matches, which a caller must treat as "do not
+	 * guess" rather than "use the current user" — a webhook has no current
+	 * user, and falling back to one would apply somebody else's subscription.
+	 */
+	public static function user_for_customer( string $customer_id ): int {
+
+		if ( '' === $customer_id ) {
+			return 0;
+		}
+
+		$users = get_users(
+			[
+				'meta_key'   => self::META_CUSTOMER, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+				'meta_value' => $customer_id,        // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+				'number'     => 2,
+				'fields'     => 'ID',
+			]
+		);
+
+		// Exactly one, or nothing. Two users sharing a customer id is a data
+		// fault, and picking one at random would silently bill the wrong
+		// person's account into the right person's membership.
+		return 1 === count( $users ) ? (int) $users[0] : 0;
 	}
 }
