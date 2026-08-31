@@ -221,6 +221,16 @@ ok(
 
 echo "\n=== validation ===\n";
 
+/*
+ * A cookie is required for anything the visitor typed to be kept at all — the
+ * shared IP+agent fallback deliberately drops it, so one office cannot read
+ * another's message. Set one, because a real browser would have.
+ *
+ * It cannot be minted here: notice_token() refuses once headers_sent(), and
+ * under the CLI that is true from this script's first echo onward.
+ */
+$_COOKIE[ TDH\Accounts::NOTICE_COOKIE ] = str_repeat( 'c', 32 );
+
 $_POST                = good_post();
 $_POST['tdh_name']    = '';
 $_POST['tdh_email']   = 'not-an-address';
@@ -453,12 +463,29 @@ remove_filter( 'pre_wp_mail', '__return_true' );
 ok( 'one flooder does not lock out everybody else', 'sent' === $other, $other );
 
 /* -------------------------------------------------------------------------
- * 9. The stash is per visitor, not per address
+ * 9. The stash is per visitor, not per office
+ *
+ * The first version of this keyed on TEST_COOKIE . IP . user agent and called
+ * itself cookie-scoped. TEST_COOKIE is `wordpress_test_cookie`, WordPress sets
+ * it only on wp-login.php, and its value is the fixed literal `WP Cookie
+ * check` — no entropy present or absent. The key was md5( IP . user agent ),
+ * so everyone behind one office NAT on the same browser build shared it, and
+ * the stash carries a name, an email address, a phone number and the whole
+ * message body.
  * ---------------------------------------------------------------------- */
 
 echo "\n=== the stash is private ===\n";
 
 reset_state();
+
+ok(
+	'TEST_COOKIE carries no entropy, which is why it cannot scope anything',
+	'WP Cookie check' === ( $_COOKIE[ TEST_COOKIE ] ?? 'WP Cookie check' ),
+	'if this ever becomes per-visitor, the reasoning below can be revisited'
+);
+
+/* A visitor whose browser refuses cookies falls back to the shared key. */
+unset( $_COOKIE[ TDH\Accounts::NOTICE_COOKIE ] );
 
 $_SERVER['REMOTE_ADDR']     = '203.0.113.77';
 $_SERVER['HTTP_USER_AGENT'] = 'browser-one';
@@ -467,16 +494,179 @@ $_POST             = good_post();
 $_POST['tdh_name'] = '';
 run_handler( $contact );
 
-/* Same office, different machine. */
-$_SERVER['HTTP_USER_AGENT'] = 'browser-two';
+$fallback = TDH\Accounts::visitor_key();
 
 ok(
-	'a colleague on the same connection does not see your half-written message',
-	[] === Contact::take()['values']
+	'with no cookie the key is the shared IP+agent one',
+	! TDH\Accounts::key_is_private( $fallback ),
+	$fallback
 );
 
-$_SERVER['HTTP_USER_AGENT'] = 'browser-one';
-ok( 'you still see your own', 'not the same' !== ( Contact::take()['values']['email'] ?? 'not the same' ) );
+$stash = Contact::take();
+
+ok(
+	'...so nothing the visitor typed is stored under it',
+	[] === $stash['values'],
+	'name, email, phone and message under a key a whole office shares'
+);
+ok( '...but the errors still are, being generic sentences', $stash['errors'] !== [] );
+
+/* Now a visitor whose browser does accept our token cookie. */
+reset_state();
+$_COOKIE[ TDH\Accounts::NOTICE_COOKIE ] = str_repeat( 'a', 32 );
+
+$_POST             = good_post();
+$_POST['tdh_name'] = '';
+run_handler( $contact );
+
+ok( 'with a token the key is private', TDH\Accounts::key_is_private( TDH\Accounts::visitor_key() ) );
+
+$mine = Contact::take();
+ok( '...so what was typed IS kept', 'dana@example.com' === ( $mine['values']['email'] ?? '' ) );
+
+/* The colleague at the next desk: same IP, same browser, different token. */
+reset_state();
+$_COOKIE[ TDH\Accounts::NOTICE_COOKIE ] = str_repeat( 'a', 32 );
+
+$_POST             = good_post();
+$_POST['tdh_name'] = '';
+run_handler( $contact );
+
+$_COOKIE[ TDH\Accounts::NOTICE_COOKIE ] = str_repeat( 'b', 32 );
+
+ok(
+	'a colleague on the same connection sees nothing of yours',
+	[] === Contact::take()['values'],
+	'this is the bug TDH\Accounts had already fixed once'
+);
+
+$_COOKIE[ TDH\Accounts::NOTICE_COOKIE ] = str_repeat( 'a', 32 );
+ok( '...and yours is still waiting for you', 'dana@example.com' === ( Contact::take()['values']['email'] ?? '' ) );
+
+unset( $_COOKIE[ TDH\Accounts::NOTICE_COOKIE ] );
+
+/* -------------------------------------------------------------------------
+ * 10. A stored message is readable in wp-admin
+ *
+ * tdh_inquiry is registered with `supports => ['title']`, so post_content is
+ * never displayed, and the inquiry meta box renders exactly the keys in
+ * Fields::inquiry_schema(). A key written outside that list is a key nobody
+ * can read — which defeats the entire reason this feature stores the message
+ * before emailing it.
+ * ---------------------------------------------------------------------- */
+
+echo "\n=== a stored message is readable in the admin ===\n";
+
+reset_state();
+add_filter( 'pre_wp_mail', '__return_true' );
+
+$_POST = good_post();
+run_handler( $contact );
+
+remove_filter( 'pre_wp_mail', '__return_true' );
+
+$record = get_posts(
+	[
+		'post_type'      => Post_Types::INQUIRY,
+		'posts_per_page' => 1,
+		'post_status'    => 'publish',
+	]
+);
+$record = $record[0] ?? null;
+
+$schema = TDH\Fields::inquiry_schema();
+
+foreach (
+	[
+		Contact::META_NAME,
+		Contact::META_EMAIL,
+		Contact::META_PHONE,
+		Contact::META_BODY,
+		Contact::META_TOPIC,
+		Contact::META_KIND,
+		Contact::META_NOTIFIED,
+	] as $key
+) {
+	ok(
+		sprintf( '%s is a field the admin screen renders', $key ),
+		array_key_exists( $key, $schema ),
+		'written by the form, absent from inquiry_schema(), therefore invisible'
+	);
+}
+
+ok(
+	'the message body is readable without opening the database',
+	$record && str_contains( (string) get_post_meta( $record->ID, Contact::META_BODY, true ), 'UPMC Presbyterian' )
+);
+ok(
+	'the sender’s email is on a field the screen shows',
+	$record && 'dana@example.com' === get_post_meta( $record->ID, Contact::META_EMAIL, true )
+);
+ok(
+	'a failed notification is visible rather than buried',
+	array_key_exists( Contact::META_NOTIFIED, $schema )
+);
+
+/* -------------------------------------------------------------------------
+ * 11. The Reply-To header survives a comma
+ *
+ * wp_mail() splits a Reply-To value on COMMAS and treats each piece as
+ * another address, so a visitor named "Dana Whitfield, Jr." produced two
+ * Reply-To entries, the second one garbage.
+ * ---------------------------------------------------------------------- */
+
+echo "\n=== the Reply-To header ===\n";
+
+reset_state();
+
+$header = null;
+$grab   = static function ( $short, $atts ) use ( &$header ) {
+	$header = implode( "\n", (array) ( $atts['headers'] ?? [] ) );
+
+	return true;
+};
+
+add_filter( 'pre_wp_mail', $grab, 10, 2 );
+
+$_POST             = good_post();
+$_POST['tdh_name'] = 'Dana Whitfield, Jr.';
+run_handler( $contact );
+
+remove_filter( 'pre_wp_mail', $grab, 10 );
+
+ok( 'a comma in the name does not create a second recipient', 1 === substr_count( (string) $header, '@' ), (string) $header );
+ok( '...and the real address is still there', str_contains( (string) $header, '<dana@example.com>' ), (string) $header );
+ok( '...with the name kept, just without its comma', str_contains( (string) $header, 'Dana Whitfield Jr.' ), (string) $header );
+
+/* -------------------------------------------------------------------------
+ * 12. Where it redirects back to
+ * ---------------------------------------------------------------------- */
+
+echo "\n=== the redirect target ===\n";
+
+ok(
+	'it resolves the contact page by the importer’s key, not a hardcoded slug',
+	str_contains( Contact::page_url(), '/contact' ) || Contact::page_url() === home_url( '/' ),
+	Contact::page_url()
+);
+
+$renamed = get_page_by_path( 'contact' );
+
+if ( $renamed ) {
+	wp_update_post( [ 'ID' => $renamed->ID, 'post_name' => 'talk-to-us' ] );
+	clean_post_cache( $renamed->ID );
+
+	ok(
+		'renaming the page does not send visitors to the home page',
+		str_contains( Contact::page_url(), 'talk-to-us' ),
+		Contact::page_url()
+	);
+
+	wp_update_post( [ 'ID' => $renamed->ID, 'post_name' => 'contact' ] );
+	clean_post_cache( $renamed->ID );
+} else {
+	ok( 'renaming the page does not send visitors to the home page', false, 'no contact page' );
+}
 
 /* -------------------------------------------------------------------------
  * Tidy up

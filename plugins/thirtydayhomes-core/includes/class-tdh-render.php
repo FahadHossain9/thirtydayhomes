@@ -1123,7 +1123,7 @@ final class Render {
 									$chosen = $old( 'topic' );
 									$chosen = array_key_exists( $chosen, Contact::topics() ) ? $chosen : 'renting';
 									?>
-									<?php foreach ( Contact::topics() as $key => $label ) : ?>
+									<?php foreach ( Contact::topic_chips() as $key => $label ) : ?>
 										<label class="contact-chip">
 											<input type="radio" name="tdh_topic"
 												value="<?php echo esc_attr( $key ); ?>"

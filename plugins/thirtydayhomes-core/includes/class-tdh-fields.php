@@ -323,6 +323,20 @@ final class Fields {
 			'_tdh_stay_length'   => [ 'type' => 'string',  'private' => true, 'group' => 'inquiry', 'label' => __( 'Expected stay', 'thirtydayhomes' ), 'control' => 'readonly' ],
 			'_tdh_message'       => [ 'type' => 'string',  'private' => true, 'group' => 'inquiry', 'label' => __( 'Message', 'thirtydayhomes' ), 'control' => 'readonly' ],
 			'_tdh_rules_version' => [ 'type' => 'string',  'private' => true, 'group' => 'inquiry', 'label' => __( 'Accepted rules version', 'thirtydayhomes' ), 'control' => 'readonly' ],
+
+			/*
+			 * Written by the contact form. Listed here because this schema is
+			 * what the inquiry meta box renders — a key the form writes and
+			 * this list omits is a key nobody in wp-admin can ever read, which
+			 * is precisely how a stored message became unrecoverable once.
+			 */
+			'_tdh_inquiry_kind'  => [ 'type' => 'string',  'private' => true, 'group' => 'inquiry', 'label' => __( 'Kind', 'thirtydayhomes' ), 'control' => 'readonly', 'help' => __( 'Blank for an enquiry about a listing; "contact" for a message sent from the Contact page.', 'thirtydayhomes' ) ],
+			'_tdh_topic'         => [ 'type' => 'string',  'private' => true, 'group' => 'inquiry', 'label' => __( 'Topic', 'thirtydayhomes' ), 'control' => 'readonly' ],
+			'_tdh_notified'      => [
+				'type' => 'string', 'private' => true, 'group' => 'inquiry',
+				'label' => __( 'Notification', 'thirtydayhomes' ), 'control' => 'readonly',
+				'help'  => __( '"failed" means this message reached nobody by email. It is only here, so reply from this screen.', 'thirtydayhomes' ),
+			],
 			'_tdh_read'          => [ 'type' => 'boolean', 'private' => true, 'group' => 'inquiry', 'label' => __( 'Read by landlord', 'thirtydayhomes' ), 'control' => 'checkbox' ],
 			'_tdh_status'        => [
 				'type' => 'string', 'private' => true, 'group' => 'inquiry',

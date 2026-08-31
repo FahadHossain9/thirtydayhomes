@@ -142,7 +142,98 @@ missed into spam.
 `do_action( 'tdh_contact_received', $id )` is the seam the Milestone 2
 notification pipeline hooks, so adding SMS will not mean reopening this handler.
 
-## 1.6 Release tooling
+## 1.6 Email delivery — complete in code, needs a mailbox and DNS
+
+`TDH\Mail` already fixed who mail says it is *from*. That was half the job. The
+other half is proving we may say it, and PHP's `mail()` cannot: it sends
+unauthenticated, from a shared host, on a shared IP. The message is technically
+delivered and practically filed as spam.
+
+`TDH\Smtp` sends through an authenticated SMTP server instead — configured at
+**Listings → Email delivery**.
+
+SMTP rather than a provider's API, deliberately: an API client means one class per
+provider and a rewrite the day the client switches. SMTP is the interface all of
+them expose, so a Hostinger mailbox on the domain the site already owns, Google
+Workspace, Brevo, Postmark, Resend and SES are all the same four fields — and it
+costs nothing recurring, which this project is held to.
+
+The screen leads with **status**, not fields, because whoever opens it has almost
+always arrived after something failed to arrive. It shows whether mail is being
+sent, captured or handed to the server; what address it is sent as; the last
+success; and the last failure, verbatim. The test button reports what the mail
+server actually answered — `535 5.7.8 Authentication failed` ends an
+investigation that "could not send" starts.
+
+Two things it deliberately refuses to do:
+
+- **A bad From address does not switch SMTP off.** Folding that into readiness
+  would make a site with a perfectly good mailbox abandon the configured server
+  and fall back to `mail()`, which fails too, with a worse error, while the screen
+  blames a configuration that is fine. The two are reported separately.
+- **A half-filled form does not reconfigure PHPMailer.** Pointing it at a host
+  with no credentials turns working-but-unauthenticated delivery into no delivery.
+
+**Still required, and not doable from here:** a mailbox, and SPF + DKIM + DMARC on
+the domain. Authentication is not reputation.
+
+## 1.7 Backups and the security baseline
+
+Milestone 1 asks for "version control, backups, security baseline, and
+deployment process". Version control and deployment were already done; these
+were the two that were not. Full detail in **`tools/BACKUPS.md`**.
+
+**`tools/backup.sh`** — database + `wp-config.php` + uploads, nightly from cron,
+14 days kept. It backs up only what exists in **one place**: the theme and
+plugin are in git and are deliberately excluded, because a second staler copy of
+versioned code is just something to restore from by mistake. Generated thumbnail
+sizes are excluded too — `wp media regenerate` rebuilds them, and on a
+photography site they are most of the bytes.
+
+Both archives are verified readable before the script finishes, and rotation
+happens **last**, so an old backup is never deleted to make room for one that
+did not complete.
+
+Not a backup plugin: the good ones are paid, and the free ones run inside a PHP
+web request, so a large site hits the execution limit and leaves an archive that
+looks finished and is not.
+
+**`tools/restore.sh`** — because an untested backup is a rumour. Without `--yes`
+it prints what it would do and changes nothing. It verifies the archives
+*before* touching the live database, and dumps the current database first — the
+second most common restore disaster is restoring the wrong backup over a
+database that was fine.
+
+**`plugins/thirtydayhomes-core/tools/baseline.php`** — 28 checks, read-only.
+
+Every check declares which environments it applies to and prints as skipped
+elsewhere, with the reason. That is the whole design: the first version reported
+"not https", "not production" and "mail is being captured" as failures *on a
+laptop*, where all three are correct — and a report that cries wolf every run is
+one people scroll past, taking the real finding with it. **A FAIL now always
+means something.** Exits non-zero, so it can go into CI later.
+
+### What it found
+
+| Finding | Where | Who fixes it |
+|---|---|---|
+| An administrator account is literally named `admin` | everywhere | **You** — it changes how you sign in, so it is not something to do behind your back. Procedure in `tools/BACKUPS.md` §5 |
+| No off-server copy of the backups | production | **Rob** — needs a destination he owns, and it is a decision about who holds a copy of every member's personal data |
+| Hostinger's own backup schedule unverified, never restore-tested | production | **Rob** — panel access |
+| XML-RPC status unknown on the live host | production | Developer, once on the server. `xmlrpc.php` allows hundreds of password guesses per request, straight past our own login throttle |
+
+### Verified, and not verified
+
+The `wp db export --add-drop-table` call was run locally: 1.3 MB, `DROP TABLE`
+statements present, custom tables and `wp_posts` included. The receipt file the
+baseline reads was tested in all three states — absent, fresh, and stale.
+
+**The shell scripts themselves have not been run.** There is no bash on the
+development machine, so `backup.sh` and `restore.sh` are unexecuted until
+someone runs them on the server. Run `backup.sh` by hand once before trusting
+the cron entry.
+
+## 1.8 Release tooling
 
 `tools/build-release.ps1` produces both installable zips, reads versions from
 source, and verifies its own output — single root folder, main file present,
@@ -152,11 +243,11 @@ nothing leaked from `.git`, and zero entries containing a backslash.
 
 | | |
 |---|---|
-| Code | 55 PHP files, ~10,900 lines · 2,930 lines CSS |
+| Code | 57 PHP files, ~11,700 lines · 2,930 lines CSS |
 | Shortcodes | 14 |
 | Post types / statuses | 3 / 6 (3 custom) |
 | Seeded pages | 14 |
-| Admin screens | Meta boxes · Shortcodes · Import Demo Content · **Payments** |
+| Admin screens | Meta boxes · Shortcodes · Import Demo Content · Payments · **Email delivery** |
 | Custom tables | `wp_tdh_distances`, `wp_tdh_notifications` |
 
 ## Section progress — 9 of 16
@@ -178,10 +269,11 @@ nothing leaked from `.git`, and zero entries containing a backslash.
 | 8 | Proximity engine | 🟡 Haversine and caching exist; no renter-facing facility control |
 | 9 | Landlord front-end submission | ⬜ **No way to create a listing except the admin.** Biggest functional gap |
 | 10 | Billing: checkout, webhook, membership lifecycle | ⬜ **Next** |
-| 11 | Inquiry pipeline + transactional email | 🟡 Contact form stores and notifies; listing enquiries and a real sending provider are still open |
+| 11 | Inquiry pipeline + transactional email | 🟡 Contact form stores and notifies; authenticated sending is built. Needs a mailbox + DNS, and listing enquiries are still open |
 | 12 | SMS + A2P registration | 🔴 Blocked on the client's EIN |
 | 13 | Admin: approval queue, facilities, inquiries | ⬜ |
 | 14 | SEO, performance, accessibility pass | ⬜ |
+| — | Backups + security baseline | 🟡 Scripts and checks built; the cron entry and an off-server copy still need the server and Rob |
 | 15 | Launch, documentation, handover | ⬜ |
 
 ---
@@ -257,8 +349,35 @@ define( 'TDH_STRIPE_LIVE_PUBLISHABLE', 'pk_live_…' );
 ```
 
 A constant beats the stored option and the field shows as locked. Webhook endpoint:
-`https://<domain>/wp-json/tdh/v1/stripe-webhook` — **the handler does not exist
-yet**, so adding it in Stripe now only produces failed deliveries.
+
+```
+https://<domain>/wp-json/tdh/v1/stripe-webhook
+```
+
+The route **is registered and the handler is built** — 36 assertions cover
+signature verification, replay rejection and the subscription lifecycle. Add it in
+Stripe and copy the signing secret into the Payments screen.
+
+**Email — Listings → Email delivery.** Without this, mail is handed to the web
+server unauthenticated and is usually filed as spam. Any SMTP provider works.
+
+| Setting | Value |
+|---|---|
+| SMTP server | Provider's host. Hostinger: `smtp.hostinger.com` |
+| Port / encryption | 587 + STARTTLS, or 465 + SSL |
+| Username | Usually the full mailbox address |
+| Password | The mailbox or app password |
+
+Better in `wp-config.php`, where it stays out of the database and out of any
+backup that gets emailed around:
+
+```php
+define( 'TDH_SMTP_PASSWORD', '…' );
+```
+
+Then **send a test from the screen** — saving proves nothing. DNS records
+(SPF, DKIM, DMARC) are listed on that screen and are **not optional**: they are
+what stops well-formed mail landing in spam, and no PHP can put them there.
 
 **Demo mode** — `TDH_DEMO_MODE` may be on for staging. It must be off in
 production, and the review bar refuses to render there regardless.
@@ -295,15 +414,18 @@ production, and the review bar refuses to render there regardless.
 D:\xampp\htdocs\thirtydayhomes\wp-content\plugins\thirtydayhomes-core\tools\verify.bat
 ```
 
-That runs both suites and finds the binaries for you. **105 assertions**,
+That runs all three suites and finds the binaries for you. **176 assertions**,
 self-cleaning, safe on a populated site.
 
 | Suite | Covers | Expect |
 |---|---|---|
 | `verify.php` | Cross-landlord ownership, listing visibility, membership defaults, proximity maths, account pages out of search | `all 34 checks passed` |
 | `verify-contact.php` | The contact form end to end: nonce and honeypot, validation, storage, who can read a message, the notification's headers, rate limiting | `PASSED  71 passed, 0 failed` |
+| `verify-delivery.php` | SMTP: port and encryption defaults, what reaches PHPMailer, refusing to half-configure it, the sender, failure recording, the test button | `PASSED  71 passed, 0 failed` |
 
-Neither ever sends a real email — `pre_wp_mail` is intercepted throughout.
+None of them ever sends a real email or opens a socket — `pre_wp_mail` is
+intercepted throughout and PHPMailer is driven with a stub. Every setting the
+delivery suite touches is restored at the end.
 
 To run one on its own:
 
@@ -389,6 +511,38 @@ Go to `/contact/`.
 
 The whole of the above is also automated — see §4.1.
 
+## 4.1b Security baseline — run it on the server
+
+```bash
+wp eval-file wp-content/plugins/thirtydayhomes-core/tools/baseline.php
+```
+
+Read-only; changes nothing, sends nothing. 28 checks. Production-only checks
+print as skipped elsewhere, so **a local run is not evidence about the live
+site** — the script says so itself at the end.
+
+Run it before launch, after any host/PHP/WordPress version change, after adding
+an administrator, and after a restore. Details and the wp-config lines
+production needs: `tools/BACKUPS.md`.
+
+## 4.4c Email delivery — by hand
+
+**Listings → Email delivery.** On a local machine the top of the screen will say
+mail is *written to a file* — that is correct, and the test button says so rather
+than reporting a false success. The rest is testable on the live site.
+
+| # | Do this | Expect |
+|---|---|---|
+| 1 | Open the screen before configuring anything | Status reads "handed to the server's own mail, unauthenticated" |
+| 2 | Tick **Use SMTP**, fill in only the host, Save | **Warning**, naming what is missing. Nothing is half-applied |
+| 3 | Fill everything in, Save, then reload | The password field is **empty** with a "saved" placeholder. **Ctrl+U** and search the source for the password → **0 results** |
+| 4 | Change only the host and Save | The password is still saved. A blank must keep, not erase |
+| 5 | Send a test with a deliberately wrong password | Red notice with the server's real answer, e.g. `535 Authentication failed`, and a "What the mail server said" transcript |
+| 6 | Fix the password, send a test | Green. The **Last failure** row disappears — a fixed problem must not stay on screen |
+| 7 | Set the From address to something on another domain | A warning that SPF and DKIM authenticate the From domain |
+| 8 | Send a test to Gmail **and** to Outlook | Check the spam folder in both. Passing one says little about the other |
+| 9 | Submit the contact form | The message arrives, `Reply-To` is the sender, `From` is not |
+
 ## 4.5 Pages — by eye
 
 Hard-refresh (**Ctrl+Shift+R**) or a cached page will mislead you.
@@ -400,8 +554,11 @@ Check on each: one `<h1>`, breadcrumb present, banner correct, and the footer
 intact. On `/pricing/` specifically: plans ascend **$49 → $88 → $125**, discounts
 read 10% then 15%, and the `$` does not collide with the first digit.
 
-**Known issue:** between roughly 700px and 1000px the header nav collides with the
-logo, reading "ThirtyDayHomesAbout". Pre-existing, every page, not yet fixed.
+Also check the header between 700px and 1000px. It used to read
+"ThirtyDayHomesAbout" there, because the drawer only appeared at 700px while the
+six nav items needed roughly 1000px. The drawer now takes over at 62rem, matching
+the width the section grids already collapse at — so the whole layout changes
+shape once rather than three times.
 
 ## 4.6 Deploying to a new environment
 
@@ -427,8 +584,8 @@ Carried deliberately, tracked so it is not forgotten.
 
 | Item | Section |
 |---|---|
-| Header nav collides with the logo between ~700–1000px | §14 |
 | Google Fonts loaded from Google; self-hosting removes a third-party request and the GDPR question | §14 |
+| Mail is sent during the request that triggers it. A dead SMTP server costs a page load — capped at 15s, not PHPMailer's 300s default — rather than being queued and retried | — accepted |
 | Seeded hospital coordinates are approximate placeholders | §8 |
 | Stock photography is licensed but is not the client's own | §14 |
 | Elementor 4.x is opted into Editor V4; our widgets use the classic `Widget_Base` API. Works today, would need porting if the classic path is dropped | watch |

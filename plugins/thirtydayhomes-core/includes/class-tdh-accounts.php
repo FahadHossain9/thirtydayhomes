@@ -30,8 +30,15 @@ final class Accounts {
 	/** Where errors and notices survive one redirect. */
 	private const TRANSIENT_PREFIX = 'tdh_notice_';
 
-	/** Names the visitor a stashed notice belongs to. See visitor_key(). */
-	private const NOTICE_COOKIE = 'tdh_notice_id';
+	/**
+	 * Names the visitor a stashed notice belongs to. See visitor_key().
+	 *
+	 * Public alongside visitor_key(): every form that stashes across a
+	 * redirect keys on this one cookie, and the verification suites have to
+	 * be able to set it to prove that two visitors behind one office NAT
+	 * cannot read each other's half-typed message.
+	 */
+	public const NOTICE_COOKIE = 'tdh_notice_id';
 
 	/** Which form is being handled, so a failure knows where to send it back. */
 	private string $screen = '';
@@ -701,7 +708,7 @@ final class Accounts {
 		// show anyone; the values are not, because they carry the email
 		// address this visitor just typed. Drop them rather than risk
 		// handing them to the next person on the same IP and browser.
-		if ( 't' !== $key[0] && 'u' !== $key[0] ) {
+		if ( ! self::key_is_private( $key ) ) {
 			$values = [];
 		}
 
@@ -768,12 +775,23 @@ final class Accounts {
 	 * email address the visitor typed for repopulating the form. One of them
 	 * could be handed the other's address.
 	 *
+	 * PUBLIC because it is not only this class's problem. Any front-end form
+	 * that stashes what somebody typed across a redirect needs exactly this
+	 * key, and the contact form was written with a private copy of the same
+	 * broken TEST_COOKIE reasoning described above — carrying the bug forward
+	 * rather than the fix. One implementation, so a security-relevant key
+	 * cannot be right in one place and wrong in another.
+	 *
+	 * Callers MUST drop anything the visitor typed when this returns a 'g'
+	 * key: that one is shared by everybody behind an office NAT. Use
+	 * key_is_private() rather than testing the prefix by hand.
+	 *
 	 * @param bool $create Mint a token if there is none. Only true on the
 	 *                     stashing request: minting sends a Set-Cookie
 	 *                     header, and take_notice() runs during rendering,
 	 *                     after headers are away.
 	 */
-	private static function visitor_key( bool $create = false ): string {
+	public static function visitor_key( bool $create = false ): string {
 
 		$user_id = get_current_user_id();
 
@@ -791,6 +809,21 @@ final class Accounts {
 		// message — but stash() drops the form values on this key, so the
 		// worst a collision can now show someone is a generic sentence.
 		return 'g' . md5( ( $_SERVER['REMOTE_ADDR'] ?? '' ) . ( $_SERVER['HTTP_USER_AGENT'] ?? '' ) );
+	}
+
+	/**
+	 * Does this key belong to ONE visitor?
+	 *
+	 * A user id or a minted token does. The 'g' fallback does not — it is
+	 * md5( IP . user agent ), which everybody behind one office NAT on the
+	 * same browser build shares.
+	 *
+	 * A named check rather than `$key[0] === 't'` scattered around, because
+	 * the consequence of getting it wrong is handing one visitor the email
+	 * address and message another just typed.
+	 */
+	public static function key_is_private( string $key ): bool {
+		return '' !== $key && ( 't' === $key[0] || 'u' === $key[0] );
 	}
 
 	/**

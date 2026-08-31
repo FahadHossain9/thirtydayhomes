@@ -4,7 +4,7 @@ Theme URI:    https://github.com/FahadHossain9/thirtydayhomes
 Author:       Instaquirk
 Author URI:   https://instaquirk.com
 Description:  Presentation layer for the ThirtyDayHomes marketplace. Owns global design tokens, header, footer, navigation, responsive framework and Elementor integration. Holds NO marketplace business rules — those live in the ThirtyDayHomes Core plugin, so replacing this theme never costs a listing, membership, inquiry or facility.
-Version:      0.19.1
+Version:      0.19.3
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 8.1
@@ -1642,11 +1642,25 @@ img, video { max-width: 100%; height: auto; }
 	top: 2px;
 }
 
+/* Two fields on one row.
+   ------------------------------------------------------------------------
+   The gap is counted ONCE. The fields inside carry .form-field, which brings
+   its own margin-bottom, and that margin stacks on top of the grid's row gap
+   the moment the grid collapses to a single column — so Name → Email sat at
+   40px on a phone while every other pair in the same form sat at 20px.
+
+   The margin moves to the grid itself rather than simply being deleted: on a
+   wide screen the grid is a single row, its row gap never applies, and that
+   child margin was the only thing separating the grid from the field below
+   it. Removing it without replacing it closes that gap to nothing. */
 .form-grid {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
 	gap: var( --space-5 );
+	margin-bottom: var( --space-5 );
 }
+
+.form-grid > .form-field { margin-bottom: 0; }
 
 .form-section {
 	font-size: var( --text-h5 );
@@ -3574,16 +3588,36 @@ img, video { max-width: 100%; height: auto; }
 	font-weight: var( --weight-semibold );
 }
 
+/* Four chips, one row.
+   ------------------------------------------------------------------------
+   The chips GROW to share whatever the row has left over, so when they fit
+   they fill the line evenly and read as one segmented control rather than
+   four pills with a ragged edge. When the panel is too narrow for four they
+   wrap into balanced rows instead of leaving a single orphan hanging under
+   the other three, which is what a plain wrap did.
+
+   The labels were shortened for the same reason — see Contact::topic_list(),
+   which keeps the long descriptive wording for the email subject where the
+   extra words earn their place. */
 .contact-chips {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var( --space-2 );
 }
 
+.contact-chip {
+	flex: 1 1 auto;
+}
+
 /* Positioned, so the absolutely positioned radio inside resolves against
    its own chip. Without this it would climb the tree looking for a
    positioned ancestor, find none, and resolve against the page. */
 .contact-chip { position: relative; }
+
+/* A chip that breaks its own label across two lines is worse than a row
+   that wraps: the pill grows taller than its neighbours and the row stops
+   being a row. */
+.contact-chip > span { white-space: nowrap; text-align: center; }
 
 /* The radio is hidden from sight but NOT from the accessibility tree or the
    keyboard: display:none would drop it out of tab order and out of the
@@ -3692,9 +3726,9 @@ img, video { max-width: 100%; height: auto; }
 	.contact-promise,
 	.contact-panel { padding: var( --space-8 ) var( --space-6 ); }
 
-	/* A chip row that wraps to three lines is a list; make it one. */
+	/* On a phone four chips across is four unreadable slivers, so the row
+	   becomes a list. text-align is already centred above. */
 	.contact-chips { flex-direction: column; align-items: stretch; }
-	.contact-chip > span { text-align: center; }
 }
 
 /* The assurance rows need nothing here — their animation lives entirely

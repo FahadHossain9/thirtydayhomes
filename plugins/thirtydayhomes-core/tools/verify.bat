@@ -57,6 +57,9 @@ REM not hide the state of everything else. Their exit codes are folded in.
 "%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify-contact.php"
 if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
 
+"%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify-delivery.php"
+if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
+
 popd
 
 echo.

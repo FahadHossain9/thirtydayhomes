@@ -62,6 +62,12 @@ final class Core {
 			// account.
 			'mail'       => new Mail(),
 
+			// The transport, and NOT admin-only: the messages that matter most
+			// are sent from the front end — a contact message, a registration,
+			// a password reset — so the SMTP configuration has to be in place
+			// on exactly the requests no administrator is present for.
+			'smtp'       => new Smtp(),
+
 			// NOT admin-only. Stripe posts to the REST API as nobody, so
 			// registering this behind is_admin() would mean the endpoint did
 			// not exist for the only caller that ever uses it.
@@ -86,6 +92,10 @@ final class Core {
 			// reads those credentials, is a static accessor with no hooks —
 			// checkout and the webhook load it themselves on the front end.
 			$this->modules['payments'] = new Billing\Settings();
+
+			// Reads and writes the SMTP settings TDH\Smtp sends with. Admin
+			// only: it is a screen, and the sender itself is registered above.
+			$this->modules['email'] = new Admin\Mail_Settings();
 		}
 
 		// Client review mode. Registers nothing unless TDH_DEMO_MODE is on
