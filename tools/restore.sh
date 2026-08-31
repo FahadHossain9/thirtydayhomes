@@ -31,6 +31,9 @@ WP_CLI="${WP_CLI:-$(command -v wp || echo "$HOME/bin/wp")}"
 say() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 die() { printf '\nrestore ABORTED: %s\n' "$*" >&2; exit 1; }
 
+# shellcheck source=lib-db.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib-db.sh"
+
 SRC="${1:-}"
 CONFIRM="${2:-}"
 
@@ -77,7 +80,8 @@ say "saving the current database first"
 SAFETY="$HOME/backups/thirtydayhomes/before-restore-$(date -u +%Y%m%d-%H%M%S).sql"
 mkdir -p "$(dirname "$SAFETY")"
 
-"$WP_CLI" --path="$WP_DIR" db export "$SAFETY" --add-drop-table --quiet || die "could not save the current database, so the restore was not started"
+tdh_db_export "$SAFETY" || die "could not save the current database, so the restore was not started"
+[ -s "$SAFETY" ] || die "the safety copy came out empty, so the restore was not started"
 gzip -9 "$SAFETY"
 
 echo "  $SAFETY.gz"
@@ -88,7 +92,7 @@ echo "  If this restore turns out to be the wrong one, that file puts it back."
 say "restoring the database"
 
 gunzip -c "$DUMP" > /tmp/tdh-restore.sql
-"$WP_CLI" --path="$WP_DIR" db import /tmp/tdh-restore.sql --quiet
+tdh_db_import /tmp/tdh-restore.sql || { rm -f /tmp/tdh-restore.sql; die "the import failed — the safety copy above still holds what was there"; }
 rm -f /tmp/tdh-restore.sql
 
 echo "  imported"

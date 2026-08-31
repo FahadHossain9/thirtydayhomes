@@ -68,6 +68,9 @@ echo "  site : $WP_DIR"
 SNAP_DIR="$HOME/backups/thirtydayhomes/pre-deploy"
 WP_CLI="${WP_CLI:-$(command -v wp || true)}"
 
+# shellcheck source=lib-db.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib-db.sh"
+
 say "snapshotting the database first"
 
 if [ -n "$WP_CLI" ] && command -v mysqldump >/dev/null 2>&1; then
@@ -75,7 +78,7 @@ if [ -n "$WP_CLI" ] && command -v mysqldump >/dev/null 2>&1; then
 	mkdir -p "$SNAP_DIR"
 	SNAP="$SNAP_DIR/$(date -u +%Y%m%d-%H%M%S)-before-deploy.sql"
 
-	if "$WP_CLI" --path="$WP_DIR" db export "$SNAP" --add-drop-table --quiet 2>/dev/null; then
+	if tdh_db_export "$SNAP" && [ -s "$SNAP" ]; then
 		gzip -9 "$SNAP"
 		echo "  $SNAP.gz  ($(du -h "$SNAP.gz" | cut -f1))"
 

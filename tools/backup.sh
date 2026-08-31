@@ -47,17 +47,18 @@ RUN="$DEST/$STAMP"
 say() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 die() { printf '\nbackup FAILED: %s\n' "$*" >&2; exit 1; }
 
+# shellcheck source=lib-db.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib-db.sh"
+
 # ─── checks before touching anything ───────────────────────────────────────
 
 [ -f "$WP_DIR/wp-config.php" ] || die "no WordPress at $WP_DIR"
 [ -x "$WP_CLI" ] || command -v "$WP_CLI" >/dev/null 2>&1 || die "wp-cli not found (set WP_CLI)"
 
-# `wp db export` shells out to mysqldump and has no pure-PHP fallback, so
-# without it every run fails halfway through with a message about a command
-# not being found — which reads like a broken script rather than a missing
-# dependency. Checked here, by name, so the diagnosis arrives with the
-# failure. Some shared hosts genuinely do not ship it.
-command -v mysqldump >/dev/null 2>&1 || die "mysqldump is not on PATH. \`wp db export\` needs it and has no fallback. On a host that does not provide it, take the database export from the control panel instead and keep uploads on this schedule."
+# The dump needs mysqldump one way or the other — wp-cli only shells out to
+# it. Checked by name so the diagnosis arrives with the failure rather than
+# halfway through as "command not found". Some shared hosts do not ship it.
+command -v mysqldump >/dev/null 2>&1 || die "mysqldump is not on PATH. Both routes need it. On a host that does not provide it, take the database export from the control panel and keep uploads on this schedule."
 
 command -v gzip >/dev/null 2>&1 || die "gzip is not installed"
 command -v tar  >/dev/null 2>&1 || die "tar is not installed"
@@ -75,8 +76,13 @@ say "backing up to $RUN"
 
 say "database"
 
-"$WP_CLI" --path="$WP_DIR" db export "$RUN/database.sql" --add-drop-table --quiet \
-	|| die "database export failed"
+echo "  via $(tdh_db_method)"
+
+tdh_db_export "$RUN/database.sql" || die "database export failed"
+
+# An empty or near-empty file is a failure that reported success. mysqldump
+# can exit 0 having written only its header if it is refused a table.
+[ -s "$RUN/database.sql" ] || die "the database export produced an empty file"
 
 gzip -9 "$RUN/database.sql"
 
