@@ -18,6 +18,32 @@ concurrency:
   group: deploy-production
   cancel-in-progress: false
 
+# ─── VALUES THAT ARE NOT SECRETS, SO THEY LIVE HERE ───────────────────────
+#
+# These were secrets, and every one of them arrived corrupted: a browser
+# extension rewrites text in those fields, and a fingerprint or a path is
+# case-sensitive and unforgiving. Four separate values were mangled that way,
+# each producing an error that looked like something else entirely.
+#
+# None of them is actually secret:
+#
+#   A host key FINGERPRINT is public by design. It is what you compare
+#   against, published so anyone can verify the server they reached — it
+#   grants nothing. Committing it is better than a secret: git carries it,
+#   nobody retypes it, and a change to it shows up in a diff and a review
+#   rather than silently in a settings page.
+#
+#   The site URL is on the internet.
+#
+#   The paths are derived from the SSH user, which is a secret, so nothing
+#   here reveals the account name.
+#
+# What stays a secret is what actually grants access: the private key, and
+# the host, port and user needed to reach the box.
+env:
+  HOST_FINGERPRINT: "SHA256:N07mQWxTKWkjrp8ILv7JgZSM5H+aP0ti1hF5aydDdzs"
+  SITE_URL: "https://thirtydayhomes.com"
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -58,29 +84,89 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      # Pinning the host key rather than accepting whatever answers. Without
-      # this, StrictHostKeyChecking has to be turned off, and a deploy would
-      # happily hand its key to any machine that took over the address.
+      # Scan the host key, then check it against a pinned FINGERPRINT.
+      #
+      # The pin is what stops the deploy handing its key to whatever machine
+      # answers on that address. But pinning by pasting the whole base64 key
+      # into a secret proved fragile: it is a long unbroken string, and three
+      # separate values were silently corrupted on the way into GitHub —
+      # producing "REMOTE HOST IDENTIFICATION HAS CHANGED", which reads like
+      # an attack and was really a broken paste.
+      #
+      # A fingerprint is short, has a distinctive shape, and is trivial to
+      # eyeball. The runner scans the key itself, computes its fingerprint,
+      # and refuses to go on unless it matches. Same guarantee, nothing long
+      # to mistype.
       - name: Trust the server's host key
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 700 ~/.ssh
+
+          ssh-keyscan -t ed25519 -p "$SSH_PORT" "$SSH_HOST" > ~/.ssh/known_hosts 2>/dev/null
+
+          if [ ! -s ~/.ssh/known_hosts ]; then
+            echo "::error::Could not read a host key from the server."
+            exit 1
+          fi
+
           chmod 600 ~/.ssh/known_hosts
 
+          ACTUAL=$(ssh-keygen -lf ~/.ssh/known_hosts | awk '{print $2}')
+          echo "host fingerprint: $ACTUAL"
+
+          if [ "$ACTUAL" != "$HOST_FINGERPRINT" ]; then
+            echo "::error::Host fingerprint is $ACTUAL but this workflow pins $HOST_FINGERPRINT."
+            echo "::error::If the server was genuinely rebuilt, update HOST_FINGERPRINT at the top of this file."
+            exit 1
+          fi
+
+          echo "matches the pinned fingerprint"
+
+      # The fetch happens HERE, before the script is invoked, and that
+      # ordering is the whole point.
+      #
+      # deploy.sh lives in the repository, so the server's clone has to be
+      # updated before the script can be run — otherwise the very first
+      # deploy tries to execute a file that the checked-out commit does not
+      # contain yet, and fails with "No such file or directory". The script
+      # that fetches the new code is itself part of the new code.
+      #
+      # Fetching first makes the Action self-healing: however far behind the
+      # server clone has drifted, it is brought to the branch and only then
+      # asked to run the script from that same commit. deploy.sh still does
+      # its own fetch, which is then a no-op here and the right behaviour
+      # when someone runs it by hand over SSH.
       - name: Deploy
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_USER: ${{ secrets.SSH_USER }}
-          REPO_DIR: ${{ secrets.REPO_DIR }}
-          WP_DIR: ${{ secrets.WP_DIR }}
         run: |
-          ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
-            "REPO_DIR='$REPO_DIR' WP_DIR='$WP_DIR' BRANCH=main bash '$REPO_DIR/tools/deploy.sh'"
+          # Both paths are derived from $HOME on the server rather than
+          # pasted. They were secrets, and both arrived corrupted; they are
+          # also entirely predictable, so there was never a reason for a
+          # human to type them. Expanded on the SERVER, so the account name
+          # never appears here or in the log.
+          ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash -s <<'EOF'
+            set -euo pipefail
+
+            REPO_DIR="$HOME/repos/thirtydayhomes-main"
+            WP_DIR="$HOME/domains/thirtydayhomes.com/public_html"
+
+            cd "$REPO_DIR" || { echo "No clone at $REPO_DIR - see tools/DEPLOY.md"; exit 1; }
+
+            git fetch --prune origin main
+            git reset --hard origin/main
+
+            REPO_DIR="$REPO_DIR" WP_DIR="$WP_DIR" BRANCH=main bash "$REPO_DIR/tools/deploy.sh"
+          EOF
 
       - name: Check the site still answers
         env:
-          SITE: ${{ secrets.SITE_URL }}
+          SITE: ${{ env.SITE_URL }}
         run: |
           # A deploy that leaves a fatal error is worse than one that fails,
           # because nothing tells you. Three tries, because a shared host can
