@@ -192,11 +192,14 @@ final class Demo_Mode {
 		/** Fires after a reviewer switches persona. */
 		do_action( 'wp_login', $user->user_login, $user );
 
-		$destination = 'admin' === $persona
-			? admin_url( 'edit.php?post_type=' . Post_Types::LISTING )
-			: admin_url( 'edit.php?post_type=' . Post_Types::LISTING . '&author=' . $user->ID );
-
-		wp_safe_redirect( $destination );
+		/*
+		 * Every signed-in persona lands on the portal — the marketplace
+		 * administration for the demo admin, the landlord dashboard for the
+		 * landlord personas. These screens ARE what the client is here to
+		 * review; wp-admin was only the destination back when no portal
+		 * existed to land on.
+		 */
+		wp_safe_redirect( \TDH\Accounts::url( 'account' ) );
 		exit;
 	}
 

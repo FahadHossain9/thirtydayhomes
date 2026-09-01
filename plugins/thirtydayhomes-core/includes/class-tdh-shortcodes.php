@@ -55,6 +55,11 @@ final class Shortcodes {
 		add_shortcode( 'tdh_reset_password', [ Account_Render::class, 'reset_password' ] );
 		add_shortcode( 'tdh_account', [ Account_Render::class, 'dashboard' ] );
 		add_shortcode( 'tdh_profile', [ Account_Render::class, 'profile' ] );
+
+		// The landlord's create-a-listing wizard. One shortcode for the whole
+		// flow — the step lives in the URL, not in an attribute, because a
+		// step frozen into page content would break the wizard's own links.
+		add_shortcode( 'tdh_add_listing', [ Listing_Form_Render::class, 'form' ] );
 	}
 
 	/**

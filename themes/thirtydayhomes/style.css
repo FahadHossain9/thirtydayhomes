@@ -4,7 +4,7 @@ Theme URI:    https://github.com/FahadHossain9/thirtydayhomes
 Author:       Instaquirk
 Author URI:   https://instaquirk.com
 Description:  Presentation layer for the ThirtyDayHomes marketplace. Owns global design tokens, header, footer, navigation, responsive framework and Elementor integration. Holds NO marketplace business rules — those live in the ThirtyDayHomes Core plugin, so replacing this theme never costs a listing, membership, inquiry or facility.
-Version:      0.19.3
+Version:      0.24.0
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 8.1
@@ -2396,6 +2396,18 @@ img, video { max-width: 100%; height: auto; }
 .mini-listing small { color: var( --text-muted ); font-size: var( --text-xs ); }
 .mini-listing .status { flex: none; }
 
+/* Drafts and pending listings reopen in the wizard. Plain-text link, not a
+   button: the row is the object, the edit is the quiet secondary action. */
+.mini-listing > .mini-listing-edit {
+	flex: none;
+	font-size: var( --text-xs );
+	font-weight: var( --weight-semibold );
+	color: var( --text-accent );
+	text-decoration: none;
+}
+
+.mini-listing > .mini-listing-edit:hover { text-decoration: underline; }
+
 /* --- Header sign-in --------------------------------------------------- */
 
 .nav-signin {
@@ -3740,4 +3752,1020 @@ img, video { max-width: 100%; height: auto; }
    rather than stopped, and it does not touch animation-delay at all. */
 @media ( prefers-reduced-motion: reduce ) {
 	.contact-dot::after { animation: none; opacity: 0; }
+}
+
+/* =========================================================================
+   LANDLORD PORTAL
+
+   The dashboard as the approved prototype draws it: navy sidebar, white
+   top bar, four metric tiles, two panels. The site header and footer are
+   hidden on this one page — the sidebar's "Public website" link is the way
+   back out, exactly as in the prototype.
+
+   Every selector is prefixed `portal-` and anchored with child combinators.
+   The panels inside reuse the account section's .panel/.empty-state, which
+   is deliberate: the profile page uses them too, and two implementations of
+   a panel is how they drift apart.
+   ========================================================================= */
+
+/* The chrome disappears only here, keyed on the body class the theme sets
+   for the signed-in dashboard. A logged-out visitor to the same URL gets
+   the sign-in wall WITH the site header, because someone who has not
+   entered the portal still needs the site's navigation. */
+body.tdh-portal-page .site-header,
+body.tdh-portal-page .site-footer { display: none; }
+
+.portal {
+	display: grid;
+	grid-template-columns: 14.7rem 1fr;
+	min-height: 100vh;
+}
+
+/* --- The sidebar --------------------------------------------------------- */
+
+.portal-side {
+	display: flex;
+	flex-direction: column;
+	background: var( --color-navy );
+	color: var( --color-on-dark-muted );
+	padding: var( --space-6 ) var( --space-4 );
+}
+
+.portal-brand {
+	display: block;
+	padding: 0 var( --space-2 ) var( --space-6 );
+	border-bottom: 1px solid var( --color-border-on-dark-faint );
+	text-decoration: none;
+	color: var( --text-inverse );
+}
+
+/* The logo at sidebar scale. The theme's logo is drawn for a 96px header;
+   dropped into a 235px rail it dominates everything under it. The prototype
+   sets the aside's own sizes — a 48×55 tile on a barely-there ground and a
+   17px wordmark — and these are those sizes, said in tokens. The same
+   step-down the mobile drawer already performs, for the same reason. */
+.portal-brand .logo > i {
+	width: var( --logo-tile-sm );
+	height: calc( var( --logo-tile-sm ) * 1.15 );
+	background: var( --color-surface-on-dark );
+}
+
+.portal-brand .logo b,
+.portal-brand .logo strong { font-size: var( --text-lg ); }
+
+.portal-side-label {
+	margin: 0;
+	padding: var( --space-5 ) var( --space-3 ) var( --space-2 );
+	font-size: var( --text-3xs );
+	font-weight: var( --weight-bold );
+	letter-spacing: var( --tracking-wider );
+	text-transform: uppercase;
+	color: var( --color-gold );
+}
+
+.portal-nav {
+	display: flex;
+	flex-direction: column;
+	gap: var( --space-1 );
+}
+
+.portal-nav > a {
+	display: flex;
+	align-items: center;
+	gap: var( --space-3 );
+	padding: var( --space-3 );
+	border-radius: var( --radius-xs );
+	border-left: 2px solid transparent;
+	color: var( --color-on-dark-subtle );
+	font-size: var( --text-sm );
+	font-weight: var( --weight-medium );
+	text-decoration: none;
+	transition: background var( --duration-fast ) var( --ease ),
+	            color var( --duration-fast ) var( --ease );
+}
+
+.portal-nav > a:hover { color: var( --text-inverse ); background: var( --color-surface-on-dark ); }
+
+.portal-nav > a.is-current {
+	color: var( --text-inverse );
+	background: var( --color-surface-on-dark );
+	border-left-color: var( --color-gold );
+}
+
+.portal-nav > a > .tdh-icon { flex: none; }
+
+/* The unread count. Gold on navy, because it is the one number in the
+   sidebar that asks for a decision. */
+.portal-count {
+	margin-left: auto;
+	min-width: 1.25rem;
+	padding: 0 var( --space-1 );
+	border-radius: var( --radius-pill );
+	background: var( --color-gold );
+	color: var( --color-navy );
+	font-size: var( --text-2xs );
+	font-style: normal;
+	font-weight: var( --weight-bold );
+	text-align: center;
+}
+
+.portal-return {
+	display: flex;
+	align-items: center;
+	gap: var( --space-2 );
+	margin-top: auto;
+	padding: var( --space-3 );
+	color: var( --color-on-dark-subtle );
+	font-size: var( --text-sm );
+	text-decoration: none;
+}
+
+.portal-return:hover { color: var( --text-inverse ); }
+
+/* --- The main column ----------------------------------------------------- */
+
+.portal-main {
+	min-width: 0;
+	background: var( --bg-surface-tint );
+}
+
+.portal-top {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	height: 4rem;
+	padding: 0 var( --space-7 );
+	background: var( --bg-surface );
+	border-bottom: 1px solid var( --border-default );
+	font-size: var( --text-sm );
+}
+
+.portal-top > div {
+	display: flex;
+	align-items: center;
+	gap: var( --space-4 );
+}
+
+.portal-signout {
+	color: var( --text-muted );
+	font-weight: var( --weight-semibold );
+	text-decoration: none;
+}
+
+.portal-signout:hover { color: var( --text-accent ); }
+
+.portal-avatar {
+	display: grid;
+	place-items: center;
+	flex: none;
+	width: 2.125rem;
+	height: 2.125rem;
+	border-radius: var( --radius-full );
+	background: var( --bg-surface-accent );
+	color: var( --color-gold-ink );
+	font-size: var( --text-2xs );
+	font-style: normal;
+	font-weight: var( --weight-bold );
+}
+
+.portal-body { padding: var( --space-7 ); }
+
+.portal-heading {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var( --space-5 );
+	margin-bottom: var( --space-6 );
+}
+
+.portal-heading h1 { margin: 0; font-size: var( --text-h3 ); }
+
+.portal-heading p {
+	margin: var( --space-1 ) 0 0;
+	color: var( --text-muted );
+	font-size: var( --text-sm );
+}
+
+/* --- The membership band ------------------------------------------------- */
+
+.portal-alert {
+	display: flex;
+	align-items: center;
+	gap: var( --space-3 );
+	margin-bottom: var( --space-5 );
+	padding: var( --space-4 ) var( --space-5 );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-xs );
+	background: var( --bg-surface );
+}
+
+.portal-alert > .tdh-icon { flex: none; color: var( --color-gold-ink ); }
+
+.portal-alert > span:not( .portal-renews ) {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-width: 0;
+}
+
+.portal-alert small { color: var( --text-muted ); }
+
+.portal-alert > a {
+	flex: none;
+	padding: var( --btn-pad-y-sm ) var( --btn-pad-x-sm );
+	border-radius: var( --radius-sm );
+	background: var( --color-navy );
+	color: var( --text-inverse );
+	font-size: var( --text-sm );
+	font-weight: var( --weight-bold );
+	text-decoration: none;
+}
+
+.portal-renews {
+	flex: none;
+	color: var( --text-muted );
+	font-size: var( --text-sm );
+}
+
+/* The states carry the same colours their status pills do, so the band and
+   the badges never disagree about what a state looks like. */
+.portal-alert--inactive { background: var( --color-warning-bg ); border-color: #ead390; }
+.portal-alert--inactive small { color: #6e6756; }
+.portal-alert--active { border-left: 3px solid var( --color-success ); }
+.portal-alert--past_due { background: var( --color-danger-bg ); border-color: var( --color-danger ); }
+.portal-alert--pending { background: var( --color-warning-bg ); border-color: #ead390; }
+
+/* --- Metrics ------------------------------------------------------------- */
+
+.portal-metrics {
+	display: grid;
+	grid-template-columns: repeat( 4, 1fr );
+	gap: var( --space-4 );
+	margin-bottom: var( --space-5 );
+}
+
+.portal-metric {
+	display: flex;
+	align-items: center;
+	gap: var( --space-3 );
+	padding: var( --space-5 );
+	background: var( --bg-surface );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-xs );
+}
+
+.portal-metric > i {
+	display: grid;
+	place-items: center;
+	flex: none;
+	width: var( --icon-well );
+	height: var( --icon-well );
+	background: var( --bg-surface-accent );
+	color: var( --color-gold-ink );
+	border-radius: var( --radius-xs );
+}
+
+.portal-metric > span { display: flex; flex-direction: column; min-width: 0; }
+
+.portal-metric small { color: var( --text-muted ); font-size: var( --text-sm ); }
+
+.portal-metric b {
+	font-family: var( --font-heading );
+	font-size: var( --text-xl );
+	font-variant-numeric: tabular-nums;
+}
+
+.portal-metric b > em {
+	font-style: normal;
+	font-size: var( --text-sm );
+	color: var( --text-subtle );
+}
+
+/* --- The two panels ------------------------------------------------------ */
+
+.portal-columns {
+	display: grid;
+	grid-template-columns: 1.4fr 1fr;
+	gap: var( --space-5 );
+	align-items: start;
+}
+
+.portal-inquiry {
+	display: flex;
+	align-items: center;
+	gap: var( --space-3 );
+	padding: var( --space-3 ) 0;
+	border-bottom: 1px solid var( --border-soft );
+}
+
+.portal-inquiry:last-child { border-bottom: 0; }
+
+.portal-inquiry > span {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-width: 0;
+}
+
+.portal-inquiry b { font-size: var( --text-sm ); }
+
+.portal-inquiry small {
+	color: var( --text-muted );
+	font-size: var( --text-xs );
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.portal-inquiry > em {
+	flex: none;
+	width: 0.5rem;
+	height: 0.5rem;
+	border-radius: var( --radius-full );
+	background: var( --color-gold );
+}
+
+/* --- The marketplace portal (staff) --------------------------------------- */
+
+/* "View all" in a panel corner. */
+.panel-title > a {
+	display: inline-flex;
+	align-items: center;
+	gap: var( --space-1 );
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+	color: var( --text-accent );
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.panel-title > a:hover { text-decoration: underline; }
+
+.portal-approval {
+	display: flex;
+	align-items: center;
+	gap: var( --space-3 );
+	padding: var( --space-3 ) 0;
+	border-bottom: 1px solid var( --border-soft );
+}
+
+.portal-approval:last-child { border-bottom: 0; }
+
+.portal-approval > img {
+	flex: none;
+	width: 3rem;
+	height: 3rem;
+	object-fit: cover;
+	border-radius: var( --radius-xs );
+}
+
+/* A queue entry with no photo yet gets a quiet placeholder tile instead of
+   a collapsed gap that misaligns the row against its neighbours. */
+.portal-approval > i {
+	display: grid;
+	place-items: center;
+	flex: none;
+	width: 3rem;
+	height: 3rem;
+	background: var( --bg-surface-accent );
+	color: var( --color-gold-ink );
+	border-radius: var( --radius-xs );
+}
+
+.portal-approval > span:not( .status ) {
+	display: flex;
+	flex-direction: column;
+	gap: var( --space-1 );
+	flex: 1;
+	min-width: 0;
+}
+
+.portal-approval > span > b { font-size: var( --text-sm ); }
+
+.portal-approval > span > b > a {
+	color: inherit;
+	text-decoration: none;
+}
+
+.portal-approval > span > b > a:hover { text-decoration: underline; }
+
+.portal-approval > span > small {
+	color: var( --text-muted );
+	font-size: var( --text-xs );
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.portal-approval > .status { flex: none; }
+
+.portal-health {
+	display: grid;
+	grid-template-columns: repeat( 3, 1fr );
+	gap: var( --space-3 );
+	padding-top: var( --space-4 );
+}
+
+.portal-health > div {
+	display: flex;
+	flex-direction: column;
+	gap: var( --space-1 );
+	padding: var( --space-4 );
+	background: var( --bg-surface-tint );
+	border-radius: var( --radius-xs );
+}
+
+.portal-health > div > small { color: var( --text-muted ); font-size: var( --text-xs ); }
+
+.portal-health > div > b {
+	font-family: var( --font-heading );
+	font-size: var( --text-xl );
+	font-variant-numeric: tabular-nums;
+}
+
+/* A full-width panel on a portal view (Listings, Members …), stacked. */
+.portal-panel-block { margin-bottom: var( --space-5 ); }
+
+/* Approve / Request changes on a queue row: two small forms side by side. */
+.portal-row-actions {
+	display: flex;
+	gap: var( --space-2 );
+	flex: none;
+}
+
+.portal-row-actions > form { margin: 0; }
+
+.portal-row-actions .primary,
+.portal-row-actions .secondary {
+	padding: var( --space-2 ) var( --space-3 );
+	font-size: var( --text-xs );
+}
+
+/* The developer's wp-admin door takes the sidebar's bottom push; the
+   Public website link sits directly under it. */
+.portal-wp + .portal-return { margin-top: var( --space-1 ); }
+
+/* --- Narrow -------------------------------------------------------------- */
+
+@media ( max-width: 62rem ) {
+	.portal { grid-template-columns: 1fr; }
+
+	/* The sidebar becomes a strip: brand, then the nav as a scrollable row.
+	   NOT display:none, which is what the prototype does — hiding it leaves
+	   a phone with no way to sign out or reach the profile at all. */
+	.portal-side {
+		flex-direction: row;
+		align-items: center;
+		gap: var( --space-4 );
+		padding: var( --space-3 ) var( --space-4 );
+	}
+
+	.portal-brand { padding: 0; border-bottom: 0; }
+	.portal-side-label { display: none; }
+
+	.portal-nav {
+		flex-direction: row;
+		overflow-x: auto;
+		gap: var( --space-2 );
+	}
+
+	.portal-nav > a {
+		border-left: 0;
+		border-bottom: 2px solid transparent;
+		border-radius: 0;
+		white-space: nowrap;
+	}
+
+	.portal-nav > a.is-current { border-bottom-color: var( --color-gold ); background: none; }
+
+	.portal-return { margin-top: 0; margin-left: auto; white-space: nowrap; }
+
+	.portal-metrics { grid-template-columns: 1fr 1fr; }
+	.portal-columns { grid-template-columns: 1fr; }
+}
+
+@media ( max-width: 43.75rem ) {
+	.portal-body { padding: var( --space-5 ) var( --space-4 ); }
+	.portal-top { padding: 0 var( --space-4 ); }
+
+	.portal-heading { flex-direction: column; align-items: flex-start; }
+
+	.portal-alert { flex-wrap: wrap; }
+	.portal-metrics { grid-template-columns: 1fr; }
+
+	/* Queue rows fold: the action buttons drop under the text. */
+	.portal-approval { flex-wrap: wrap; }
+	.portal-row-actions { width: 100%; justify-content: flex-end; }
+}
+
+/* =========================================================================
+   CREATE A LISTING WIZARD
+
+   The portal's focused screen: site chrome hidden (same body class as the
+   dashboard), no sidebar — the back arrow is the way out. The controls are
+   real form elements styled as the prototype's chips: the minimum stay is a
+   radio group and every amenity a checkbox, so the wizard works with
+   JavaScript off.
+
+   Everything is .lform-scoped. Bare elements (p, b, small, span, i) are
+   reached only through a child combinator, never as descendants, so this
+   section cannot restyle a widget that ever renders inside it.
+   ====================================================================== */
+
+.lform {
+	max-width: 46rem;
+	margin-inline: auto;
+	padding: var( --space-8 ) var( --space-5 ) var( --space-10 );
+}
+
+/* --- Head and progress ---------------------------------------------------- */
+
+.lform-head {
+	display: flex;
+	align-items: center;
+	gap: var( --space-4 );
+	margin-bottom: var( --space-5 );
+}
+
+.lform-back {
+	flex: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.5rem;
+	height: 2.5rem;
+	border: 1px solid var( --border-strong );
+	border-radius: var( --radius-full );
+	background: var( --bg-surface );
+	color: var( --color-navy );
+	transition: border-color var( --duration-fast ) var( --ease ),
+	            background var( --duration-fast ) var( --ease );
+}
+
+.lform-back:hover { border-color: var( --color-gold ); background: var( --bg-surface-tint ); }
+
+.lform-head > div { flex: 1; min-width: 0; }
+
+.lform-head > div > p {
+	margin: 0;
+	font-size: var( --text-2xs );
+	font-weight: var( --weight-bold );
+	letter-spacing: var( --tracking-wider );
+	text-transform: uppercase;
+	color: var( --text-accent );
+}
+
+.lform-head > div > h1 {
+	margin: var( --space-1 ) 0 0;
+	font-size: var( --text-h4 );
+	line-height: var( --leading-heading );
+}
+
+.lform-head > span {
+	flex: none;
+	color: var( --text-muted );
+	font-size: var( --text-xs );
+	white-space: nowrap;
+}
+
+.lform-progress {
+	height: 0.375rem;
+	margin-bottom: var( --space-6 );
+	border-radius: var( --radius-full );
+	background: var( --border-soft );
+	overflow: hidden;
+}
+
+.lform-progress > i {
+	display: block;
+	height: 100%;
+	border-radius: var( --radius-full );
+	background: var( --color-gold );
+}
+
+/* --- The card ------------------------------------------------------------- */
+
+.lform-card {
+	padding: var( --space-6 );
+	border: 1px solid var( --border-soft );
+	border-radius: var( --radius-md );
+	background: var( --bg-surface );
+}
+
+.lform-h {
+	margin: var( --space-7 ) 0 var( --space-3 );
+	font-size: var( --text-h5 );
+}
+
+.lform-card > .lform-h:first-of-type { margin-top: 0; }
+
+.lform-sub {
+	margin: 0 0 var( --space-5 );
+	color: var( --text-muted );
+	font-size: var( --text-sm );
+}
+
+/* --- Step 1: fields ------------------------------------------------------- */
+
+.lform-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: var( --space-5 );
+}
+
+.lform-field {
+	display: flex;
+	flex-direction: column;
+	gap: var( --space-2 );
+}
+
+.lform-field > span {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: var( --space-2 );
+}
+
+.lform-field > span > b { font-size: var( --text-sm ); font-weight: var( --weight-semibold ); }
+.lform-field > span > small { color: var( --text-subtle ); font-size: var( --text-xs ); }
+
+/* Same treatment as .form-field controls, restated under this scope rather
+   than shared with it: the two sections must be free to diverge without
+   either one dragging the other along. */
+.lform-field > input,
+.lform-field > select,
+.lform-field > textarea {
+	width: 100%;
+	padding: var( --space-4 );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-sm );
+	background: var( --bg-surface-tint );
+	color: var( --text-default );
+	font: inherit;
+	transition: border-color var( --duration-fast ) var( --ease ),
+	            background var( --duration-fast ) var( --ease ),
+	            box-shadow var( --duration-fast ) var( --ease );
+}
+
+.lform-field > textarea { resize: vertical; min-height: 8rem; }
+
+.lform-field > input::placeholder,
+.lform-field > textarea::placeholder { color: var( --text-subtle ); }
+
+.lform-field > input:hover,
+.lform-field > select:hover,
+.lform-field > textarea:hover { border-color: var( --border-strong ); }
+
+.lform-field > input:focus-visible,
+.lform-field > select:focus-visible,
+.lform-field > textarea:focus-visible {
+	outline: none;
+	background: var( --bg-surface );
+	border-color: var( --color-gold );
+	box-shadow: 0 0 0 3px rgba( 215, 185, 103, 0.28 );
+}
+
+.lform-field > input:not( :placeholder-shown ):user-invalid {
+	border-color: var( --color-danger );
+}
+
+/* --- Step 2: minimum stay ------------------------------------------------- */
+
+.lform-options {
+	display: grid;
+	grid-template-columns: repeat( auto-fit, minmax( 9rem, 1fr ) );
+	gap: var( --space-3 );
+}
+
+.lform-option { position: relative; }
+
+/* The input stays rendered — moved under its label, not display:none — so it
+   keeps keyboard focus and the :checked state the styling reads. */
+.lform-option > input {
+	position: absolute;
+	inset: 0;
+	opacity: 0;
+	cursor: pointer;
+}
+
+.lform-option > span {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var( --space-2 );
+	padding: var( --space-4 );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-sm );
+	text-align: center;
+	color: var( --text-muted );
+	transition: border-color var( --duration-fast ) var( --ease ),
+	            background var( --duration-fast ) var( --ease ),
+	            box-shadow var( --duration-fast ) var( --ease );
+}
+
+.lform-option > span > b { font-size: var( --text-sm ); font-weight: var( --weight-semibold ); color: var( --text-default ); }
+
+.lform-option > input:checked + span {
+	border-color: var( --color-gold );
+	background: var( --bg-surface-tint );
+	box-shadow: 0 0 0 1px var( --color-gold ) inset;
+	color: var( --color-gold-ink );
+}
+
+.lform-option > input:focus-visible + span {
+	box-shadow: 0 0 0 3px rgba( 215, 185, 103, 0.28 );
+}
+
+/* --- Step 2: amenities ---------------------------------------------------- */
+
+.lform-amenity-head { margin-top: var( --space-7 ); }
+.lform-amenity-head > div > p { margin: 0 0 var( --space-4 ); color: var( --text-muted ); font-size: var( --text-sm ); }
+.lform-amenity-head .lform-h { margin: 0 0 var( --space-1 ); }
+
+.lform-groups > details {
+	margin-bottom: var( --space-3 );
+	border: 1px solid var( --border-soft );
+	border-radius: var( --radius-sm );
+	background: var( --bg-surface );
+}
+
+.lform-groups summary {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var( --space-3 );
+	padding: var( --space-4 );
+	cursor: pointer;
+	font-weight: var( --weight-semibold );
+	font-size: var( --text-sm );
+	list-style: none;
+}
+
+.lform-groups summary::-webkit-details-marker { display: none; }
+
+/* The disclosure arrow, drawn in CSS so it can rotate with the state. */
+.lform-groups summary::after {
+	content: "";
+	flex: none;
+	width: 0.5rem;
+	height: 0.5rem;
+	border-right: 2px solid var( --text-subtle );
+	border-bottom: 2px solid var( --text-subtle );
+	transform: rotate( 45deg );
+	transition: transform var( --duration-fast ) var( --ease );
+}
+
+.lform-groups > details[open] > summary::after { transform: rotate( 225deg ); }
+
+.lform-groups summary > small {
+	margin-left: auto;
+	color: var( --text-accent );
+	font-size: var( --text-xs );
+	font-weight: var( --weight-semibold );
+}
+
+.lform-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var( --space-2 );
+	padding: 0 var( --space-4 ) var( --space-4 );
+}
+
+.lform-chip { position: relative; }
+
+.lform-chip > input {
+	position: absolute;
+	inset: 0;
+	opacity: 0;
+	cursor: pointer;
+}
+
+.lform-chip > span {
+	display: inline-flex;
+	align-items: center;
+	gap: var( --space-2 );
+	padding: var( --space-2 ) var( --space-3 );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-pill );
+	font-size: var( --text-sm );
+	color: var( --text-default );
+	transition: border-color var( --duration-fast ) var( --ease ),
+	            background var( --duration-fast ) var( --ease ),
+	            color var( --duration-fast ) var( --ease );
+}
+
+/* The check mark appears only on a picked chip — an unpicked one showing a
+   check would read as already selected. */
+.lform-chip > span > .tdh-icon { display: none; }
+
+.lform-chip > input:checked + span {
+	border-color: var( --color-navy );
+	background: var( --color-navy );
+	color: var( --color-gold-light );
+}
+
+.lform-chip > input:checked + span > .tdh-icon { display: inline-block; }
+
+.lform-chip > input:focus-visible + span {
+	box-shadow: 0 0 0 3px rgba( 215, 185, 103, 0.28 );
+}
+
+/* --- Step 3: photos & description ---------------------------------------- */
+
+.lform-photos {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var( --space-3 );
+	margin-bottom: var( --space-5 );
+}
+
+.lform-photo {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: var( --space-1 );
+	cursor: pointer;
+}
+
+.lform-photo > img {
+	display: block;
+	width: 6.5rem;
+	height: 6.5rem;
+	object-fit: cover;
+	border-radius: var( --radius-sm );
+	border: 2px solid transparent;
+	transition: border-color var( --duration-fast ) var( --ease ),
+	            opacity var( --duration-fast ) var( --ease );
+}
+
+.lform-photo > input { position: absolute; opacity: 0; }
+
+.lform-photo > span {
+	text-align: center;
+	font-size: var( --text-xs );
+	font-weight: var( --weight-semibold );
+	color: var( --text-muted );
+}
+
+/* Ticking Remove marks the photo for deletion on Continue: dimmed, struck
+   through, outlined in the danger colour, so the pending removal is visible
+   before it happens. */
+.lform-photo > input:checked ~ span { color: var( --color-danger ); text-decoration: line-through; }
+.lform-photo:has( > input:checked ) > img { opacity: 0.45; border-color: var( --color-danger ); }
+.lform-photo > input:focus-visible ~ span { text-decoration: underline; }
+
+.lform-drop {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var( --space-2 );
+	padding: var( --space-7 ) var( --space-5 );
+	border: 2px dashed var( --border-strong );
+	border-radius: var( --radius-sm );
+	text-align: center;
+	cursor: pointer;
+	transition: border-color var( --duration-fast ) var( --ease ),
+	            background var( --duration-fast ) var( --ease );
+}
+
+/* The real file input covers the whole zone: clicking anywhere opens the
+   picker and the browser's own drag-and-drop lands on it — no script. */
+.lform-drop > input {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	opacity: 0;
+	cursor: pointer;
+}
+
+.lform-drop:hover,
+.lform-drop:focus-within {
+	border-color: var( --color-gold );
+	background: var( --bg-surface-tint );
+}
+
+.lform-drop > .tdh-icon { color: var( --color-gold-ink ); }
+.lform-drop > b { font-size: var( --text-sm ); }
+.lform-drop > small { color: var( --text-muted ); font-size: var( --text-xs ); }
+
+.lform-drop > span {
+	margin-top: var( --space-2 );
+	padding: var( --space-2 ) var( --space-4 );
+	border: 1px solid var( --border-strong );
+	border-radius: var( --radius-xs );
+	background: var( --bg-surface );
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+	color: var( --color-navy );
+}
+
+.lform-desc { margin-top: var( --space-5 ); }
+
+.lform-remind {
+	display: flex;
+	align-items: flex-start;
+	gap: var( --space-3 );
+	margin-top: var( --space-5 );
+	padding: var( --space-4 );
+	border-radius: var( --radius-xs );
+	background: var( --bg-surface-tint );
+	color: var( --color-gold-ink );
+}
+
+.lform-remind > .tdh-icon { flex: none; margin-top: 0.1em; }
+.lform-remind > span { display: flex; flex-direction: column; gap: var( --space-1 ); }
+.lform-remind > span > b { font-size: var( --text-sm ); }
+.lform-remind > span > small { font-size: var( --text-xs ); color: var( --text-muted ); }
+
+/* --- Step 4: review ------------------------------------------------------- */
+
+.lform-ready {
+	text-align: center;
+	margin-bottom: var( --space-5 );
+}
+
+.lform-ready > i {
+	display: inline-flex;
+	color: var( --color-success );
+	margin-bottom: var( --space-2 );
+}
+
+.lform-ready > h3 { margin: 0 0 var( --space-2 ); font-size: var( --text-h5 ); }
+.lform-ready > p { margin: 0; color: var( --text-muted ); font-size: var( --text-sm ); }
+
+.lform-review {
+	margin: var( --space-4 ) 0 var( --space-6 );
+	padding: 0 var( --space-5 );
+	border: 1px solid var( --border-soft );
+	border-radius: var( --radius-sm );
+}
+
+.lform-review > div {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: var( --space-4 );
+	padding: var( --space-4 ) 0;
+	border-bottom: 1px solid var( --border-soft );
+}
+
+.lform-review > div:last-child { border-bottom: 0; }
+
+.lform-review > div > small {
+	flex: none;
+	color: var( --text-muted );
+	font-size: var( --text-xs );
+}
+
+.lform-review > div > b { font-size: var( --text-sm ); text-align: right; overflow-wrap: anywhere; }
+
+.lform-fair {
+	display: flex;
+	align-items: flex-start;
+	gap: var( --space-3 );
+	margin-bottom: var( --space-6 );
+	padding: var( --space-4 );
+	border: 1px solid var( --border-soft );
+	border-radius: var( --radius-sm );
+	background: var( --bg-surface-tint );
+	cursor: pointer;
+}
+
+.lform-fair > input { flex: none; margin-top: 0.2em; accent-color: var( --color-gold-deep ); }
+.lform-fair > span { font-size: var( --text-sm ); line-height: var( --leading-body ); }
+
+/* --- Actions and the gate ------------------------------------------------- */
+
+.lform-actions {
+	display: flex;
+	justify-content: space-between;
+	gap: var( --space-3 );
+	margin-top: var( --space-7 );
+	padding-top: var( --space-5 );
+	border-top: 1px solid var( --border-soft );
+}
+
+.lform-gate {
+	text-align: center;
+	padding: var( --space-8 ) var( --space-6 );
+}
+
+.lform-gate > h1 { margin: 0 0 var( --space-3 ); font-size: var( --text-h4 ); }
+.lform-gate > p { margin: 0 auto var( --space-5 ); max-width: 34rem; color: var( --text-muted ); }
+
+/* --- Narrow --------------------------------------------------------------- */
+
+@media ( max-width: 43.75rem ) {
+	.lform { padding: var( --space-5 ) var( --space-4 ) var( --space-8 ); }
+
+	/* "Step 2 of 3" folds under the heading rather than squeezing it. */
+	.lform-head { flex-wrap: wrap; }
+	.lform-head > span { flex-basis: 100%; padding-left: calc( 2.5rem + var( --space-4 ) ); }
+
+	.lform-card { padding: var( --space-5 ) var( --space-4 ); }
+	.lform-grid { grid-template-columns: 1fr; }
+
+	.lform-actions { flex-wrap: wrap; }
 }

@@ -68,7 +68,7 @@ function tdh_is_account_page(): bool {
 
 	return in_array(
 		$key,
-		[ 'register', 'login', 'lost-password', 'reset-password', 'account', 'profile' ],
+		[ 'register', 'login', 'lost-password', 'reset-password', 'account', 'profile', 'add-listing' ],
 		true
 	);
 }
@@ -89,6 +89,68 @@ function tdh_is_full_layout_page(): bool {
 
 	return is_page() && (bool) get_post_meta( get_queried_object_id(), '_tdh_full_layout', true );
 }
+
+/**
+ * Is this the landlord portal — a page that takes over the whole viewport?
+ *
+ * The dashboard is drawn as a portal in the approved design: its own navy
+ * sidebar, its own top bar, and NO site header or footer around it — the
+ * sidebar's "Public website" link is the way back out. Matched on the seed
+ * key like everything else here, so renaming the page keeps the layout.
+ *
+ * The dashboard and the listing wizard. The other account screens keep the
+ * site chrome: someone signing in has not entered the portal yet, and taking
+ * the header away from a visitor who is still deciding whether to sign up
+ * removes their navigation, not their distraction. The wizard is inside the
+ * portal in the approved design — its back arrow returns to the dashboard —
+ * and a logged-out visitor on its URL sees the sign-in gate WITH the chrome,
+ * because the logged-in check below fails.
+ */
+function tdh_is_portal_page(): bool {
+
+	if ( ! is_page() || ! is_user_logged_in() ) {
+		return false;
+	}
+
+	return in_array(
+		(string) get_post_meta( get_queried_object_id(), '_tdh_seed_key', true ),
+		[ 'account', 'add-listing' ],
+		true
+	);
+}
+
+/**
+ * Marks the portal on <body>, so the stylesheet can hide the site chrome
+ * without a template fork.
+ */
+add_filter(
+	'body_class',
+	static function ( array $classes ): array {
+
+		if ( tdh_is_portal_page() ) {
+			$classes[] = 'tdh-portal-page';
+		}
+
+		return $classes;
+	}
+);
+
+/**
+ * No WordPress toolbar on portal pages — for anyone.
+ *
+ * The portal is a full-viewport app with its own top bar, and every link
+ * on the toolbar (Dashboard, Listings, Edit Page) leads into wp-admin —
+ * the exact trapdoor the portal exists to close for the client. The
+ * developer's way in is the sidebar's "WordPress dashboard" link, and the
+ * toolbar is untouched everywhere else on the site.
+ */
+add_filter(
+	'show_admin_bar',
+	static function ( $show ) {
+		return tdh_is_portal_page() ? false : $show;
+	},
+	20
+);
 
 /**
  * Does this page render its own bands, but still want the banner?

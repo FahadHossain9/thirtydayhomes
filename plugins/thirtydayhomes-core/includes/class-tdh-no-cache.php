@@ -74,6 +74,10 @@ final class No_Cache {
 
 		// Posts to Stripe and renders the member's own plan state.
 		'pricing',
+
+		// The listing wizard: draft contents, validation errors and a nonce,
+		// all belonging to one signed-in landlord.
+		'add-listing',
 	];
 
 	public function register(): void {

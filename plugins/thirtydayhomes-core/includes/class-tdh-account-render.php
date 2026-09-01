@@ -538,6 +538,21 @@ final class Account_Render {
 			return self::sign_in_wall( __( 'Sign in to see your dashboard.', 'thirtydayhomes' ) );
 		}
 
+		/*
+		 * Staff get the marketplace, not a landlord's cockpit. The approved
+		 * design draws a third portal for the administrator — members,
+		 * queue, membership health — and showing the owner a "No active
+		 * plan, choose a plan" banner on their own site is the design
+		 * telling them a lie about who they are.
+		 *
+		 * is_staff(), not manage_options: the client-review "Administrator"
+		 * persona runs the marketplace without WordPress-takeover rights,
+		 * and it must see this portal too.
+		 */
+		if ( Accounts::is_staff() ) {
+			return self::marketplace();
+		}
+
 		$user     = wp_get_current_user();
 		$user_id  = (int) $user->ID;
 		$notice   = Accounts::take_notice();
@@ -559,6 +574,15 @@ final class Account_Render {
 			}
 		}
 
+		/*
+		 * Someone returning from the listing wizard. A boolean flag, not a
+		 * message from the URL — the copy lives here, so the query string
+		 * cannot be edited into saying something else.
+		 */
+		if ( isset( $_GET['tdh_submitted'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$notice['success'] = __( 'Your listing is submitted. A person reviews it — usually within one business day — and it goes live from there.', 'thirtydayhomes' );
+		}
+
 		$status   = Membership::status( $user_id );
 		$labels   = Membership::labels();
 		$quota    = Membership::quota( $user_id );
@@ -568,136 +592,996 @@ final class Account_Render {
 		$icon = static fn( string $name, int $size = 19 ): string =>
 			function_exists( 'tdh_icon' ) ? tdh_icon( $name, $size ) : '';
 
+		/*
+		 * ─── THE PORTAL LAYOUT ─────────────────────────────────────────
+		 *
+		 * The approved prototype draws the dashboard as a portal: a navy
+		 * sidebar, a white top bar, four metric tiles, two panels. This is
+		 * that layout — with one deliberate difference from the prototype.
+		 *
+		 * Every number here is TRUE. The prototype shows "Listing views
+		 * 284" because a prototype may invent; a live dashboard may not,
+		 * because a landlord prices and pauses off these figures. So the
+		 * views tile waited until TDH\Views existed to make it real, the
+		 * inquiry panel reads actual inquiry records, and the counts come
+		 * from the same queries the rest of the plugin trusts.
+		 *
+		 * "Add property" asks the wizard's own gate where it should go: the
+		 * wizard when it would let this person in (members with room, and
+		 * staff — the allowance is a billing rule, staff are not billed),
+		 * the plans page otherwise. One gate, one answer — a duplicated
+		 * quota comparison here once sent administrators to the pricing
+		 * page while the wizard itself would have let them through.
+		 */
+
+		$live     = self::count_listings( $user_id, [ 'publish' ] );
+		$pending  = self::count_listings( $user_id, [ 'pending' ] );
+		$views    = Views::total_for_author( $user_id );
+		$inquiries = self::inquiries_for( $user_id, 4 );
+		$unread    = count( array_filter( $inquiries, static fn( $i ) => $i['unread'] ) );
+
+		$initials = strtoupper( mb_substr( trim( $user->display_name ), 0, 2 ) );
+
+		$copy = [
+			Membership::NONE      => __( 'Choose a plan to publish your first home. Nothing is charged until you do.', 'thirtydayhomes' ),
+			Membership::ACTIVE    => __( 'Your listings are visible to renters searching Pittsburgh.', 'thirtydayhomes' ),
+			Membership::PAST_DUE  => __( 'Your listings are hidden until payment succeeds. They come back automatically — nothing is deleted.', 'thirtydayhomes' ),
+			Membership::CANCELLED => __( 'Your membership runs to the end of the paid period, then your listings come down.', 'thirtydayhomes' ),
+			Membership::EXPIRED   => __( 'Your membership has ended and your listings are hidden. Restart a plan to bring them back.', 'thirtydayhomes' ),
+		];
+
+		$add_url = '' === Listing_Form::gate_reason()
+			? Listing_Form::url()
+			: Accounts::url( 'pricing' );
+
 		ob_start();
 		?>
-		<div class="account">
+		<div class="portal">
 
-			<?php
-			/*
-			 * A dark band, so the dashboard opens on the brand rather than
-			 * on a bare white page, and so the greeting is not competing
-			 * with the four cards below it for the eye.
-			 */
-			?>
-			<header class="account-bar">
-				<?php
-				if ( function_exists( 'tdh_the_breadcrumb' ) ) {
-					tdh_the_breadcrumb();
-				}
-				?>
-				<div class="account-bar-inner">
+			<aside class="portal-side">
+				<a class="portal-brand" href="<?php echo esc_url( home_url( '/' ) ); ?>">
+					<?php
+					if ( function_exists( 'tdh_the_logo' ) ) {
+						tdh_the_logo();
+					} else {
+						echo '<b>' . esc_html( get_bloginfo( 'name' ) ) . '</b>';
+					}
+					?>
+				</a>
+
+				<p class="portal-side-label"><?php esc_html_e( 'Landlord portal', 'thirtydayhomes' ); ?></p>
+
+				<nav class="portal-nav" aria-label="<?php esc_attr_e( 'Dashboard', 'thirtydayhomes' ); ?>">
+					<a class="is-current" href="#overview">
+						<?php echo $icon( 'layout-dashboard', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+						<?php esc_html_e( 'Overview', 'thirtydayhomes' ); ?>
+					</a>
+					<a href="#listings">
+						<?php echo $icon( 'building-2', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+						<?php esc_html_e( 'My listings', 'thirtydayhomes' ); ?>
+					</a>
+					<a href="#inquiries">
+						<?php echo $icon( 'mail', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+						<?php esc_html_e( 'Inquiries', 'thirtydayhomes' ); ?>
+						<?php if ( $unread > 0 ) : ?>
+							<em class="portal-count"><?php echo esc_html( number_format_i18n( $unread ) ); ?></em>
+						<?php endif; ?>
+					</a>
+					<a href="#membership">
+						<?php echo $icon( 'wallet-cards', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+						<?php esc_html_e( 'Membership', 'thirtydayhomes' ); ?>
+					</a>
+					<a href="<?php echo esc_url( Accounts::url( 'profile' ) ); ?>">
+						<?php echo $icon( 'user', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+						<?php esc_html_e( 'Profile', 'thirtydayhomes' ); ?>
+					</a>
+				</nav>
+
+				<a class="portal-return" href="<?php echo esc_url( home_url( '/' ) ); ?>">
+					<?php echo $icon( 'arrow-left', 16 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+					<?php esc_html_e( 'Public website', 'thirtydayhomes' ); ?>
+				</a>
+			</aside>
+
+			<div class="portal-main" id="overview">
+
+				<div class="portal-top">
+					<span>
+						<?php
+						printf(
+							/* translators: %s: display name */
+							esc_html__( 'Welcome back, %s', 'thirtydayhomes' ),
+							esc_html( $user->display_name )
+						);
+						?>
+					</span>
 					<div>
-						<p class="overline"><?php esc_html_e( 'Landlord dashboard', 'thirtydayhomes' ); ?></p>
-						<h1>
-							<?php
-							printf(
-								/* translators: %s: display name */
-								esc_html__( 'Welcome, %s', 'thirtydayhomes' ),
-								esc_html( $user->display_name )
-							);
-							?>
-						</h1>
+						<a class="portal-signout" href="<?php echo esc_url( Accounts::logout_url() ); ?>"><?php esc_html_e( 'Sign out', 'thirtydayhomes' ); ?></a>
+						<i class="portal-avatar" aria-hidden="true"><?php echo esc_html( $initials ); ?></i>
 					</div>
-
-					<nav class="account-nav" aria-label="<?php esc_attr_e( 'Account', 'thirtydayhomes' ); ?>">
-						<a class="is-current" href="<?php echo esc_url( Accounts::url( 'account' ) ); ?>"><?php esc_html_e( 'Dashboard', 'thirtydayhomes' ); ?></a>
-						<a href="<?php echo esc_url( Accounts::url( 'profile' ) ); ?>"><?php esc_html_e( 'Account details', 'thirtydayhomes' ); ?></a>
-						<a href="<?php echo esc_url( Accounts::logout_url() ); ?>"><?php esc_html_e( 'Sign out', 'thirtydayhomes' ); ?></a>
-					</nav>
 				</div>
-			</header>
 
-			<div class="account-body">
+				<div class="portal-body">
 
-				<?php self::notices( $notice ); ?>
-
-				<?php
-				/*
-				 * One membership panel, not a banner AND a card. The two
-				 * said the same thing directly above one another — "You do
-				 * not have a membership yet" over "No active plan" — which
-				 * read as a layout accident rather than as emphasis.
-				 *
-				 * This is the only thing on the screen a landlord without a
-				 * plan can act on, so it is the anchor and everything else
-				 * is secondary to it.
-				 */
-				$copy = [
-					Membership::NONE      => __( 'Choose a plan to publish your first home. Nothing is charged until you do.', 'thirtydayhomes' ),
-					Membership::ACTIVE    => __( 'Your listings are visible to renters searching Pittsburgh.', 'thirtydayhomes' ),
-					Membership::PAST_DUE  => __( 'Your listings are hidden until payment succeeds. They come back automatically — nothing is deleted.', 'thirtydayhomes' ),
-					Membership::CANCELLED => __( 'Your membership runs to the end of the paid period, then your listings come down.', 'thirtydayhomes' ),
-					Membership::EXPIRED   => __( 'Your membership has ended and your listings are hidden. Restart a plan to bring them back.', 'thirtydayhomes' ),
-				];
-				?>
-				<section class="member-panel member-panel--<?php echo esc_attr( Membership::badge_class( $status ) ); ?>">
-					<div class="member-panel-main">
-						<p class="overline"><?php esc_html_e( 'Membership', 'thirtydayhomes' ); ?></p>
-						<h2><?php echo esc_html( $labels[ $status ] ?? $status ); ?></h2>
-						<p><?php echo esc_html( $copy[ $status ] ?? '' ); ?></p>
-					</div>
-
-					<?php if ( Membership::ACTIVE !== $status ) : ?>
-						<a class="gold-btn" href="<?php echo esc_url( Accounts::url( 'pricing' ) ); ?>">
-							<?php echo Membership::NONE === $status ? esc_html__( 'See plans', 'thirtydayhomes' ) : esc_html__( 'Manage billing', 'thirtydayhomes' ); ?>
-							<?php echo $icon( 'arrow-right', 16 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+					<div class="portal-heading">
+						<span>
+							<h1><?php esc_html_e( 'Dashboard', 'thirtydayhomes' ); ?></h1>
+							<p><?php esc_html_e( 'Here’s what’s happening with your properties.', 'thirtydayhomes' ); ?></p>
+						</span>
+						<a class="primary" href="<?php echo esc_url( $add_url ); ?>">
+							<?php echo $icon( 'plus', 16 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+							<?php esc_html_e( 'Add property', 'thirtydayhomes' ); ?>
 						</a>
-					<?php endif; ?>
-				</section>
-
-				<div class="stat-grid">
-
-					<div class="stat">
-						<i><?php echo $icon( 'key-round' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
-						<div>
-							<p class="stat-label"><?php esc_html_e( 'Plan', 'thirtydayhomes' ); ?></p>
-							<p class="stat-value"><?php echo esc_html( Membership::plan( $user_id ) ?: __( 'None', 'thirtydayhomes' ) ); ?></p>
-						</div>
 					</div>
 
-					<div class="stat">
-						<i><?php echo $icon( 'map-pinned' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
-						<div>
-							<p class="stat-label"><?php esc_html_e( 'Listings', 'thirtydayhomes' ); ?></p>
-							<p class="stat-value">
-								<?php echo esc_html( number_format_i18n( $used ) ); ?><em><?php echo esc_html( '/' . number_format_i18n( $quota ) ); ?></em>
-							</p>
-						</div>
-					</div>
+					<?php self::notices( $notice ); ?>
 
-					<div class="stat">
-						<i><?php echo $icon( 'calendar-days' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
-						<div>
-							<p class="stat-label"><?php esc_html_e( 'Renews', 'thirtydayhomes' ); ?></p>
-							<p class="stat-value"><?php echo esc_html( $expires ? date_i18n( 'j M Y', $expires ) : __( 'Not yet', 'thirtydayhomes' ) ); ?></p>
-						</div>
-					</div>
+					<?php
+					/*
+					 * The membership band. One panel, not a banner AND a
+					 * card — the two said the same thing above one another
+					 * and read as a layout accident. Anchored so the
+					 * sidebar's Membership item lands on it.
+					 */
+					?>
+					<section class="portal-alert portal-alert--<?php echo esc_attr( Membership::badge_class( $status ) ); ?>" id="membership">
+						<?php echo $icon( 'wallet-cards', 20 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+						<span>
+							<b><?php echo esc_html( $labels[ $status ] ?? $status ); ?></b>
+							<small><?php echo esc_html( $copy[ $status ] ?? '' ); ?></small>
+						</span>
 
-				</div>
-
-				<div class="panel">
-					<div class="panel-title">
-						<h3><?php esc_html_e( 'Your listings', 'thirtydayhomes' ); ?></h3>
-						<?php if ( $quota > 0 ) : ?>
-							<span class="panel-note">
+						<?php if ( Membership::ACTIVE === $status ) : ?>
+							<span class="portal-renews">
 								<?php
 								printf(
-									/* translators: 1: used, 2: allowed */
-									esc_html__( '%1$s of %2$s used', 'thirtydayhomes' ),
-									esc_html( number_format_i18n( $used ) ),
-									esc_html( number_format_i18n( $quota ) )
+									/* translators: 1: plan name, 2: renewal date */
+									esc_html__( '%1$s · renews %2$s', 'thirtydayhomes' ),
+									esc_html( Membership::plan( $user_id ) ),
+									esc_html( $expires ? date_i18n( 'j M Y', $expires ) : __( 'soon', 'thirtydayhomes' ) )
 								);
 								?>
 							</span>
+						<?php else : ?>
+							<a href="<?php echo esc_url( Accounts::url( 'pricing' ) ); ?>">
+								<?php echo Membership::NONE === $status ? esc_html__( 'Choose plan', 'thirtydayhomes' ) : esc_html__( 'Manage billing', 'thirtydayhomes' ); ?>
+							</a>
 						<?php endif; ?>
-					</div>
-					<?php self::listing_rows( $user_id ); ?>
-				</div>
+					</section>
 
+					<div class="portal-metrics">
+						<div class="portal-metric">
+							<i><?php echo $icon( 'building-2' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+							<span>
+								<small><?php esc_html_e( 'Live listings', 'thirtydayhomes' ); ?></small>
+								<b><?php echo esc_html( number_format_i18n( $live ) ); ?><em><?php echo esc_html( '/' . number_format_i18n( $quota ) ); ?></em></b>
+							</span>
+						</div>
+						<div class="portal-metric">
+							<i><?php echo $icon( 'clock-3' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+							<span>
+								<small><?php esc_html_e( 'Pending review', 'thirtydayhomes' ); ?></small>
+								<b><?php echo esc_html( number_format_i18n( $pending ) ); ?></b>
+							</span>
+						</div>
+						<div class="portal-metric">
+							<i><?php echo $icon( 'mail' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+							<span>
+								<small><?php esc_html_e( 'New inquiries', 'thirtydayhomes' ); ?></small>
+								<b><?php echo esc_html( number_format_i18n( $unread ) ); ?></b>
+							</span>
+						</div>
+						<div class="portal-metric">
+							<i><?php echo $icon( 'eye' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+							<span>
+								<small><?php esc_html_e( 'Listing views', 'thirtydayhomes' ); ?></small>
+								<b><?php echo esc_html( number_format_i18n( $views ) ); ?></b>
+							</span>
+						</div>
+					</div>
+
+					<div class="portal-columns">
+
+						<div class="panel" id="listings">
+							<div class="panel-title">
+								<h3><?php esc_html_e( 'Your listings', 'thirtydayhomes' ); ?></h3>
+								<?php if ( $quota > 0 ) : ?>
+									<span class="panel-note">
+										<?php
+										printf(
+											/* translators: 1: used, 2: allowed */
+											esc_html__( '%1$s of %2$s used', 'thirtydayhomes' ),
+											esc_html( number_format_i18n( $used ) ),
+											esc_html( number_format_i18n( $quota ) )
+										);
+										?>
+									</span>
+								<?php endif; ?>
+							</div>
+							<?php self::listing_rows( $user_id ); ?>
+						</div>
+
+						<div class="panel" id="inquiries">
+							<div class="panel-title">
+								<h3><?php esc_html_e( 'Recent inquiries', 'thirtydayhomes' ); ?></h3>
+							</div>
+
+							<?php if ( ! $inquiries ) : ?>
+								<div class="empty-state">
+									<i><?php echo $icon( 'mail', 22 ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+									<h4><?php esc_html_e( 'No inquiries yet', 'thirtydayhomes' ); ?></h4>
+									<p><?php esc_html_e( 'When a renter asks about one of your homes, it appears here and reaches you by email.', 'thirtydayhomes' ); ?></p>
+								</div>
+							<?php else : ?>
+								<?php foreach ( $inquiries as $inquiry ) : ?>
+									<div class="portal-inquiry<?php echo $inquiry['unread'] ? ' is-unread' : ''; ?>">
+										<i class="portal-avatar" aria-hidden="true"><?php echo esc_html( $inquiry['initials'] ); ?></i>
+										<span>
+											<b><?php echo esc_html( $inquiry['name'] ); ?></b>
+											<small><?php echo esc_html( $inquiry['excerpt'] ); ?></small>
+										</span>
+										<?php if ( $inquiry['unread'] ) : ?>
+											<em aria-label="<?php esc_attr_e( 'Unread', 'thirtydayhomes' ); ?>"></em>
+										<?php endif; ?>
+									</div>
+								<?php endforeach; ?>
+							<?php endif; ?>
+						</div>
+
+					</div>
+
+				</div>
 			</div>
 		</div>
 		<?php
 		return (string) ob_get_clean();
+	}
+
+	/* ---------------------------------------------------------------------
+	 * The marketplace — the administrator's portal
+	 * ------------------------------------------------------------------ */
+
+	/**
+	 * The approved design's third portal: what the OWNER sees on /account/.
+	 *
+	 * Same discipline as the landlord portal — every number is the
+	 * database's own answer, and every link goes where the work actually
+	 * happens today, which for managing listings, members and inquiries is
+	 * wp-admin. This screen is the morning overview; the tools are real.
+	 */
+	private static function marketplace(): string {
+
+		$user     = wp_get_current_user();
+		$notice   = Accounts::take_notice();
+		$initials = strtoupper( mb_substr( trim( $user->display_name ), 0, 2 ) );
+
+		if ( isset( $_GET['tdh_submitted'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$notice['success'] = __( 'The listing is submitted and waiting in the approval queue below.', 'thirtydayhomes' );
+		}
+
+		/*
+		 * Coming back from a moderation decision. Flags, not messages: the
+		 * copy lives here, so the query string cannot be edited into saying
+		 * something else.
+		 */
+		$moderated = isset( $_GET['tdh_moderated'] ) ? sanitize_key( wp_unslash( (string) $_GET['tdh_moderated'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		if ( 'approved' === $moderated ) {
+			$notice['success'] = __( 'Approved. The listing is live and visible to renters.', 'thirtydayhomes' );
+		} elseif ( 'changes' === $moderated ) {
+			$notice['info'] = __( 'Sent back to the landlord for changes. It returns to this queue when they resubmit.', 'thirtydayhomes' );
+		} elseif ( 'expired' === $moderated ) {
+			$notice['error'] = __( 'That action expired before it was saved. Please try again.', 'thirtydayhomes' );
+		} elseif ( 'missing' === $moderated ) {
+			$notice['error'] = __( 'That listing no longer exists.', 'thirtydayhomes' );
+		}
+
+		// Which screen of the portal is open. Anything unrecognised is the
+		// overview, not an error page.
+		$view = isset( $_GET['view'] ) ? sanitize_key( wp_unslash( (string) $_GET['view'] ) ) : 'overview'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		if ( ! in_array( $view, [ 'overview', 'listings', 'members', 'inquiries', 'facilities' ], true ) ) {
+			$view = 'overview';
+		}
+
+		$icon = static fn( string $name, int $size = 19 ): string =>
+			function_exists( 'tdh_icon' ) ? tdh_icon( $name, $size ) : '';
+
+		// The sidebar badge: how many homes wait for a decision, on every view.
+		$pending_total = self::count_site_listings( [ 'pending' ] );
+
+		ob_start();
+		?>
+		<div class="portal">
+
+			<aside class="portal-side">
+				<a class="portal-brand" href="<?php echo esc_url( home_url( '/' ) ); ?>">
+					<?php
+					if ( function_exists( 'tdh_the_logo' ) ) {
+						tdh_the_logo();
+					} else {
+						echo '<b>' . esc_html( get_bloginfo( 'name' ) ) . '</b>';
+					}
+					?>
+				</a>
+
+				<p class="portal-side-label"><?php esc_html_e( 'Administration', 'thirtydayhomes' ); ?></p>
+
+				<?php
+				/*
+				 * The client's screens are portal views — daily work stays
+				 * in this UI. Site content alone opens wp-admin, because
+				 * editing pages IS the WordPress editor's job.
+				 */
+				$nav = [
+					[ 'overview', 'layout-dashboard', __( 'Overview', 'thirtydayhomes' ) ],
+					[ 'listings', 'building-2', __( 'Listings', 'thirtydayhomes' ) ],
+					[ 'members', 'users', __( 'Members', 'thirtydayhomes' ) ],
+					[ 'facilities', 'stethoscope', __( 'Facilities', 'thirtydayhomes' ) ],
+					[ 'inquiries', 'mail', __( 'Inquiries', 'thirtydayhomes' ) ],
+				];
+				?>
+				<nav class="portal-nav" aria-label="<?php esc_attr_e( 'Administration', 'thirtydayhomes' ); ?>">
+					<?php foreach ( $nav as [ $slug, $nav_icon, $label ] ) : ?>
+						<a class="<?php echo $view === $slug ? 'is-current' : ''; ?>" href="<?php echo esc_url( self::mk_url( $slug ) ); ?>">
+							<?php echo $icon( $nav_icon, 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+							<?php echo esc_html( $label ); ?>
+							<?php if ( 'listings' === $slug && $pending_total > 0 ) : ?>
+								<em class="portal-count"><?php echo esc_html( number_format_i18n( $pending_total ) ); ?></em>
+							<?php endif; ?>
+						</a>
+					<?php endforeach; ?>
+					<a href="<?php echo esc_url( admin_url( 'edit.php?post_type=page' ) ); ?>">
+						<?php echo $icon( 'file-text', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+						<?php esc_html_e( 'Site content', 'thirtydayhomes' ); ?>
+					</a>
+				</nav>
+
+				<?php // The developer's separate door: full WordPress, everything. ?>
+				<a class="portal-return portal-wp" href="<?php echo esc_url( admin_url() ); ?>">
+					<?php echo $icon( 'wrench', 16 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+					<?php esc_html_e( 'WordPress dashboard', 'thirtydayhomes' ); ?>
+				</a>
+
+				<a class="portal-return" href="<?php echo esc_url( home_url( '/' ) ); ?>">
+					<?php echo $icon( 'arrow-left', 16 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+					<?php esc_html_e( 'Public website', 'thirtydayhomes' ); ?>
+				</a>
+			</aside>
+
+			<div class="portal-main" id="overview">
+
+				<div class="portal-top">
+					<span><?php esc_html_e( 'Marketplace administration', 'thirtydayhomes' ); ?></span>
+					<div>
+						<a class="portal-signout" href="<?php echo esc_url( Accounts::logout_url() ); ?>"><?php esc_html_e( 'Sign out', 'thirtydayhomes' ); ?></a>
+						<i class="portal-avatar" aria-hidden="true"><?php echo esc_html( $initials ); ?></i>
+					</div>
+				</div>
+
+				<div class="portal-body">
+
+					<?php self::notices( $notice ); ?>
+
+					<?php
+					match ( $view ) {
+						'listings'   => self::mk_listings(),
+						'members'    => self::mk_members(),
+						'inquiries'  => self::mk_inquiries(),
+						'facilities' => self::mk_facilities(),
+						default      => self::mk_overview(),
+					};
+					?>
+
+				</div>
+			</div>
+		</div>
+		<?php
+		return (string) ob_get_clean();
+	}
+
+	/**
+	 * A portal view's address. The overview is the bare account page.
+	 */
+	private static function mk_url( string $view ): string {
+
+		$base = Accounts::url( 'account' );
+
+		return 'overview' === $view ? $base : add_query_arg( 'view', $view, $base );
+	}
+
+	private static function mk_icon( string $name, int $size = 19 ): string {
+		return function_exists( 'tdh_icon' ) ? tdh_icon( $name, $size ) : '';
+	}
+
+	/**
+	 * One row in a portal list: cover (or placeholder tile), two lines of
+	 * text, then whatever trails — badges, actions.
+	 */
+	private static function mk_row_media( int $post_id ): void {
+		?>
+		<?php if ( has_post_thumbnail( $post_id ) ) : ?>
+			<?php echo get_the_post_thumbnail( $post_id, 'thumbnail', [ 'alt' => '' ] ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+		<?php else : ?>
+			<i aria-hidden="true"><?php echo self::mk_icon( 'building-2', 20 ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+		<?php endif; ?>
+		<?php
+	}
+
+	/**
+	 * "$2,400/mo · Shadyside · Jane Landlord" — whichever parts exist.
+	 */
+	private static function mk_listing_line( int $post_id ): string {
+
+		$rent = (string) get_post_meta( $post_id, '_tdh_price_monthly', true );
+		$hood = get_the_terms( $post_id, Post_Types::TAX_NEIGHBORHOOD );
+		$hood = $hood && ! is_wp_error( $hood ) ? $hood[0]->name : '';
+
+		$author = (int) get_post_field( 'post_author', $post_id );
+		$owner  = $author ? get_userdata( $author ) : null;
+
+		return implode(
+			' · ',
+			array_filter(
+				[
+					/* translators: %s: monthly rent */
+					'' !== $rent ? sprintf( __( '$%s/mo', 'thirtydayhomes' ), number_format_i18n( (float) $rent ) ) : '',
+					$hood,
+					$owner ? $owner->display_name : '',
+				]
+			)
+		);
+	}
+
+	/* --- Overview -------------------------------------------------------- */
+
+	private static function mk_overview(): void {
+
+		/*
+		 * Membership health, from the same user meta the Stripe webhook
+		 * maintains. Counted by stored status: this is the billing ledger's
+		 * view, and the one place a stale "active" would surface anyway —
+		 * on the owner's own health panel, where it prompts the question.
+		 */
+		$health = [
+			__( 'Active', 'thirtydayhomes' )   => self::count_members( Membership::ACTIVE ),
+			__( 'Past due', 'thirtydayhomes' ) => self::count_members( Membership::PAST_DUE ),
+			__( 'Canceled', 'thirtydayhomes' ) => self::count_members( Membership::CANCELLED ),
+		];
+
+		$queue = new \WP_Query(
+			[
+				'post_type'             => Post_Types::LISTING,
+				'post_status'           => 'pending',
+				'posts_per_page'        => 5,
+				'orderby'               => 'modified',
+				'order'                 => 'DESC',
+				'tdh_bypass_visibility' => true,
+			]
+		);
+
+		// Inquiries from the last seven days, matching the tile's own word.
+		$recent = new \WP_Query(
+			[
+				'post_type'      => Post_Types::INQUIRY,
+				'post_status'    => 'any',
+				'posts_per_page' => 1,
+				'fields'         => 'ids',
+				'date_query'     => [ [ 'after' => '7 days ago' ] ],
+			]
+		);
+
+		$tiles = [
+			[ 'users', __( 'Active members', 'thirtydayhomes' ), $health[ __( 'Active', 'thirtydayhomes' ) ] ],
+			[ 'building-2', __( 'Live listings', 'thirtydayhomes' ), self::count_site_listings( [ 'publish' ] ) ],
+			[ 'clock-3', __( 'Pending approval', 'thirtydayhomes' ), (int) $queue->found_posts ],
+			[ 'mail', __( 'Recent inquiries', 'thirtydayhomes' ), (int) $recent->found_posts ],
+		];
+		?>
+		<div class="portal-heading">
+			<span>
+				<h1><?php esc_html_e( 'Marketplace overview', 'thirtydayhomes' ); ?></h1>
+				<p><?php echo esc_html( date_i18n( 'l, F j, Y' ) ); ?></p>
+			</span>
+		</div>
+
+		<div class="portal-metrics">
+			<?php foreach ( $tiles as [ $tile_icon, $label, $value ] ) : ?>
+				<div class="portal-metric">
+					<i><?php echo self::mk_icon( $tile_icon ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+					<span>
+						<small><?php echo esc_html( $label ); ?></small>
+						<b><?php echo esc_html( number_format_i18n( (int) $value ) ); ?></b>
+					</span>
+				</div>
+			<?php endforeach; ?>
+		</div>
+
+		<div class="portal-columns">
+
+			<div class="panel">
+				<div class="panel-title">
+					<h3><?php esc_html_e( 'Approval queue', 'thirtydayhomes' ); ?></h3>
+					<a href="<?php echo esc_url( self::mk_url( 'listings' ) ); ?>">
+						<?php esc_html_e( 'View all', 'thirtydayhomes' ); ?>
+						<?php echo self::mk_icon( 'arrow-right', 15 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+					</a>
+				</div>
+
+				<?php if ( ! $queue->have_posts() ) : ?>
+					<div class="empty-state">
+						<i><?php echo self::mk_icon( 'circle-check', 22 ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+						<h4><?php esc_html_e( 'Nothing waiting', 'thirtydayhomes' ); ?></h4>
+						<p><?php esc_html_e( 'When a landlord submits a home, it appears here for review before going live.', 'thirtydayhomes' ); ?></p>
+					</div>
+				<?php else : ?>
+					<?php
+					while ( $queue->have_posts() ) :
+						$queue->the_post();
+						?>
+						<div class="portal-approval">
+							<?php self::mk_row_media( get_the_ID() ); ?>
+							<span>
+								<b><a href="<?php echo esc_url( (string) get_preview_post_link( get_the_ID() ) ); ?>"><?php the_title(); ?></a></b>
+								<small><?php echo esc_html( self::mk_listing_line( get_the_ID() ) ); ?></small>
+							</span>
+							<span class="status pending"><?php esc_html_e( 'Pending', 'thirtydayhomes' ); ?></span>
+						</div>
+					<?php endwhile; ?>
+					<?php wp_reset_postdata(); ?>
+				<?php endif; ?>
+			</div>
+
+			<div class="panel">
+				<div class="panel-title">
+					<h3><?php esc_html_e( 'Membership health', 'thirtydayhomes' ); ?></h3>
+				</div>
+
+				<div class="portal-health">
+					<?php foreach ( $health as $label => $count ) : ?>
+						<div>
+							<small><?php echo esc_html( $label ); ?></small>
+							<b><?php echo esc_html( number_format_i18n( $count ) ); ?></b>
+						</div>
+					<?php endforeach; ?>
+				</div>
+			</div>
+
+		</div>
+		<?php
+	}
+
+	/* --- Listings: the approval loop lives here -------------------------- */
+
+	private static function mk_listings(): void {
+
+		$pending = new \WP_Query(
+			[
+				'post_type'             => Post_Types::LISTING,
+				'post_status'           => 'pending',
+				'posts_per_page'        => 20,
+				'orderby'               => 'modified',
+				'order'                 => 'ASC',
+				'tdh_bypass_visibility' => true,
+			]
+		);
+
+		$all = new \WP_Query(
+			[
+				'post_type'             => Post_Types::LISTING,
+				'post_status'           => array_merge( [ 'publish', 'pending', 'draft' ], array_keys( Statuses::all() ) ),
+				'posts_per_page'        => 20,
+				'tdh_bypass_visibility' => true,
+			]
+		);
+
+		$labels = Statuses::all();
+		$badges = [
+			'publish'              => 'live',
+			'pending'              => 'pending',
+			Statuses::REJECTED     => 'rejected',
+			Statuses::BILLING_HOLD => 'past_due',
+		];
+		?>
+		<div class="portal-heading">
+			<span>
+				<h1><?php esc_html_e( 'Listings', 'thirtydayhomes' ); ?></h1>
+				<p><?php esc_html_e( 'Approve submissions here; open a listing in WordPress for edits.', 'thirtydayhomes' ); ?></p>
+			</span>
+			<a class="primary" href="<?php echo esc_url( Listing_Form::url() ); ?>">
+				<?php echo self::mk_icon( 'plus', 16 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+				<?php esc_html_e( 'Add listing', 'thirtydayhomes' ); ?>
+			</a>
+		</div>
+
+		<div class="panel portal-panel-block">
+			<div class="panel-title">
+				<h3><?php esc_html_e( 'Waiting for approval', 'thirtydayhomes' ); ?></h3>
+			</div>
+
+			<?php if ( ! $pending->have_posts() ) : ?>
+				<div class="empty-state">
+					<i><?php echo self::mk_icon( 'circle-check', 22 ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+					<h4><?php esc_html_e( 'Nothing waiting', 'thirtydayhomes' ); ?></h4>
+					<p><?php esc_html_e( 'Submitted homes land here for a decision before going live.', 'thirtydayhomes' ); ?></p>
+				</div>
+			<?php else : ?>
+				<?php
+				while ( $pending->have_posts() ) :
+					$pending->the_post();
+					?>
+					<div class="portal-approval">
+						<?php self::mk_row_media( get_the_ID() ); ?>
+						<span>
+							<?php // Preview: see the home as a renter would, before deciding. ?>
+							<b><a href="<?php echo esc_url( (string) get_preview_post_link( get_the_ID() ) ); ?>"><?php the_title(); ?></a></b>
+							<small><?php echo esc_html( self::mk_listing_line( get_the_ID() ) ); ?></small>
+						</span>
+						<span class="portal-row-actions">
+							<form method="post" action="<?php echo esc_url( self::mk_url( 'listings' ) ); ?>">
+								<input type="hidden" name="tdh_action" value="listing_approve">
+								<input type="hidden" name="tdh_listing" value="<?php echo esc_attr( (string) get_the_ID() ); ?>">
+								<?php wp_nonce_field( Moderation::NONCE, 'tdh_nonce' ); ?>
+								<button class="primary" type="submit"><?php esc_html_e( 'Approve', 'thirtydayhomes' ); ?></button>
+							</form>
+							<form method="post" action="<?php echo esc_url( self::mk_url( 'listings' ) ); ?>">
+								<input type="hidden" name="tdh_action" value="listing_changes">
+								<input type="hidden" name="tdh_listing" value="<?php echo esc_attr( (string) get_the_ID() ); ?>">
+								<?php wp_nonce_field( Moderation::NONCE, 'tdh_nonce' ); ?>
+								<button class="secondary" type="submit"><?php esc_html_e( 'Request changes', 'thirtydayhomes' ); ?></button>
+							</form>
+						</span>
+					</div>
+				<?php endwhile; ?>
+				<?php wp_reset_postdata(); ?>
+			<?php endif; ?>
+		</div>
+
+		<div class="panel portal-panel-block">
+			<div class="panel-title">
+				<h3><?php esc_html_e( 'All listings', 'thirtydayhomes' ); ?></h3>
+				<a href="<?php echo esc_url( admin_url( 'edit.php?post_type=' . Post_Types::LISTING ) ); ?>">
+					<?php esc_html_e( 'Open in WordPress', 'thirtydayhomes' ); ?>
+					<?php echo self::mk_icon( 'arrow-right', 15 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+				</a>
+			</div>
+
+			<?php if ( ! $all->have_posts() ) : ?>
+				<div class="empty-state">
+					<i><?php echo self::mk_icon( 'map-pinned', 22 ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+					<h4><?php esc_html_e( 'No listings yet', 'thirtydayhomes' ); ?></h4>
+					<p><?php esc_html_e( 'Homes appear here as landlords create them.', 'thirtydayhomes' ); ?></p>
+				</div>
+			<?php else : ?>
+				<?php
+				while ( $all->have_posts() ) :
+					$all->the_post();
+					$state = (string) get_post_status();
+					$open  = 'publish' === $state
+						? get_permalink()
+						: admin_url( 'post.php?action=edit&post=' . get_the_ID() );
+					?>
+					<div class="portal-approval">
+						<?php self::mk_row_media( get_the_ID() ); ?>
+						<span>
+							<b><a href="<?php echo esc_url( (string) $open ); ?>"><?php the_title(); ?></a></b>
+							<small><?php echo esc_html( self::mk_listing_line( get_the_ID() ) ); ?></small>
+						</span>
+						<span class="status <?php echo esc_attr( $badges[ $state ] ?? '' ); ?>">
+							<?php echo esc_html( $labels[ $state ] ?? $state ); ?>
+						</span>
+					</div>
+				<?php endwhile; ?>
+				<?php wp_reset_postdata(); ?>
+			<?php endif; ?>
+		</div>
+		<?php
+	}
+
+	/* --- Members ---------------------------------------------------------- */
+
+	private static function mk_members(): void {
+
+		$members = get_users(
+			[
+				'role'    => Roles::LANDLORD,
+				'number'  => 50,
+				'orderby' => 'registered',
+				'order'   => 'DESC',
+			]
+		);
+
+		$status_badges = [
+			Membership::ACTIVE   => 'live',
+			Membership::PAST_DUE => 'past_due',
+		];
+
+		$labels = Membership::labels();
+		?>
+		<div class="portal-heading">
+			<span>
+				<h1><?php esc_html_e( 'Members', 'thirtydayhomes' ); ?></h1>
+				<p><?php esc_html_e( 'Every landlord account, with its plan and listings.', 'thirtydayhomes' ); ?></p>
+			</span>
+			<a class="secondary" href="<?php echo esc_url( admin_url( 'users.php' ) ); ?>">
+				<?php esc_html_e( 'Open in WordPress', 'thirtydayhomes' ); ?>
+			</a>
+		</div>
+
+		<div class="panel portal-panel-block">
+			<?php if ( ! $members ) : ?>
+				<div class="empty-state">
+					<i><?php echo self::mk_icon( 'users', 22 ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+					<h4><?php esc_html_e( 'No members yet', 'thirtydayhomes' ); ?></h4>
+					<p><?php esc_html_e( 'Landlord accounts appear here as people register.', 'thirtydayhomes' ); ?></p>
+				</div>
+			<?php else : ?>
+				<?php
+				foreach ( $members as $member ) :
+					$m_id     = (int) $member->ID;
+					$m_status = Membership::status( $m_id );
+					$m_plan   = Membership::plan( $m_id );
+					$line     = implode(
+						' · ',
+						array_filter(
+							[
+								$member->user_email,
+								'' !== $m_plan ? $m_plan : '',
+								sprintf(
+									/* translators: 1: listings held, 2: allowance */
+									__( '%1$s of %2$s listings', 'thirtydayhomes' ),
+									number_format_i18n( Membership::listing_count( $m_id ) ),
+									number_format_i18n( Membership::quota( $m_id ) )
+								),
+							]
+						)
+					);
+					?>
+					<div class="portal-approval">
+						<i class="portal-avatar" aria-hidden="true"><?php echo esc_html( strtoupper( mb_substr( trim( $member->display_name ), 0, 2 ) ) ); ?></i>
+						<span>
+							<?php // The user editor link only for staff who can open it — the review persona cannot, and a link to "you need permission" is worse than a name. ?>
+							<?php if ( current_user_can( 'edit_users' ) ) : ?>
+								<b><a href="<?php echo esc_url( admin_url( 'user-edit.php?user_id=' . $m_id ) ); ?>"><?php echo esc_html( $member->display_name ); ?></a></b>
+							<?php else : ?>
+								<b><?php echo esc_html( $member->display_name ); ?></b>
+							<?php endif; ?>
+							<small><?php echo esc_html( $line ); ?></small>
+						</span>
+						<span class="status <?php echo esc_attr( $status_badges[ $m_status ] ?? '' ); ?>">
+							<?php echo esc_html( $labels[ $m_status ] ?? $m_status ); ?>
+						</span>
+					</div>
+				<?php endforeach; ?>
+			<?php endif; ?>
+		</div>
+		<?php
+	}
+
+	/* --- Inquiries --------------------------------------------------------- */
+
+	private static function mk_inquiries(): void {
+
+		$inquiries = get_posts(
+			[
+				'post_type'      => Post_Types::INQUIRY,
+				'post_status'    => 'any',
+				'posts_per_page' => 20,
+			]
+		);
+		?>
+		<div class="portal-heading">
+			<span>
+				<h1><?php esc_html_e( 'Inquiries', 'thirtydayhomes' ); ?></h1>
+				<p><?php esc_html_e( 'Everything renters have sent, newest first. Open one to read and reply.', 'thirtydayhomes' ); ?></p>
+			</span>
+		</div>
+
+		<div class="panel portal-panel-block">
+			<?php if ( ! $inquiries ) : ?>
+				<div class="empty-state">
+					<i><?php echo self::mk_icon( 'mail', 22 ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+					<h4><?php esc_html_e( 'No inquiries yet', 'thirtydayhomes' ); ?></h4>
+					<p><?php esc_html_e( 'Messages from renters appear here and reach the landlord by email.', 'thirtydayhomes' ); ?></p>
+				</div>
+			<?php else : ?>
+				<?php
+				foreach ( $inquiries as $inquiry ) :
+					$name    = (string) get_post_meta( $inquiry->ID, '_tdh_renter_name', true );
+					$name    = '' !== $name ? $name : __( 'Website visitor', 'thirtydayhomes' );
+					$message = (string) get_post_meta( $inquiry->ID, '_tdh_message', true );
+					$about   = (int) get_post_meta( $inquiry->ID, '_tdh_listing_id', true );
+					$line    = implode(
+						' · ',
+						array_filter(
+							[
+								wp_html_excerpt( $message, 70, '…' ),
+								$about ? get_the_title( $about ) : '',
+							]
+						)
+					);
+					?>
+					<div class="portal-inquiry<?php echo ! get_post_meta( $inquiry->ID, '_tdh_read', true ) ? ' is-unread' : ''; ?>">
+						<i class="portal-avatar" aria-hidden="true"><?php echo esc_html( strtoupper( mb_substr( trim( $name ), 0, 2 ) ) ); ?></i>
+						<span>
+							<b><a href="<?php echo esc_url( admin_url( 'post.php?action=edit&post=' . $inquiry->ID ) ); ?>"><?php echo esc_html( $name ); ?></a></b>
+							<small><?php echo esc_html( $line ); ?></small>
+						</span>
+						<?php if ( ! get_post_meta( $inquiry->ID, '_tdh_read', true ) ) : ?>
+							<em aria-label="<?php esc_attr_e( 'Unread', 'thirtydayhomes' ); ?>"></em>
+						<?php endif; ?>
+					</div>
+				<?php endforeach; ?>
+			<?php endif; ?>
+		</div>
+		<?php
+	}
+
+	/* --- Facilities -------------------------------------------------------- */
+
+	private static function mk_facilities(): void {
+
+		$facilities = get_posts(
+			[
+				'post_type'      => Post_Types::FACILITY,
+				'post_status'    => 'any',
+				'posts_per_page' => 50,
+				'orderby'        => 'title',
+				'order'          => 'ASC',
+			]
+		);
+		?>
+		<div class="portal-heading">
+			<span>
+				<h1><?php esc_html_e( 'Facilities', 'thirtydayhomes' ); ?></h1>
+				<p><?php esc_html_e( 'The hospitals and campuses the distance search measures from.', 'thirtydayhomes' ); ?></p>
+			</span>
+			<a class="secondary" href="<?php echo esc_url( admin_url( 'edit.php?post_type=' . Post_Types::FACILITY ) ); ?>">
+				<?php esc_html_e( 'Open in WordPress', 'thirtydayhomes' ); ?>
+			</a>
+		</div>
+
+		<div class="panel portal-panel-block">
+			<?php if ( ! $facilities ) : ?>
+				<div class="empty-state">
+					<i><?php echo self::mk_icon( 'stethoscope', 22 ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+					<h4><?php esc_html_e( 'No facilities yet', 'thirtydayhomes' ); ?></h4>
+					<p><?php esc_html_e( 'Add hospitals and campuses in WordPress and they appear here.', 'thirtydayhomes' ); ?></p>
+				</div>
+			<?php else : ?>
+				<?php foreach ( $facilities as $facility ) : ?>
+					<div class="portal-approval">
+						<i aria-hidden="true"><?php echo self::mk_icon( 'stethoscope', 20 ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+						<span>
+							<b><a href="<?php echo esc_url( admin_url( 'post.php?action=edit&post=' . $facility->ID ) ); ?>"><?php echo esc_html( get_the_title( $facility ) ); ?></a></b>
+						</span>
+					</div>
+				<?php endforeach; ?>
+			<?php endif; ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * How many members hold this stored membership status.
+	 */
+	private static function count_members( string $status ): int {
+
+		$query = new \WP_User_Query(
+			[
+				'meta_key'    => Membership::META_STATUS, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+				'meta_value'  => $status,                 // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+				'number'      => 1,
+				'fields'      => 'ID',
+				'count_total' => true,
+			]
+		);
+
+		return (int) $query->get_total();
+	}
+
+	/**
+	 * Listings across the whole site in the given statuses.
+	 *
+	 * @param string[] $statuses
+	 */
+	private static function count_site_listings( array $statuses ): int {
+
+		$query = new \WP_Query(
+			[
+				'post_type'             => Post_Types::LISTING,
+				'post_status'           => $statuses,
+				'posts_per_page'        => 1,
+				'fields'                => 'ids',
+				'tdh_bypass_visibility' => true,
+			]
+		);
+
+		return (int) $query->found_posts;
+	}
+
+	/**
+	 * How many listings a landlord has in the given statuses.
+	 *
+	 * @param string[] $statuses
+	 */
+	private static function count_listings( int $user_id, array $statuses ): int {
+
+		$query = new \WP_Query(
+			[
+				'post_type'             => Post_Types::LISTING,
+				'author'                => $user_id,
+				'post_status'           => $statuses,
+				'posts_per_page'        => 1,
+				'fields'                => 'ids',
+				'tdh_bypass_visibility' => true,
+			]
+		);
+
+		return (int) $query->found_posts;
+	}
+
+	/**
+	 * The most recent inquiries about this landlord's listings.
+	 *
+	 * Routed by the listing's owner, not by anything the inquiry says: an
+	 * inquiry belongs to whoever owns the home it asks about, which is the
+	 * same rule the capability filter enforces when one is opened.
+	 *
+	 * @return array<int,array{name:string,excerpt:string,initials:string,unread:bool}>
+	 */
+	private static function inquiries_for( int $user_id, int $limit ): array {
+
+		$listing_ids = get_posts(
+			[
+				'post_type'             => Post_Types::LISTING,
+				'author'                => $user_id,
+				'post_status'           => 'any',
+				'posts_per_page'        => -1,
+				'fields'                => 'ids',
+				'tdh_bypass_visibility' => true,
+			]
+		);
+
+		if ( ! $listing_ids ) {
+			return [];
+		}
+
+		$found = get_posts(
+			[
+				'post_type'      => Post_Types::INQUIRY,
+				'post_status'    => 'publish',
+				'posts_per_page' => $limit,
+				'meta_query'     => [ // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+					[
+						'key'     => '_tdh_listing_id',
+						'value'   => array_map( 'strval', $listing_ids ),
+						'compare' => 'IN',
+					],
+				],
+			]
+		);
+
+		$out = [];
+
+		foreach ( $found as $inquiry ) {
+
+			$name    = (string) get_post_meta( $inquiry->ID, '_tdh_renter_name', true );
+			$message = (string) get_post_meta( $inquiry->ID, '_tdh_message', true );
+
+			if ( '' === $message ) {
+				$message = (string) $inquiry->post_content;
+			}
+
+			$out[] = [
+				'name'     => '' !== $name ? $name : __( 'A renter', 'thirtydayhomes' ),
+				'excerpt'  => wp_html_excerpt( $message, 52, '…' ),
+				'initials' => strtoupper( mb_substr( trim( $name ?: 'R' ), 0, 2 ) ),
+				'unread'   => ! get_post_meta( $inquiry->ID, '_tdh_read', true ),
+			];
+		}
+
+		return $out;
 	}
 
 	/**
@@ -725,14 +1609,18 @@ final class Account_Render {
 			// The empty state says what to do next, and what that depends
 			// on. "You have not created a listing yet" in the middle of a
 			// large blank box states a fact and offers no way forward.
-			$has_plan = Membership::quota( $user_id ) > 0;
+			// The wizard's gate decides, so staff see the add path too.
+			$can_add = '' === Listing_Form::gate_reason();
 			?>
 			<div class="empty-state">
 				<i><?php echo function_exists( 'tdh_icon' ) ? tdh_icon( 'map-pinned', 22 ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
 				<h4><?php esc_html_e( 'No homes listed yet', 'thirtydayhomes' ); ?></h4>
 
-				<?php if ( $has_plan ) : ?>
+				<?php if ( $can_add ) : ?>
 					<p><?php esc_html_e( 'Add your first home and it goes to review before publishing.', 'thirtydayhomes' ); ?></p>
+					<a class="secondary" href="<?php echo esc_url( Listing_Form::url() ); ?>">
+						<?php esc_html_e( 'Add your home', 'thirtydayhomes' ); ?>
+					</a>
 				<?php else : ?>
 					<p><?php esc_html_e( 'A membership comes first. Once a plan is active you can publish your home here.', 'thirtydayhomes' ); ?></p>
 					<a class="secondary" href="<?php echo esc_url( Accounts::url( 'pricing' ) ); ?>">
@@ -772,6 +1660,12 @@ final class Account_Render {
 				<span class="status <?php echo esc_attr( $badges[ $state ] ?? '' ); ?>">
 					<?php echo esc_html( $labels[ $state ] ?? $state ); ?>
 				</span>
+				<?php if ( in_array( $state, [ 'draft', 'pending' ], true ) ) : ?>
+					<?php // The wizard edits exactly what it created: drafts and pending. ?>
+					<a class="mini-listing-edit" href="<?php echo esc_url( Listing_Form::url( 1, get_the_ID() ) ); ?>">
+						<?php esc_html_e( 'Edit', 'thirtydayhomes' ); ?>
+					</a>
+				<?php endif; ?>
 			</div>
 			<?php
 		}

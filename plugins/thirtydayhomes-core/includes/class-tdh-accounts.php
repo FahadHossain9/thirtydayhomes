@@ -513,11 +513,52 @@ final class Accounts {
 	 */
 	public function login_redirect( $redirect, $request, $user ) {
 
-		if ( $user instanceof \WP_User && in_array( Roles::LANDLORD, (array) $user->roles, true ) ) {
+		if ( ! $user instanceof \WP_User ) {
+			return $redirect;
+		}
+
+		if ( in_array( Roles::LANDLORD, (array) $user->roles, true ) ) {
 			return self::url( 'account' );
 		}
 
+		/*
+		 * Staff too — but only away from the GENERIC destination. Signing
+		 * in lands the owner on their marketplace portal, where the day
+		 * starts; a login that was asked for by a specific wp-admin screen
+		 * (an edit link opened while logged out) still goes where it was
+		 * going. The developer's door back into WordPress is in the
+		 * portal's sidebar.
+		 */
+		if ( self::is_staff( (int) $user->ID ) ) {
+
+			$generic = untrailingslashit( admin_url() );
+
+			if ( '' === (string) $redirect || untrailingslashit( (string) $redirect ) === $generic ) {
+				return self::url( 'account' );
+			}
+		}
+
 		return $redirect;
+	}
+
+	/**
+	 * True when this user runs the marketplace — approves listings, sees
+	 * the administration portal.
+	 *
+	 * Keyed on a MARKETPLACE capability, not manage_options: the client
+	 * review mode's "Administrator" persona deliberately lacks
+	 * manage_options (it must not be able to take over WordPress on a
+	 * shared staging URL), yet it exists precisely to run the marketplace.
+	 * manage_options answers "may configure WordPress", which is a
+	 * different question.
+	 */
+	public static function is_staff( int $user_id = 0 ): bool {
+
+		if ( $user_id ) {
+			return user_can( $user_id, 'edit_others_tdh_listings' );
+		}
+
+		return current_user_can( 'edit_others_tdh_listings' );
 	}
 
 	/**

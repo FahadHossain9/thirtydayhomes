@@ -63,6 +63,12 @@ if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
 "%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify-page-widgets.php"
 if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
 
+"%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify-portal.php"
+if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
+
+"%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify-listing-form.php"
+if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
+
 popd
 
 echo.

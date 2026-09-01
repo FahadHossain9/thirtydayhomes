@@ -85,6 +85,19 @@ final class Core {
 			// every validation error, and a cached /account/ serves one
 			// landlord's dashboard to the next visitor.
 			'no_cache'   => new No_Cache(),
+
+			// Listing view counts, via a REST beacon because a cache hit is
+			// a view PHP never hears about. Front end: the viewers being
+			// counted are logged-out renters.
+			'views'      => new Views(),
+
+			// The landlord's create-a-listing wizard (Milestone 2). Front
+			// end: it posts from the add-listing page, never from wp-admin.
+			'listing_form' => new Listing_Form(),
+
+			// Approve / request changes from the marketplace portal — the
+			// owner's daily loop, actionable without wp-admin.
+			'moderation'   => new Moderation(),
 		];
 
 		// Admin-only modules. Loading the editing UI on every front-end

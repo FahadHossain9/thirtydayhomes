@@ -421,6 +421,11 @@ final class Site_Structure {
 				'content' => '[tdh_profile]',
 				'noindex' => true,
 			],
+			'add-listing' => [
+				'title'   => __( 'List your home', 'thirtydayhomes' ),
+				'content' => '[tdh_add_listing]',
+				'noindex' => true,
+			],
 		];
 	}
 
