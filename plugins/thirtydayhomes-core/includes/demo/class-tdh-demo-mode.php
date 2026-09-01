@@ -66,6 +66,9 @@ final class Demo_Mode {
 		// trap the reviewer is worse than no review tool.
 		add_action( 'admin_bar_menu', [ $this, 'admin_bar' ], 90 );
 
+		// Late, so every menu is registered before the trim runs.
+		add_action( 'admin_menu', [ $this, 'trim_demo_menu' ], 999 );
+
 		// Keep review sites out of search results. Belt and braces — the
 		// host should also be enforcing this.
 		add_filter( 'pre_option_blog_public', '__return_zero' );
@@ -308,6 +311,27 @@ final class Demo_Mode {
 		 */
 		remove_role( 'tdh_demo_admin' );
 		add_role( 'tdh_demo_admin', __( 'Marketplace Administrator (review)', 'thirtydayhomes' ), $caps );
+	}
+
+	/**
+	 * Hide the menus that lead nowhere useful from the review admin.
+	 *
+	 * The role needs edit_posts to reach the marketplace list tables, and
+	 * that capability drags in menus for features this site does not use:
+	 * there is no blog and comments are closed, so Posts and Comments are
+	 * pure noise, and Tools is import/export machinery. Menus only — the
+	 * capabilities stay, so the list tables keep working. The real
+	 * administrator is untouched.
+	 */
+	public function trim_demo_menu(): void {
+
+		if ( ! in_array( 'tdh_demo_admin', (array) wp_get_current_user()->roles, true ) ) {
+			return;
+		}
+
+		remove_menu_page( 'edit.php' );          // Posts.
+		remove_menu_page( 'edit-comments.php' ); // Comments.
+		remove_menu_page( 'tools.php' );         // Tools.
 	}
 
 	/**

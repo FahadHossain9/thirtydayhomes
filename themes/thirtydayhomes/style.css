@@ -4,7 +4,7 @@ Theme URI:    https://github.com/FahadHossain9/thirtydayhomes
 Author:       Instaquirk
 Author URI:   https://instaquirk.com
 Description:  Presentation layer for the ThirtyDayHomes marketplace. Owns global design tokens, header, footer, navigation, responsive framework and Elementor integration. Holds NO marketplace business rules — those live in the ThirtyDayHomes Core plugin, so replacing this theme never costs a listing, membership, inquiry or facility.
-Version:      0.24.0
+Version:      0.24.1
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 8.1
@@ -4033,6 +4033,12 @@ body.tdh-portal-page .site-footer { display: none; }
 	font-family: var( --font-heading );
 	font-size: var( --text-xl );
 	font-variant-numeric: tabular-nums;
+
+	/* The heading serif carries generous internal leading, which pushed the
+	   figure low in its tile and inflated the tile's height. Unitless, not
+	   the 15px it was tuned as in devtools, so it keeps fitting if the
+	   --text-xl token ever moves. Digits have no descenders to clip. */
+	line-height: 0.6;
 }
 
 .portal-metric b > em {
@@ -4181,6 +4187,7 @@ body.tdh-portal-page .site-footer { display: none; }
 	font-family: var( --font-heading );
 	font-size: var( --text-xl );
 	font-variant-numeric: tabular-nums;
+	line-height: 0.6; /* Matches .portal-metric b — the same design element. */
 }
 
 /* A full-width panel on a portal view (Listings, Members …), stacked. */

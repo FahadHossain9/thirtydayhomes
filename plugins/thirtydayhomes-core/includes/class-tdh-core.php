@@ -98,6 +98,11 @@ final class Core {
 			// Approve / request changes from the marketplace portal — the
 			// owner's daily loop, actionable without wp-admin.
 			'moderation'   => new Moderation(),
+
+			// Closes the username-enumeration doors (REST users route,
+			// ?author= archives, the authors sitemap) — the Milestone 1
+			// security finding. Front end: every door it closes is public.
+			'user_privacy' => new User_Privacy(),
 		];
 
 		// Admin-only modules. Loading the editing UI on every front-end
