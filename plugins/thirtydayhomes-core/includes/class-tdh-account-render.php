@@ -614,10 +614,24 @@ final class Account_Render {
 		 * page while the wizard itself would have let them through.
 		 */
 
+		/*
+		 * Which screen of the portal is open. Real screens, not anchors —
+		 * the nav originally pointed at #sections of this one page, and on
+		 * a display tall enough to show everything, clicking them moved
+		 * nothing: three menu items that read as broken empty pages.
+		 */
+		$view = isset( $_GET['view'] ) ? sanitize_key( wp_unslash( (string) $_GET['view'] ) ) : 'overview'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		if ( ! in_array( $view, [ 'overview', 'listings', 'inquiries', 'membership' ], true ) ) {
+			$view = 'overview';
+		}
+
 		$live     = self::count_listings( $user_id, [ 'publish' ] );
 		$pending  = self::count_listings( $user_id, [ 'pending' ] );
 		$views    = Views::total_for_author( $user_id );
-		$inquiries = self::inquiries_for( $user_id, 4 );
+
+		// The dedicated screen shows the history; the overview shows a taste.
+		$inquiries = self::inquiries_for( $user_id, 'inquiries' === $view ? 50 : 4 );
 		$unread    = count( array_filter( $inquiries, static fn( $i ) => $i['unread'] ) );
 
 		$initials = strtoupper( mb_substr( trim( $user->display_name ), 0, 2 ) );
@@ -651,26 +665,25 @@ final class Account_Render {
 
 				<p class="portal-side-label"><?php esc_html_e( 'Landlord portal', 'thirtydayhomes' ); ?></p>
 
+				<?php
+				$nav = [
+					'overview'   => [ 'layout-dashboard', __( 'Overview', 'thirtydayhomes' ) ],
+					'listings'   => [ 'building-2', __( 'My listings', 'thirtydayhomes' ) ],
+					'inquiries'  => [ 'mail', __( 'Inquiries', 'thirtydayhomes' ) ],
+					'membership' => [ 'wallet-cards', __( 'Membership', 'thirtydayhomes' ) ],
+				];
+				?>
 				<nav class="portal-nav" aria-label="<?php esc_attr_e( 'Dashboard', 'thirtydayhomes' ); ?>">
-					<a class="is-current" href="#overview">
-						<?php echo $icon( 'layout-dashboard', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
-						<?php esc_html_e( 'Overview', 'thirtydayhomes' ); ?>
-					</a>
-					<a href="#listings">
-						<?php echo $icon( 'building-2', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
-						<?php esc_html_e( 'My listings', 'thirtydayhomes' ); ?>
-					</a>
-					<a href="#inquiries">
-						<?php echo $icon( 'mail', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
-						<?php esc_html_e( 'Inquiries', 'thirtydayhomes' ); ?>
-						<?php if ( $unread > 0 ) : ?>
-							<em class="portal-count"><?php echo esc_html( number_format_i18n( $unread ) ); ?></em>
-						<?php endif; ?>
-					</a>
-					<a href="#membership">
-						<?php echo $icon( 'wallet-cards', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
-						<?php esc_html_e( 'Membership', 'thirtydayhomes' ); ?>
-					</a>
+					<?php foreach ( $nav as $slug => [ $nav_icon, $label ] ) : ?>
+						<a class="<?php echo $view === $slug ? 'is-current' : ''; ?>"
+							href="<?php echo esc_url( 'overview' === $slug ? Accounts::url( 'account' ) : add_query_arg( 'view', $slug, Accounts::url( 'account' ) ) ); ?>">
+							<?php echo $icon( $nav_icon, 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+							<?php echo esc_html( $label ); ?>
+							<?php if ( 'inquiries' === $slug && $unread > 0 ) : ?>
+								<em class="portal-count"><?php echo esc_html( number_format_i18n( $unread ) ); ?></em>
+							<?php endif; ?>
+						</a>
+					<?php endforeach; ?>
 					<a href="<?php echo esc_url( Accounts::url( 'profile' ) ); ?>">
 						<?php echo $icon( 'user', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 						<?php esc_html_e( 'Profile', 'thirtydayhomes' ); ?>
@@ -703,25 +716,35 @@ final class Account_Render {
 
 				<div class="portal-body">
 
+					<?php
+					$headings = [
+						'overview'   => [ __( 'Dashboard', 'thirtydayhomes' ), __( 'Here’s what’s happening with your properties.', 'thirtydayhomes' ) ],
+						'listings'   => [ __( 'My listings', 'thirtydayhomes' ), __( 'Every home on your account, in every status.', 'thirtydayhomes' ) ],
+						'inquiries'  => [ __( 'Inquiries', 'thirtydayhomes' ), __( 'Renters who asked about your homes.', 'thirtydayhomes' ) ],
+						'membership' => [ __( 'Membership', 'thirtydayhomes' ), __( 'Your plan, allowance and renewal.', 'thirtydayhomes' ) ],
+					];
+					?>
 					<div class="portal-heading">
 						<span>
-							<h1><?php esc_html_e( 'Dashboard', 'thirtydayhomes' ); ?></h1>
-							<p><?php esc_html_e( 'Here’s what’s happening with your properties.', 'thirtydayhomes' ); ?></p>
+							<h1><?php echo esc_html( $headings[ $view ][0] ); ?></h1>
+							<p><?php echo esc_html( $headings[ $view ][1] ); ?></p>
 						</span>
-						<a class="primary" href="<?php echo esc_url( $add_url ); ?>">
-							<?php echo $icon( 'plus', 16 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
-							<?php esc_html_e( 'Add property', 'thirtydayhomes' ); ?>
-						</a>
+						<?php if ( in_array( $view, [ 'overview', 'listings' ], true ) ) : ?>
+							<a class="primary" href="<?php echo esc_url( $add_url ); ?>">
+								<?php echo $icon( 'plus', 16 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+								<?php esc_html_e( 'Add property', 'thirtydayhomes' ); ?>
+							</a>
+						<?php endif; ?>
 					</div>
 
 					<?php self::notices( $notice ); ?>
 
+					<?php if ( in_array( $view, [ 'overview', 'membership' ], true ) ) : ?>
 					<?php
 					/*
 					 * The membership band. One panel, not a banner AND a
 					 * card — the two said the same thing above one another
-					 * and read as a layout accident. Anchored so the
-					 * sidebar's Membership item lands on it.
+					 * and read as a layout accident.
 					 */
 					?>
 					<section class="portal-alert portal-alert--<?php echo esc_attr( Membership::badge_class( $status ) ); ?>" id="membership">
@@ -748,7 +771,9 @@ final class Account_Render {
 							</a>
 						<?php endif; ?>
 					</section>
+					<?php endif; ?>
 
+					<?php if ( 'overview' === $view ) : ?>
 					<div class="portal-metrics">
 						<div class="portal-metric">
 							<i><?php echo $icon( 'building-2' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
@@ -781,54 +806,47 @@ final class Account_Render {
 					</div>
 
 					<div class="portal-columns">
+						<?php self::listings_panel( $user_id, $used, $quota ); ?>
+						<?php self::inquiries_panel( $inquiries ); ?>
+					</div>
 
-						<div class="panel" id="listings">
+					<?php elseif ( 'listings' === $view ) : ?>
+						<?php self::listings_panel( $user_id, $used, $quota ); ?>
+
+					<?php elseif ( 'inquiries' === $view ) : ?>
+						<?php self::inquiries_panel( $inquiries ); ?>
+
+					<?php elseif ( 'membership' === $view ) : ?>
+						<div class="panel">
 							<div class="panel-title">
-								<h3><?php esc_html_e( 'Your listings', 'thirtydayhomes' ); ?></h3>
-								<?php if ( $quota > 0 ) : ?>
-									<span class="panel-note">
+								<h3><?php esc_html_e( 'Plan details', 'thirtydayhomes' ); ?></h3>
+							</div>
+							<div class="portal-health">
+								<div>
+									<small><?php esc_html_e( 'Plan', 'thirtydayhomes' ); ?></small>
+									<b><?php echo esc_html( Membership::plan( $user_id ) ?: '—' ); ?></b>
+								</div>
+								<div>
+									<small><?php esc_html_e( 'Listings used', 'thirtydayhomes' ); ?></small>
+									<b>
 										<?php
-										printf(
-											/* translators: 1: used, 2: allowed */
-											esc_html__( '%1$s of %2$s used', 'thirtydayhomes' ),
-											esc_html( number_format_i18n( $used ) ),
-											esc_html( number_format_i18n( $quota ) )
+										echo esc_html(
+											$quota > 0
+												? number_format_i18n( $used ) . ' / ' . number_format_i18n( $quota )
+												: number_format_i18n( $used )
 										);
 										?>
-									</span>
-								<?php endif; ?>
-							</div>
-							<?php self::listing_rows( $user_id ); ?>
-						</div>
-
-						<div class="panel" id="inquiries">
-							<div class="panel-title">
-								<h3><?php esc_html_e( 'Recent inquiries', 'thirtydayhomes' ); ?></h3>
-							</div>
-
-							<?php if ( ! $inquiries ) : ?>
-								<div class="empty-state">
-									<i><?php echo $icon( 'mail', 22 ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
-									<h4><?php esc_html_e( 'No inquiries yet', 'thirtydayhomes' ); ?></h4>
-									<p><?php esc_html_e( 'When a renter asks about one of your homes, it appears here and reaches you by email.', 'thirtydayhomes' ); ?></p>
+									</b>
 								</div>
-							<?php else : ?>
-								<?php foreach ( $inquiries as $inquiry ) : ?>
-									<div class="portal-inquiry<?php echo $inquiry['unread'] ? ' is-unread' : ''; ?>">
-										<i class="portal-avatar" aria-hidden="true"><?php echo esc_html( $inquiry['initials'] ); ?></i>
-										<span>
-											<b><?php echo esc_html( $inquiry['name'] ); ?></b>
-											<small><?php echo esc_html( $inquiry['excerpt'] ); ?></small>
-										</span>
-										<?php if ( $inquiry['unread'] ) : ?>
-											<em aria-label="<?php esc_attr_e( 'Unread', 'thirtydayhomes' ); ?>"></em>
-										<?php endif; ?>
-									</div>
-								<?php endforeach; ?>
-							<?php endif; ?>
+								<div>
+									<small>
+										<?php echo Membership::CANCELLED === $status ? esc_html__( 'Ends', 'thirtydayhomes' ) : esc_html__( 'Renews', 'thirtydayhomes' ); ?>
+									</small>
+									<b><?php echo esc_html( $expires ? date_i18n( 'j M Y', $expires ) : '—' ); ?></b>
+								</div>
+							</div>
 						</div>
-
-					</div>
+					<?php endif; ?>
 
 				</div>
 			</div>
@@ -1498,6 +1516,73 @@ final class Account_Render {
 		);
 
 		return (int) $query->found_posts;
+	}
+
+	/**
+	 * The "Your listings" panel — shared by the overview and the dedicated
+	 * My listings screen, so the two can never drift apart.
+	 */
+	private static function listings_panel( int $user_id, int $used, int $quota ): void {
+		?>
+		<div class="panel" id="listings">
+			<div class="panel-title">
+				<h3><?php esc_html_e( 'Your listings', 'thirtydayhomes' ); ?></h3>
+				<?php if ( $quota > 0 ) : ?>
+					<span class="panel-note">
+						<?php
+						printf(
+							/* translators: 1: used, 2: allowed */
+							esc_html__( '%1$s of %2$s used', 'thirtydayhomes' ),
+							esc_html( number_format_i18n( $used ) ),
+							esc_html( number_format_i18n( $quota ) )
+						);
+						?>
+					</span>
+				<?php endif; ?>
+			</div>
+			<?php self::listing_rows( $user_id ); ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * The inquiries panel — the overview hands it four, the dedicated
+	 * screen hands it the history.
+	 *
+	 * @param array<int,array{name:string,excerpt:string,initials:string,unread:bool}> $inquiries
+	 */
+	private static function inquiries_panel( array $inquiries ): void {
+
+		$icon = static fn( string $name, int $size = 19 ): string =>
+			function_exists( 'tdh_icon' ) ? tdh_icon( $name, $size ) : '';
+		?>
+		<div class="panel" id="inquiries">
+			<div class="panel-title">
+				<h3><?php esc_html_e( 'Recent inquiries', 'thirtydayhomes' ); ?></h3>
+			</div>
+
+			<?php if ( ! $inquiries ) : ?>
+				<div class="empty-state">
+					<i><?php echo $icon( 'mail', 22 ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+					<h4><?php esc_html_e( 'No inquiries yet', 'thirtydayhomes' ); ?></h4>
+					<p><?php esc_html_e( 'When a renter asks about one of your homes, it appears here and reaches you by email.', 'thirtydayhomes' ); ?></p>
+				</div>
+			<?php else : ?>
+				<?php foreach ( $inquiries as $inquiry ) : ?>
+					<div class="portal-inquiry<?php echo $inquiry['unread'] ? ' is-unread' : ''; ?>">
+						<i class="portal-avatar" aria-hidden="true"><?php echo esc_html( $inquiry['initials'] ); ?></i>
+						<span>
+							<b><?php echo esc_html( $inquiry['name'] ); ?></b>
+							<small><?php echo esc_html( $inquiry['excerpt'] ); ?></small>
+						</span>
+						<?php if ( $inquiry['unread'] ) : ?>
+							<em aria-label="<?php esc_attr_e( 'Unread', 'thirtydayhomes' ); ?>"></em>
+						<?php endif; ?>
+					</div>
+				<?php endforeach; ?>
+			<?php endif; ?>
+		</div>
+		<?php
 	}
 
 	/**

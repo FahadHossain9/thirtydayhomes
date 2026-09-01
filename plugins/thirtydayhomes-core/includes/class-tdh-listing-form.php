@@ -262,6 +262,8 @@ final class Listing_Form {
 
 	public function handle(): void {
 
+		$this->catch_overflow();
+
 		if ( ! isset( $_POST['tdh_action'] ) ) {
 			return;
 		}
@@ -427,6 +429,54 @@ final class Listing_Form {
 		}
 
 		$this->go( 3, $listing->ID );
+	}
+
+	/**
+	 * Name the failure PHP hides.
+	 *
+	 * When a POST is bigger than post_max_size, PHP drops the ENTIRE
+	 * request body: $_POST and $_FILES arrive empty, the handler below
+	 * sees no action, and the page re-renders as if nothing was ever
+	 * submitted. That is exactly how a landlord's photo upload "just does
+	 * nothing" — a 10-photo batch from a phone camera sails past the
+	 * limit. The data is unrecoverable at this point; the honest thing
+	 * left to do is SAY SO, with the actual limit, instead of silence.
+	 */
+	private function catch_overflow(): void {
+
+		if ( 'POST' !== strtoupper( (string) ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) ) {
+			return;
+		}
+
+		// A dropped body means BOTH are empty. Any content in either means
+		// the request arrived intact and the normal handlers deal with it.
+		if ( ! empty( $_POST ) || ! empty( $_FILES ) || ! is_user_logged_in() ) {
+			return;
+		}
+
+		$length = (int) ( $_SERVER['CONTENT_LENGTH'] ?? 0 );
+		$limit  = wp_convert_hr_to_bytes( (string) ini_get( 'post_max_size' ) );
+
+		if ( $length <= 0 || $limit <= 0 || $length <= $limit ) {
+			return;
+		}
+
+		// Only on the wizard's own page — this runs on template_redirect
+		// everywhere, and other forms' overflows are not this form's story.
+		if ( 'add-listing' !== (string) get_post_meta( get_queried_object_id(), '_tdh_seed_key', true ) ) {
+			return;
+		}
+
+		$this->fail(
+			3,
+			[
+				sprintf(
+					/* translators: %s: the server's upload limit, e.g. "64 MB" */
+					__( 'That upload was bigger than the server accepts in one go (%s), so nothing from it was saved — not even the description. Please try again with fewer or smaller photos.', 'thirtydayhomes' ),
+					size_format( $limit )
+				),
+			]
+		);
 	}
 
 	private function save_photos(): void {

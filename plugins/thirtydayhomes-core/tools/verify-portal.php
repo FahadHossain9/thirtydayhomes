@@ -112,6 +112,27 @@ echo "\n=== links go somewhere real ===\n";
 ok( 'Add property links out', (bool) preg_match( '/Add property/', $html ) && (bool) preg_match( '/class="primary" href="http/', $html ) );
 ok( 'sign out is present', str_contains( $html, 'Sign out' ) );
 
+echo "\n=== the sidebar items are real screens, not anchors ===\n";
+
+wp_set_current_user( $landlord ? $landlord->ID : 0 );
+
+ok( 'the nav links carry the view, not a #fragment', str_contains( $html, 'view=listings' ) && ! str_contains( $html, 'href="#listings"' ) );
+
+$_GET = [ 'view' => 'listings' ];
+ok( 'My listings is its own screen', str_contains( TDH\Account_Render::dashboard(), 'Every home on your account' ) );
+
+$_GET = [ 'view' => 'inquiries' ];
+ok( 'Inquiries is its own screen', str_contains( TDH\Account_Render::dashboard(), 'Renters who asked about your homes' ) );
+
+$_GET = [ 'view' => 'membership' ];
+$mv   = TDH\Account_Render::dashboard();
+ok( 'Membership is its own screen, with the plan facts', str_contains( $mv, 'Plan details' ) && str_contains( $mv, 'Listings used' ) );
+
+$_GET = [ 'view' => 'nonsense' ];
+ok( 'an unknown view is the overview, not an error', str_contains( TDH\Account_Render::dashboard(), 'happening with your properties' ) );
+
+$_GET = [];
+
 echo "\n=== logged out, the wall still shows with site chrome ===\n";
 
 wp_set_current_user( 0 );

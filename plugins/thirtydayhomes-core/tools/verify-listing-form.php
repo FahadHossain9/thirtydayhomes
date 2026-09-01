@@ -319,6 +319,40 @@ if ( $landlord && $created ) {
 	$_GET = [ 'step' => '3', 'listing' => (string) $created ];
 	ok( 'the step shows the photos with a Remove control', str_contains( TDH\Listing_Form_Render::form(), 'tdh_remove[]' ) );
 
+	// The dropzone declares the real limits and confirms a selection.
+	reset_request();
+	$_GET  = [ 'step' => '3', 'listing' => (string) $created ];
+	$three = TDH\Listing_Form_Render::form();
+	ok( 'the dropzone states the per-photo size limit', str_contains( $three, 'each' ) && str_contains( $three, (string) size_format( wp_max_upload_size() ) ) );
+	ok( 'and carries the selection-feedback script', str_contains( $three, 'data-one' ) && str_contains( $three, '</script>' ) );
+
+	/*
+	 * The silent killer: a POST bigger than post_max_size reaches PHP with
+	 * $_POST and $_FILES both EMPTY. Without the guard the wizard would
+	 * re-render as if nothing was ever submitted.
+	 */
+	$page = get_posts( [ 'post_type' => 'page', 'meta_key' => '_tdh_seed_key', 'meta_value' => 'add-listing', 'posts_per_page' => 1 ] )[0] ?? null;
+
+	if ( $page ) {
+		reset_request();
+		$GLOBALS['wp_query']->queried_object    = $page;
+		$GLOBALS['wp_query']->queried_object_id = (int) $page->ID;
+
+		$_GET                          = [ 'listing' => (string) $created, 'step' => '3' ];
+		$_SERVER['REQUEST_METHOD']     = 'POST';
+		$_SERVER['CONTENT_LENGTH']     = (string) ( wp_convert_hr_to_bytes( (string) ini_get( 'post_max_size' ) ) + 1 );
+
+		$where = run_wizard( $form );
+		$errs  = Listing_Form::take_errors();
+
+		ok( 'an oversized POST is caught, not silent', str_contains( $where, 'step=3' ) && [] !== $errs, $where );
+		ok( 'and the message names the server limit', isset( $errs[0] ) && str_contains( $errs[0], 'bigger than the server accepts' ) );
+
+		unset( $_SERVER['CONTENT_LENGTH'] );
+		$_SERVER['REQUEST_METHOD'] = 'GET';
+		unset( $GLOBALS['wp_query']->queried_object, $GLOBALS['wp_query']->queried_object_id );
+	}
+
 	// Remove one — and try to remove somebody else's attachment too.
 	$foreign = $rival_listing ? (int) wp_insert_attachment(
 		[

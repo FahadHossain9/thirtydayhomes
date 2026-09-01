@@ -337,7 +337,11 @@ final class Listing_Form_Render {
 			 * both still work with JavaScript off.
 			 */
 			?>
-			<label class="lform-drop">
+			<label class="lform-drop"
+				data-one="<?php esc_attr_e( 'photo selected', 'thirtydayhomes' ); ?>"
+				data-many="<?php esc_attr_e( 'photos selected', 'thirtydayhomes' ); ?>"
+				data-max="<?php echo esc_attr( (string) wp_max_upload_size() ); ?>"
+				data-too-big="<?php esc_attr_e( 'Some of those photos are bigger than the server accepts — they will be refused.', 'thirtydayhomes' ); ?>">
 				<input type="file" name="tdh_photos[]" multiple
 					accept="image/jpeg,image/png,image/webp"
 					aria-label="<?php esc_attr_e( 'Add photos', 'thirtydayhomes' ); ?>">
@@ -346,14 +350,41 @@ final class Listing_Form_Render {
 				<small>
 					<?php
 					printf(
-						/* translators: %s: photo limit */
-						esc_html__( 'JPG, PNG, or WebP · maximum %s', 'thirtydayhomes' ),
-						esc_html( number_format_i18n( Listing_Form::MAX_PHOTOS ) )
+						/* translators: 1: photo limit, 2: per-photo size limit e.g. "64 MB" */
+						esc_html__( 'JPG, PNG, or WebP · maximum %1$s · up to %2$s each', 'thirtydayhomes' ),
+						esc_html( number_format_i18n( Listing_Form::MAX_PHOTOS ) ),
+						esc_html( (string) size_format( wp_max_upload_size() ) )
 					);
 					?>
 				</small>
 				<span><?php esc_html_e( 'Choose photos', 'thirtydayhomes' ); ?></span>
 			</label>
+			<script>
+			/* Confirmation that the choice registered — the input itself is
+			   invisible under the dropzone, so without this the picker closes
+			   and the page looks exactly as before. Enhancement only: with
+			   JavaScript off, the form still uploads and the server still
+			   names every refusal. */
+			( function () {
+				var s = document.currentScript, drop = s ? s.previousElementSibling : null;
+				var input = drop ? drop.querySelector( 'input[type="file"]' ) : null;
+				var title = drop ? drop.querySelector( 'b' ) : null;
+				if ( ! input || ! title ) { return; }
+				var idle = title.textContent, max = parseInt( drop.dataset.max, 10 ) || 0;
+				input.addEventListener( 'change', function () {
+					var files = input.files || [], total = 0, tooBig = false, i;
+					if ( ! files.length ) { title.textContent = idle; return; }
+					for ( i = 0; i < files.length; i++ ) {
+						total += files[ i ].size;
+						if ( max && files[ i ].size > max ) { tooBig = true; }
+					}
+					title.textContent = tooBig
+						? drop.dataset.tooBig
+						: files.length + ' ' + ( 1 === files.length ? drop.dataset.one : drop.dataset.many )
+							+ ' · ' + ( total / 1048576 ).toFixed( 1 ) + ' MB';
+				} );
+			} )();
+			</script>
 
 			<div class="lform-field lform-desc">
 				<span>
