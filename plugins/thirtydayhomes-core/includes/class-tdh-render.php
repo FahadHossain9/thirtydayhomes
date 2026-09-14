@@ -187,6 +187,61 @@ final class Render {
 	 *
 	 * @param array<string,mixed> $args
 	 */
+	/**
+	 * The compact search bar that sits at the top of the listing archive.
+	 *
+	 * Same field name as the hero (`q`) and the same destination, so a
+	 * renter who searched from the homepage can refine without learning a
+	 * second control — and so TDH\Search has one input to satisfy.
+	 *
+	 * No date fields here, deliberately. The hero asks for them because the
+	 * approved design does, but availability filtering is Milestone 2 work;
+	 * repeating the question on the results page would promise a second
+	 * time and deliver nothing.
+	 *
+	 * @param array<string,mixed> $args
+	 */
+	public static function search_bar( array $args = [] ): string {
+
+			$args,
+			[
+				'placeholder' => __( 'Neighborhood, city, or ZIP', 'thirtydayhomes' ),
+				'button_text' => __( 'Search', 'thirtydayhomes' ),
+				'label'       => __( 'Search homes', 'thirtydayhomes' ),
+			]
+		);
+
+		$icon = static fn( string $name, int $size = 19 ): string =>
+			function_exists( 'tdh_icon' ) ? tdh_icon( $name, $size ) : '';
+
+		$current = class_exists( Search::class ) ? Search::term() : '';
+
+		ob_start();
+		?>
+		<form class="search-bar" role="search" method="get"
+			action="<?php echo esc_url( (string) get_post_type_archive_link( Post_Types::LISTING ) ); ?>">
+
+			<label>
+				<span class="screen-reader-text"><?php echo esc_html( (string) $args['label'] ); ?></span>
+				<?php echo $icon( 'search', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+				<input type="search" name="<?php echo esc_attr( Search::PARAM ); ?>"
+					value="<?php echo esc_attr( $current ); ?>"
+					placeholder="<?php echo esc_attr( (string) $args['placeholder'] ); ?>">
+			</label>
+
+			<button class="primary" type="submit"><?php echo esc_html( (string) $args['button_text'] ); ?></button>
+
+			<?php // Only offered once there is something to clear. ?>
+			<?php if ( '' !== $current ) : ?>
+				<a class="search-clear" href="<?php echo esc_url( (string) get_post_type_archive_link( Post_Types::LISTING ) ); ?>">
+					<?php esc_html_e( 'Clear', 'thirtydayhomes' ); ?>
+				</a>
+			<?php endif; ?>
+		</form>
+		<?php
+		return (string) ob_get_clean();
+	}
+
 	public static function hero_search( array $args = [] ): string {
 
 		$args = wp_parse_args(
@@ -401,7 +456,22 @@ final class Render {
 	}
 
 	/**
-	 * The four audience cards, as approved in the prototype.
+	 * The four audience cards.
+	 *
+	 * ─── WHY THESE CARDS DO NOT LINK ───────────────────────────────────────
+	 *
+	 * The prototype gave each card an "Explore housing" link, and the owner
+	 * asked for them to come out: these are the audiences the site is
+	 * MARKETED to, not categories of property it holds. A link implies a
+	 * filtered set of homes tailored to construction crews or students, and
+	 * no such set exists — every listing is a furnished monthly home, and
+	 * the same home suits a travelling nurse and a visiting scholar alike.
+	 * A link that promises a category and delivers the unfiltered archive
+	 * is a small lie repeated four times.
+	 *
+	 * The cards remain as what they honestly are: who this is for. The
+	 * renderer omits the anchor entirely when link_text is empty, so
+	 * restoring a link later is a copy change, not a code change.
 	 *
 	 * @return array<int,array<string,string>>
 	 */
@@ -412,7 +482,7 @@ final class Render {
 				'eyebrow'   => __( 'For healthcare', 'thirtydayhomes' ),
 				'title'     => __( 'Medical professionals', 'thirtydayhomes' ),
 				'copy'      => __( 'Comfortable homes near hospitals and healthcare facilities for nurses, physicians, therapists, and clinical teams.', 'thirtydayhomes' ),
-				'link_text' => __( 'Explore housing', 'thirtydayhomes' ),
+				'link_text' => '',
 				'link_url'  => '',
 			],
 			[
@@ -420,7 +490,7 @@ final class Render {
 				'eyebrow'   => __( 'For business', 'thirtydayhomes' ),
 				'title'     => __( 'Corporate travelers', 'thirtydayhomes' ),
 				'copy'      => __( 'Move-in-ready homes with space to work, recharge, and settle in during relocations, training, and extended assignments.', 'thirtydayhomes' ),
-				'link_text' => __( 'Explore housing', 'thirtydayhomes' ),
+				'link_text' => '',
 				'link_url'  => '',
 			],
 			[
@@ -428,7 +498,7 @@ final class Render {
 				'eyebrow'   => __( 'For project teams', 'thirtydayhomes' ),
 				'title'     => __( 'Construction crews', 'thirtydayhomes' ),
 				'copy'      => __( 'Practical housing for crews of every size—with kitchens, parking, laundry, and flexible monthly terms.', 'thirtydayhomes' ),
-				'link_text' => __( 'Explore housing', 'thirtydayhomes' ),
+				'link_text' => '',
 				'link_url'  => '',
 			],
 			[
@@ -436,7 +506,7 @@ final class Render {
 				'eyebrow'   => __( 'For academics', 'thirtydayhomes' ),
 				'title'     => __( 'Student housing', 'thirtydayhomes' ),
 				'copy'      => __( 'Furnished monthly homes for internships, clinical rotations, semester stays, visiting scholars, and temporary placements.', 'thirtydayhomes' ),
-				'link_text' => __( 'Explore housing', 'thirtydayhomes' ),
+				'link_text' => '',
 				'link_url'  => '',
 			],
 		];
@@ -1036,7 +1106,7 @@ final class Render {
 			[
 				'eyebrow'    => __( 'We read every message', 'thirtydayhomes' ),
 				'heading'    => __( 'Tell us what you need.', 'thirtydayhomes' ),
-				'lead'       => __( 'A real person answers this, in Pittsburgh, from the same team that reviews every home on the site.', 'thirtydayhomes' ),
+				'lead'       => __( 'A real person answers this, from the same team that reviews every home on the site.', 'thirtydayhomes' ),
 				'status'     => __( 'Someone reads this inbox every business day', 'thirtydayhomes' ),
 				'assurances' => self::default_contact_assurances(),
 			]

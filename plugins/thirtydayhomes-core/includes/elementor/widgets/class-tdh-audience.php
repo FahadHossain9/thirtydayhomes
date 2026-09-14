@@ -152,9 +152,9 @@ final class Audience extends Widget_Base {
 			'link_text',
 			[
 				'label'       => __( 'Link label', 'thirtydayhomes' ),
-				'description' => __( 'Leave empty to hide the link on this card.', 'thirtydayhomes' ),
+				'description' => __( 'Empty by default, which hides the link. These cards name the audiences the site is marketed to, not categories of property — a link would promise a filtered set of homes that does not exist.', 'thirtydayhomes' ),
 				'type'        => Controls_Manager::TEXT,
-				'default'     => __( 'Explore housing', 'thirtydayhomes' ),
+				'default'     => '',
 			]
 		);
 

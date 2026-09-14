@@ -58,7 +58,7 @@ final class Property_Grid extends Widget_Base {
 			[
 				'label'   => __( 'Eyebrow', 'thirtydayhomes' ),
 				'type'    => Controls_Manager::TEXT,
-				'default' => __( 'Explore Pittsburgh', 'thirtydayhomes' ),
+				'default' => __( 'Explore homes', 'thirtydayhomes' ),
 			]
 		);
 
@@ -78,7 +78,7 @@ final class Property_Grid extends Widget_Base {
 				'label'   => __( 'Supporting copy', 'thirtydayhomes' ),
 				'type'    => Controls_Manager::TEXTAREA,
 				'rows'    => 2,
-				'default' => __( 'Handpicked monthly rentals close to Pittsburgh’s leading medical centres.', 'thirtydayhomes' ),
+				'default' => __( 'Handpicked monthly rentals close to leading medical centres.', 'thirtydayhomes' ),
 			]
 		);
 

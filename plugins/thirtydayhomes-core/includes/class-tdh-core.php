@@ -76,6 +76,9 @@ final class Core {
 			// Front end: the pricing page posts to it.
 			'checkout'   => new Billing\Checkout(),
 
+			// Front end: active members launch Stripe's hosted billing portal.
+			'customer_portal' => new Billing\Customer_Portal(),
+
 			// Front end: the contact page posts to itself, and the handler
 			// runs on template_redirect before any output.
 			'contact'    => new Contact(),
@@ -103,6 +106,10 @@ final class Core {
 			// ?author= archives, the authors sitemap) — the Milestone 1
 			// security finding. Front end: every door it closes is public.
 			'user_privacy' => new User_Privacy(),
+
+			// Keyword search on the listing archive. Front end: it reads a
+			// public query variable and narrows the public archive.
+			'search'       => new Search(),
 		];
 
 		// Admin-only modules. Loading the editing UI on every front-end

@@ -106,7 +106,7 @@ final class Contact extends Widget_Base {
 				'label'   => __( 'Lead', 'thirtydayhomes' ),
 				'type'    => Controls_Manager::TEXTAREA,
 				'rows'    => 3,
-				'default' => __( 'A real person answers this, in Pittsburgh, from the same team that reviews every home on the site.', 'thirtydayhomes' ),
+				'default' => __( 'A real person answers this, from the same team that reviews every home on the site.', 'thirtydayhomes' ),
 			]
 		);
 

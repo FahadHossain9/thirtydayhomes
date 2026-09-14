@@ -85,6 +85,11 @@ $rival_listing = $rival ? (int) wp_insert_post(
 $hood = wp_insert_term( 'Wizard Probe Hood', 'tdh_neighborhood' );
 $hood = is_wp_error( $hood ) ? 0 : (int) $hood['term_id'];
 
+// A city that is NOT Pittsburgh, so a hardcoded city anywhere in the flow
+// shows up as a failure rather than passing by coincidence.
+$city = wp_insert_term( 'Wizard Probe City', 'tdh_city' );
+$city = is_wp_error( $city ) ? 0 : (int) $city['term_id'];
+
 echo "\n=== the gate ===\n";
 
 reset_request();
@@ -130,6 +135,7 @@ if ( $landlord ) {
 		'tdh_address'      => '123 Probe Street',
 		'tdh_zip'          => '15232',
 		'tdh_neighborhood' => (string) $hood,
+		'tdh_city'         => (string) $city,
 		'tdh_type'         => '999999', // Not a term. Must create nothing.
 		'tdh_rent'         => '2400',
 		'tdh_deposit'      => '500',
@@ -151,7 +157,29 @@ if ( $landlord ) {
 		&& 1.5 === (float) get_post_meta( $created, '_tdh_baths', true )
 		&& 500.0 === (float) get_post_meta( $created, '_tdh_deposit', true ) );
 	ok( 'the neighborhood term is assigned', $post && in_array( $hood, wp_get_object_terms( $created, 'tdh_neighborhood', [ 'fields' => 'ids' ] ), true ) );
+	ok( 'the city term is assigned', $post && in_array( $city, wp_get_object_terms( $created, 'tdh_city', [ 'fields' => 'ids' ] ), true ) );
 	ok( 'a fake term id assigns nothing', $post && [] === wp_get_object_terms( $created, 'tdh_property_type', [ 'fields' => 'ids' ] ) );
+
+	// A city id from the wrong taxonomy must not invent a city term.
+	reset_request();
+	$_GET  = [ 'listing' => (string) $created ];
+	$_POST = [
+		'tdh_action'  => 'listing_basics',
+		'tdh_nonce'   => wp_create_nonce( Listing_Form::NONCE ),
+		'tdh_title'   => 'Wizard Probe Retreat',
+		'tdh_address' => '123 Probe Street',
+		'tdh_zip'     => '15232',
+		'tdh_city'    => (string) $hood, // A neighborhood id, not a city.
+		'tdh_rent'    => '2400',
+		'tdh_beds'    => '2',
+		'tdh_baths'   => '1.5',
+	];
+	run_wizard( $form );
+	ok(
+		'a city id from another taxonomy is refused',
+		in_array( $city, wp_get_object_terms( $created, 'tdh_city', [ 'fields' => 'ids' ] ), true )
+			&& ! in_array( $hood, wp_get_object_terms( $created, 'tdh_city', [ 'fields' => 'ids' ] ), true )
+	);
 
 	// Validation: a bad ZIP bounces back to step 1 with the error stashed.
 	reset_request();
@@ -301,6 +329,38 @@ if ( $landlord && $created ) {
 	ok( 'two photos upload as attachments of the listing', 2 === count( $photos ), $where );
 	ok( 'the first becomes the featured image the cards show', (int) get_post_thumbnail_id( $created ) === ( $photos[0] ?? -1 ) );
 
+	/*
+	 * The silence that made the owner report a working upload as broken:
+	 * photos were stored and the wizard moved straight on, so the step
+	 * with the longest wait never showed its own result.
+	 */
+	// One press does both: the photos are stored and the wizard moves on,
+	// carrying how many arrived so the review can confirm it.
+	ok( 'one Continue uploads and advances to review', str_contains( $where, 'step=4' ), $where );
+	ok( 'and the redirect carries how many arrived', str_contains( $where, 'added=2' ), $where );
+
+	reset_request();
+	$_GET = [ 'step' => '4', 'listing' => (string) $created, 'added' => '2' ];
+	ok( 'the review confirms it in words', str_contains( TDH\Listing_Form_Render::form(), '2 photos added' ) );
+
+	// Nothing extra to press: the dropzone is Choose photos and nothing
+	// else, and the browser previews the selection before it is sent.
+	reset_request();
+	$_GET  = [ 'step' => '3', 'listing' => (string) $created ];
+	$step3 = TDH\Listing_Form_Render::form();
+	ok( 'there is no separate upload button', ! str_contains( $step3, 'tdh_upload_only' ) );
+	ok( 'the browser previews the chosen files before sending', str_contains( $step3, 'lform-preview-grid' ) && str_contains( $step3, 'createObjectURL' ) );
+	ok( 'and says the preview is not saved yet', str_contains( $step3, 'Ready to upload' ) );
+
+	reset_request();
+	$_GET = [ 'step' => '4', 'listing' => (string) $created ];
+	$rev  = TDH\Listing_Form_Render::form();
+	ok( 'the review counts the photos back', str_contains( $rev, 'Photos' ) && str_contains( $rev, '2 photos' ) );
+
+	reset_request();
+	$_GET = [ 'step' => '3', 'listing' => (string) $created ];
+	ok( 'the photo step says what is happening while it uploads', str_contains( TDH\Listing_Form_Render::form(), 'Uploading' ) );
+
 	// Eleven photos will not fit under the ceiling of ten.
 	reset_request();
 	$_GET  = [ 'listing' => (string) $created ];
@@ -404,7 +464,8 @@ if ( $landlord && $created ) {
 	$_GET = [ 'step' => '4', 'listing' => (string) $created ];
 	$four = Listing_Form_Render::form();
 	ok( 'step 4: Ready for review, with the approval warning', str_contains( $four, 'Ready for review' ) && str_contains( $four, 'until an administrator approves it' ) );
-	ok( 'step 4: the facts — title, location, rent, amenities', str_contains( $four, 'Wizard Probe Retreat' ) && str_contains( $four, 'Wizard Probe Hood, Pittsburgh' ) && str_contains( $four, '2,400' ) && str_contains( $four, '2 selected' ) );
+	ok( 'step 4: the facts — title, location, rent, amenities', str_contains( $four, 'Wizard Probe Retreat' ) && str_contains( $four, 'Wizard Probe Hood, Wizard Probe City' ) && str_contains( $four, '2,400' ) && str_contains( $four, '2 selected' ) );
+	ok( 'step 4: the city is read, never typed in', ! str_contains( $four, 'Pittsburgh' ) );
 	ok( 'step 4: Fair Housing is required to submit', str_contains( $four, 'tdh_fair_housing' ) && str_contains( $four, 'required' ) && str_contains( $four, 'Submit for approval' ) );
 
 	// A deep link to step 4 with no draft starts at the beginning.
@@ -522,6 +583,9 @@ if ( $rival_listing ) {
 }
 if ( $hood ) {
 	wp_delete_term( $hood, 'tdh_neighborhood' );
+}
+if ( $city ) {
+	wp_delete_term( $city, 'tdh_city' );
 }
 foreach ( [ 'Wizard Probe Hood' ] as $t ) {
 	$left = term_exists( $t, 'tdh_neighborhood' );

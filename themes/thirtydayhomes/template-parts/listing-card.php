@@ -24,8 +24,9 @@ $baths      = get_post_meta( $listing_id, '_tdh_baths', true );
 $pets       = get_post_meta( $listing_id, '_tdh_pet_policy', true );
 $available  = get_post_meta( $listing_id, '_tdh_available_from', true );
 
-$hoods = get_the_terms( $listing_id, 'tdh_neighborhood' );
-$hood  = ( $hoods && ! is_wp_error( $hoods ) ) ? $hoods[0]->name : '';
+// "Shadyside, Pittsburgh" — the city read from the listing rather than
+// typed here, so a Cleveland home says Cleveland.
+$location = tdh_listing_location( $listing_id, ', ' );
 
 $pet_label = [
 	'yes'        => __( 'Pets', 'thirtydayhomes' ),
@@ -91,12 +92,12 @@ $rating = get_post_meta( $listing_id, '_tdh_rating', true );
 
 	<div class="property-body">
 
-		<?php if ( $hood || '' !== (string) $rating ) : ?>
+		<?php if ( '' !== $location || '' !== (string) $rating ) : ?>
 			<p class="location">
-				<?php if ( $hood ) : ?>
+				<?php if ( '' !== $location ) : ?>
 					<span>
 						<?php tdh_the_icon( 'map-pin', 14 ); ?>
-						<?php echo esc_html( $hood ); ?><?php esc_html_e( ', Pittsburgh', 'thirtydayhomes' ); ?>
+						<?php echo esc_html( $location ); ?>
 					</span>
 				<?php endif; ?>
 

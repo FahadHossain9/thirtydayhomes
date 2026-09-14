@@ -40,6 +40,12 @@ if ( ! tdh_elementor_location( 'single' ) ) :
 		$hoods = get_the_terms( $listing_id, 'tdh_neighborhood' );
 		$hood  = ( $hoods && ! is_wp_error( $hoods ) ) ? $hoods[0]->name : '';
 
+		// Neighborhood and city, both read from the listing's own terms.
+		// The city used to be typed into this template as "Pittsburgh",
+		// which would have told a Cleveland renter the wrong city.
+		$location = tdh_listing_location( $listing_id );
+		$city     = tdh_listing_city( $listing_id );
+
 		$stay_label = 91 === $min_stay
 			? __( '13 weeks', 'thirtydayhomes' )
 			/* translators: %s: number of days */
@@ -52,26 +58,31 @@ if ( ! tdh_elementor_location( 'single' ) ) :
 		][ $pets ] ?? '';
 		?>
 
-		<?php
-		/*
-		 * The banner carries the trail, which replaced the old "Back to
-		 * homes" link — it does the same job and also says where this home
-		 * sits, which a lone back arrow does not.
-		 */
-		tdh_page_banner(
-			[
-				'eyebrow' => $hood ? $hood . __( ' · Pittsburgh', 'thirtydayhomes' ) : '',
-				'title'   => get_the_title(),
-				'lead'    => sprintf(
-					/* translators: %s: ZIP code */
-					__( 'Approximate location · %s', 'thirtydayhomes' ),
-					(string) $zip
-				),
-			]
-		);
-		?>
-
 		<div class="detail">
+
+			<a class="back" href="<?php echo esc_url( (string) get_post_type_archive_link( 'tdh_listing' ) ); ?>">
+				<?php echo tdh_icon( 'arrow-left', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+				<?php esc_html_e( 'Back to homes', 'thirtydayhomes' ); ?>
+			</a>
+
+			<header class="detail-title">
+				<div>
+					<?php if ( '' !== $location ) : ?>
+						<p class="overline gold"><?php echo esc_html( $location ); ?></p>
+					<?php endif; ?>
+					<h1><?php the_title(); ?></h1>
+					<p class="detail-location">
+						<?php echo tdh_icon( 'map-pin', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+						<?php
+						printf(
+							/* translators: %s: ZIP code */
+							esc_html__( 'Approximate location · %s', 'thirtydayhomes' ),
+							esc_html( (string) $zip )
+						);
+						?>
+					</p>
+				</div>
+			</header>
 
 			<?php if ( has_post_thumbnail() ) : ?>
 				<figure class="detail-media">
@@ -80,11 +91,18 @@ if ( ! tdh_elementor_location( 'single' ) ) :
 						'tdh-gallery',
 						[
 							'alt' => esc_attr(
-								sprintf(
-									/* translators: %s: listing title */
-									__( '%s — furnished rental in Pittsburgh', 'thirtydayhomes' ),
-									get_the_title()
-								)
+								'' !== $city
+									? sprintf(
+										/* translators: 1: listing title, 2: city */
+										__( '%1$s — furnished rental in %2$s', 'thirtydayhomes' ),
+										get_the_title(),
+										$city
+									)
+									: sprintf(
+										/* translators: %s: listing title */
+										__( '%s — furnished monthly rental', 'thirtydayhomes' ),
+										get_the_title()
+									)
 							),
 						]
 					);

@@ -4,7 +4,7 @@ Theme URI:    https://github.com/FahadHossain9/thirtydayhomes
 Author:       Instaquirk
 Author URI:   https://instaquirk.com
 Description:  Presentation layer for the ThirtyDayHomes marketplace. Owns global design tokens, header, footer, navigation, responsive framework and Elementor integration. Holds NO marketplace business rules — those live in the ThirtyDayHomes Core plugin, so replacing this theme never costs a listing, membership, inquiry or facility.
-Version:      0.24.1
+Version:      0.28.0
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 8.1
@@ -949,6 +949,97 @@ img, video { max-width: 100%; height: auto; }
 	margin: var( --space-7 ) 0 var( --space-5 );
 }
 
+/* --- The archive's search bar ------------------------------------------- */
+
+/* One row: the field takes the space, the button keeps its size, and Clear
+   only exists while there is a search to clear. Deliberately plainer than
+   the hero's search — this one sits above results a renter is already
+   reading, so it should not compete with them. */
+/* stretch, not center: the field's padding makes it taller than a button's,
+   and a Search button floating short beside a full-height field reads as a
+   mistake. Stretch lets the row's tallest item set the height and the
+   button fill it, so the two always match even if either is restyled. */
+/* No top margin. The bar is the first thing inside .page-shell, which
+   already pads by --section-gap; adding to it stacked two gaps and left
+   the bar floating well below the banner. The space beneath comes from
+   .result-top's own top margin. */
+.search-bar {
+	display: flex;
+	align-items: stretch;
+	gap: var( --space-3 );
+}
+
+/* The icon sits inside the field, so the label is the positioning context
+   and the input is padded to clear it. */
+.search-bar > label {
+	position: relative;
+	display: flex;
+	align-items: center;
+	flex: 1;
+	min-width: 0;
+}
+
+.search-bar > label > .tdh-icon {
+	position: absolute;
+	left: var( --space-4 );
+	color: var( --text-subtle );
+	pointer-events: none;
+}
+
+.search-bar > label > input {
+	width: 100%;
+	padding: var( --space-4 );
+	padding-left: calc( var( --space-4 ) * 2 + var( --icon-base ) );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-sm );
+	background-color: var( --bg-surface-tint );
+	color: var( --text-default );
+	font: inherit;
+	transition: border-color var( --duration-fast ) var( --ease ),
+	            background-color var( --duration-fast ) var( --ease ),
+	            box-shadow var( --duration-fast ) var( --ease );
+}
+
+.search-bar > label > input::placeholder { color: var( --text-subtle ); }
+
+.search-bar > label > input:hover { border-color: var( --border-strong ); }
+
+.search-bar > label > input:focus-visible {
+	outline: none;
+	background-color: var( --bg-surface );
+	border-color: var( --color-gold );
+	box-shadow: 0 0 0 3px rgba( 215, 185, 103, 0.28 );
+}
+
+/* The browser's own clear cross duplicates the Clear link and sits at a
+   different height. One control for one job. */
+.search-bar > label > input::-webkit-search-cancel-button { display: none; }
+
+.search-bar > button { flex: none; }
+
+/* The row stretches its children, so this needs its own centring or the
+   word sits at the top of a full-height box. */
+.search-bar > .search-clear {
+	flex: none;
+	display: inline-flex;
+	align-items: center;
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+	color: var( --text-muted );
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.search-bar > .search-clear:hover { color: var( --text-default ); text-decoration: underline; }
+
+@media ( max-width: 43.75rem ) {
+	/* Stacked, with the button full width — a search button narrower than a
+	   thumb beside a field that fills the screen reads as an afterthought. */
+	.search-bar { flex-wrap: wrap; }
+	.search-bar > label { flex-basis: 100%; }
+	.search-bar > button { flex: 1; }
+}
+
 /* =========================================================================
    SPLIT FEATURE
    ========================================================================= */
@@ -1026,8 +1117,8 @@ img, video { max-width: 100%; height: auto; }
 
 .audience-head {
 	display: grid;
-	grid-template-columns: 1.15fr 1fr;
-	align-items: center;
+	grid-template-columns: minmax( 0, 1.05fr ) minmax( 18rem, 0.95fr );
+	align-items: end;
 	/* The full gutter, not the narrow one: the drawn gap between the
 	   heading and the intro paragraph is 7vw, and --gutter-narrow caps at
 	   72px, which pulls the two columns together on a wide screen. */
@@ -1038,6 +1129,8 @@ img, video { max-width: 100%; height: auto; }
 /* Heading size and margins come from the shared section rule above. */
 .audience-head > p {
 	margin: 0;
+	max-width: var( --measure );
+	justify-self: end;
 	color: var( --text-muted );
 	font-size: var( --text-lg );
 	line-height: var( --leading-relaxed );
@@ -1046,17 +1139,46 @@ img, video { max-width: 100%; height: auto; }
 .audience-grid {
 	display: grid;
 	grid-template-columns: repeat( 4, 1fr );
-	gap: var( --space-6 );
+	gap: var( --space-5 );
 }
 
 .audience-grid article {
+	position: relative;
 	display: flex;
 	flex-direction: column;
-	min-height: var( --card-min-height );
-	padding: var( --space-8 );
+	overflow: hidden;
+	padding: var( --space-7 );
 	background: var( --bg-surface );
 	border: 1px solid var( --border-default );
 	border-radius: var( --radius-lg );
+	box-shadow: var( --shadow-sm );
+	transition:
+		transform var( --duration-base ) var( --ease ),
+		border-color var( --duration-base ) var( --ease ),
+		box-shadow var( --duration-base ) var( --ease );
+}
+
+.audience-grid article::before {
+	content: "";
+	position: absolute;
+	inset: 0 0 auto;
+	height: var( --space-1 );
+	background: var( --text-accent );
+	transform: scaleX( 0 );
+	transform-origin: left;
+	transition: transform var( --duration-base ) var( --ease );
+}
+
+.audience-grid article:hover,
+.audience-grid article:focus-within {
+	transform: translateY( calc( -1 * var( --space-1 ) ) );
+	border-color: var( --text-accent );
+	box-shadow: var( --shadow-md );
+}
+
+.audience-grid article:hover::before,
+.audience-grid article:focus-within::before {
+	transform: scaleX( 1 );
 }
 
 .audience-grid article > i {
@@ -1064,7 +1186,7 @@ img, video { max-width: 100%; height: auto; }
 	place-items: center;
 	width: var( --icon-well-lg );
 	height: var( --icon-well-lg );
-	margin-bottom: var( --space-6 );
+	margin-bottom: var( --space-5 );
 	background: var( --color-sand-soft );
 	color: var( --text-accent );
 	border-radius: var( --radius-full );
@@ -1083,13 +1205,21 @@ img, video { max-width: 100%; height: auto; }
 .audience-grid h3 {
 	font-family: var( --font-heading );
 	font-size: var( --text-h3 );
-	margin: var( --space-2 ) 0 var( --space-4 );
+	margin: var( --space-2 ) 0 var( --space-3 );
 }
 
 .audience-grid article > p:not( .overline ) {
+	margin-bottom: var( --space-6 );
 	color: var( --text-muted );
 	line-height: var( --leading-snug );
 }
+
+/* That margin exists to separate the copy from the card's link. The cards
+   ship without links now, which left the gap sitting under the last line
+   as dead space — noticeably more room below the text than above the icon.
+   :last-child rather than deleting the margin, so a card that gets its
+   link back in Elementor still separates the two. */
+.audience-grid article > p:not( .overline ):last-child { margin-bottom: 0; }
 
 /* margin-top:auto pins the link to the bottom of the card. This is why the
    cards carry a min-height: it aligns every link across the row regardless
@@ -1098,15 +1228,26 @@ img, video { max-width: 100%; height: auto; }
 .audience-grid .audience-link {
 	display: flex;
 	align-items: center;
-	gap: var( --space-2 );
+	justify-content: space-between;
+	gap: var( --space-3 );
 	margin-top: auto;
-	padding-top: var( --space-4 );
+	padding-top: var( --space-5 );
+	border-top: 1px solid var( --border-default );
 	font-weight: var( --weight-bold );
 	text-decoration: none;
 	color: var( --text-default );
 }
 
 .audience-grid .audience-link:hover { color: var( --text-accent ); }
+
+.audience-grid .audience-link .tdh-icon {
+	transition: transform var( --duration-fast ) var( --ease );
+}
+
+.audience-grid .audience-link:hover .tdh-icon,
+.audience-grid .audience-link:focus-visible .tdh-icon {
+	transform: translateX( var( --space-1 ) );
+}
 
 /* The 2px nudge is an optical correction, not a spacing value, so it is
    deliberately a raw pixel rather than a token. align-items:center centres
@@ -1184,6 +1325,13 @@ img, video { max-width: 100%; height: auto; }
    LISTING DETAIL
    ========================================================================= */
 
+/* Property details open on the light content ground: compact navigation,
+   identity, then photography. The generic dark inner-page banner is useful
+   for editorial pages, but delays the home itself on a conversion page. */
+.single-tdh_listing .detail {
+	padding-top: var( --space-6 );
+}
+
 .back {
 	display: inline-flex;
 	align-items: center;
@@ -1195,19 +1343,45 @@ img, video { max-width: 100%; height: auto; }
 	font-weight: var( --weight-semibold );
 }
 
+.back .tdh-icon {
+	flex: none;
+	transition: transform var( --duration-fast ) var( --ease );
+}
+
+.back:hover .tdh-icon,
+.back:focus-visible .tdh-icon {
+	transform: translateX( calc( -1 * var( --space-1 ) ) );
+}
+
 .detail-title {
 	display: flex;
 	justify-content: space-between;
 	align-items: flex-end;
 	gap: var( --space-5 );
 	flex-wrap: wrap;
+	margin-bottom: var( --space-7 );
 }
 
 .detail-title h1 { font-size: var( --text-h1 ); margin: var( --space-2 ) 0; }
 .detail-title p { color: var( --text-muted ); margin: 0; }
+.detail-title .overline { color: var( --text-accent ); }
 
-.detail-media { margin: var( --space-6 ) 0 var( --space-9 ); }
-.detail-media img { display: block; width: 100%; border-radius: var( --radius-md ); }
+.detail-location {
+	display: flex;
+	align-items: center;
+	gap: var( --space-2 );
+}
+
+.detail-location .tdh-icon { flex: none; }
+
+.detail-media { margin: 0 0 var( --space-7 ); }
+.detail-media img {
+	display: block;
+	width: 100%;
+	height: var( --split-photo-height );
+	object-fit: cover;
+	border-radius: var( --radius-md );
+}
 
 .detail-grid {
 	display: grid;
@@ -1559,6 +1733,7 @@ img, video { max-width: 100%; height: auto; }
 
 .form-field label { font-size: var( --text-sm ); font-weight: var( --weight-semibold ); }
 
+/* background-COLOR, not the shorthand — see the note by .lform-field. */
 .form-field input,
 .form-field select,
 .form-field textarea {
@@ -1566,11 +1741,11 @@ img, video { max-width: 100%; height: auto; }
 	padding: var( --space-4 );
 	border: 1px solid var( --border-default );
 	border-radius: var( --radius-sm );
-	background: var( --bg-surface-tint );
+	background-color: var( --bg-surface-tint );
 	color: var( --text-default );
 	font: inherit;
 	transition: border-color var( --duration-fast ) var( --ease ),
-	            background var( --duration-fast ) var( --ease ),
+	            background-color var( --duration-fast ) var( --ease ),
 	            box-shadow var( --duration-fast ) var( --ease );
 }
 
@@ -1587,9 +1762,46 @@ img, video { max-width: 100%; height: auto; }
 .form-field select:focus-visible,
 .form-field textarea:focus-visible {
 	outline: none;
-	background: var( --bg-surface );
+	background-color: var( --bg-surface );
 	border-color: var( --color-gold );
 	box-shadow: 0 0 0 3px rgba( 215, 185, 103, 0.28 );
+}
+
+/* --- The dropdown arrow ----------------------------------------------- */
+
+/* Every <select> on the site drew the browser's own arrow, which sits hard
+   against the right border with no breathing room — the owner flagged it on
+   the listing wizard, but it looked the same on every form.
+   appearance:none removes the native control and the chevron below replaces
+   it: one glyph, matching the Lucide set the rest of the site uses, with
+   real space around it. The extra right padding keeps a long option name
+   from running underneath the arrow. */
+.form-field select,
+.lform-field > select {
+	appearance: none;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	padding-right: calc( var( --space-4 ) * 2 + var( --icon-sm ) );
+	background-image: url( "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23687384' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E" );
+	background-repeat: no-repeat;
+	background-position: right var( --space-4 ) center;
+	background-size: var( --icon-sm ) var( --icon-sm );
+}
+
+/* The native date picker's calendar button has the same problem: it is
+   painted by the browser inside our padding box, flush to the edge. A small
+   left margin pushes it off the border. Chromium-only, which is where the
+   button exists. */
+.form-field input[ type="date" ]::-webkit-calendar-picker-indicator,
+.lform-field > input[ type="date" ]::-webkit-calendar-picker-indicator {
+	margin-left: var( --space-2 );
+	opacity: 0.6;
+	cursor: pointer;
+}
+
+.form-field input[ type="date" ]::-webkit-calendar-picker-indicator:hover,
+.lform-field > input[ type="date" ]::-webkit-calendar-picker-indicator:hover {
+	opacity: 1;
 }
 
 /* A field the browser has flagged as invalid, but only once the visitor
@@ -1676,6 +1888,30 @@ img, video { max-width: 100%; height: auto; }
 	font-size: var( --text-sm );
 	color: var( --text-muted );
 	text-align: center;
+}
+
+.password-reset-sent { text-align: center; }
+
+.password-reset-sent > i {
+	display: grid;
+	place-items: center;
+	width: 3.5rem;
+	height: 3.5rem;
+	margin: 0 auto var( --space-5 );
+	border-radius: 50%;
+	background: var( --color-success-bg );
+	color: var( --color-success );
+}
+
+.password-reset-sent h1 { margin: var( --space-2 ) 0 var( --space-3 ); }
+.password-reset-sent p { margin: 0 0 var( --space-4 ); }
+.password-reset-sent .primary { margin-top: var( --space-6 ); }
+
+.password-reset-again {
+	display: inline-block;
+	margin-top: var( --space-4 );
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
 }
 
 .form-actions-inline {
@@ -2727,7 +2963,8 @@ img, video { max-width: 100%; height: auto; }
 
 	.audience-head { grid-template-columns: 1fr; gap: var( --space-5 ); }
 	.audience-grid { grid-template-columns: 1fr; }
-	.audience-grid article { min-height: 0; }
+	.audience-grid article { padding: var( --space-6 ); }
+	.detail-media img { height: var( --split-photo-height-sm ); }
 
 	/* 64px of vertical padding is a lot of dead space on a phone. */
 	.owner-cta { padding: var( --space-9 ) var( --band-gutter-sm ); }
@@ -3777,9 +4014,28 @@ body.tdh-portal-page .site-footer { display: none; }
 
 .portal {
 	display: grid;
-	grid-template-columns: 14.7rem 1fr;
+	grid-template-columns: 13rem 1fr;
 	min-height: 100vh;
 }
+
+.portal.is-sidebar-collapsed { grid-template-columns: 4.25rem 1fr; }
+
+.portal.is-sidebar-collapsed .portal-side { padding-inline: var( --space-2 ); }
+.portal.is-sidebar-collapsed .portal-brand { display: flex; justify-content: center; padding-inline: 0; }
+.portal.is-sidebar-collapsed .portal-brand .logo b,
+.portal.is-sidebar-collapsed .portal-brand .logo strong,
+.portal.is-sidebar-collapsed .portal-side-label,
+.portal.is-sidebar-collapsed .portal-count { display: none; }
+.portal.is-sidebar-collapsed .portal-nav > a,
+.portal.is-sidebar-collapsed .portal-return {
+	justify-content: center;
+	gap: 0;
+	padding-inline: var( --space-2 );
+	font-size: 0;
+}
+
+.portal.is-sidebar-collapsed .portal-nav > a > .tdh-icon,
+.portal.is-sidebar-collapsed .portal-return > .tdh-icon { width: 1.25rem; height: 1.25rem; }
 
 /* --- The sidebar --------------------------------------------------------- */
 
@@ -3788,12 +4044,12 @@ body.tdh-portal-page .site-footer { display: none; }
 	flex-direction: column;
 	background: var( --color-navy );
 	color: var( --color-on-dark-muted );
-	padding: var( --space-6 ) var( --space-4 );
+	padding: var( --space-4 ) var( --space-3 );
 }
 
 .portal-brand {
 	display: block;
-	padding: 0 var( --space-2 ) var( --space-6 );
+	padding: 0 var( --space-2 ) var( --space-4 );
 	border-bottom: 1px solid var( --color-border-on-dark-faint );
 	text-decoration: none;
 	color: var( --text-inverse );
@@ -3805,17 +4061,17 @@ body.tdh-portal-page .site-footer { display: none; }
    17px wordmark — and these are those sizes, said in tokens. The same
    step-down the mobile drawer already performs, for the same reason. */
 .portal-brand .logo > i {
-	width: var( --logo-tile-sm );
-	height: calc( var( --logo-tile-sm ) * 1.15 );
+	width: var( --icon-well );
+	height: var( --icon-well );
 	background: var( --color-surface-on-dark );
 }
 
 .portal-brand .logo b,
-.portal-brand .logo strong { font-size: var( --text-lg ); }
+.portal-brand .logo strong { font-size: var( --text-base ); }
 
 .portal-side-label {
 	margin: 0;
-	padding: var( --space-5 ) var( --space-3 ) var( --space-2 );
+	padding: var( --space-4 ) var( --space-2 ) var( --space-2 );
 	font-size: var( --text-3xs );
 	font-weight: var( --weight-bold );
 	letter-spacing: var( --tracking-wider );
@@ -3832,8 +4088,8 @@ body.tdh-portal-page .site-footer { display: none; }
 .portal-nav > a {
 	display: flex;
 	align-items: center;
-	gap: var( --space-3 );
-	padding: var( --space-3 );
+	gap: var( --space-2 );
+	padding: var( --space-2 ) var( --space-3 );
 	border-radius: var( --radius-xs );
 	border-left: 2px solid transparent;
 	color: var( --color-on-dark-subtle );
@@ -3874,7 +4130,7 @@ body.tdh-portal-page .site-footer { display: none; }
 	align-items: center;
 	gap: var( --space-2 );
 	margin-top: auto;
-	padding: var( --space-3 );
+	padding: var( --space-2 ) var( --space-3 );
 	color: var( --color-on-dark-subtle );
 	font-size: var( --text-sm );
 	text-decoration: none;
@@ -3893,8 +4149,8 @@ body.tdh-portal-page .site-footer { display: none; }
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	height: 4rem;
-	padding: 0 var( --space-7 );
+	height: var( --space-9 );
+	padding: 0 var( --space-5 );
 	background: var( --bg-surface );
 	border-bottom: 1px solid var( --border-default );
 	font-size: var( --text-sm );
@@ -3905,6 +4161,27 @@ body.tdh-portal-page .site-footer { display: none; }
 	align-items: center;
 	gap: var( --space-4 );
 }
+
+.portal-top-context { min-width: 0; }
+
+.portal-menu-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: var( --space-2 );
+	padding: var( --space-1 ) var( --space-2 );
+	background: var( --bg-surface );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-sm );
+	color: var( --text-default );
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+}
+
+.portal-menu-toggle:hover { border-color: var( --border-strong ); }
+.portal-menu-toggle .tdh-icon { flex: none; }
+.portal-toggle-expand { display: none; }
+.portal.is-sidebar-collapsed .portal-toggle-collapse { display: none; }
+.portal.is-sidebar-collapsed .portal-toggle-expand { display: inline-flex; }
 
 .portal-signout {
 	color: var( --text-muted );
@@ -3961,7 +4238,7 @@ body.tdh-portal-page .site-footer { display: none; }
 
 .portal-alert > .tdh-icon { flex: none; color: var( --color-gold-ink ); }
 
-.portal-alert > span:not( .portal-renews ) {
+.portal-alert > span:not( .portal-renews ):not( .portal-plan-tier ) {
 	display: flex;
 	flex-direction: column;
 	flex: 1;
@@ -3985,6 +4262,55 @@ body.tdh-portal-page .site-footer { display: none; }
 	flex: none;
 	color: var( --text-muted );
 	font-size: var( --text-sm );
+}
+
+.portal-plan-tier {
+	display: flex;
+	flex: none;
+	flex-direction: column;
+	min-width: 9rem;
+	padding: 0 var( --space-5 );
+	border-left: 1px solid var( --border-default );
+}
+
+.portal-plan-tier small {
+	font-size: var( --text-xs );
+	font-weight: var( --weight-semibold );
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+}
+
+.portal-plan-tier b {
+	font-size: var( --text-lg );
+	color: var( --color-navy );
+}
+
+.portal-profile {
+	max-width: 58rem;
+	padding: var( --space-6 );
+}
+
+.portal-profile .panel-title { margin-bottom: var( --space-5 ); }
+.portal-profile .panel-title p { margin: var( --space-1 ) 0 0; color: var( --text-muted ); }
+.portal-profile hr { margin: var( --space-7 ) 0; border: 0; border-top: 1px solid var( --border-default ); }
+.portal-profile-actions { display: flex; justify-content: flex-end; margin-top: var( --space-6 ); }
+
+.portal-billing-actions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var( --space-3 );
+	margin-top: var( --space-5 );
+}
+
+.portal-billing-actions small { color: var( --text-muted ); }
+
+@media ( max-width: 48rem ) {
+	.portal-alert { align-items: flex-start; flex-wrap: wrap; }
+	.portal-plan-tier { order: 3; width: 100%; padding: var( --space-3 ) 0 0; border-left: 0; border-top: 1px solid var( --border-default ); }
+	.portal-renews { order: 4; }
+	.portal-profile { padding: var( --space-5 ); }
+	.portal-billing-actions { align-items: stretch; flex-direction: column; }
 }
 
 /* The states carry the same colours their status pills do, so the band and
@@ -4138,7 +4464,7 @@ body.tdh-portal-page .site-footer { display: none; }
 	border-radius: var( --radius-xs );
 }
 
-.portal-approval > span:not( .status ) {
+.portal-approval > span:not( .status ):not( .portal-row-actions ) {
 	display: flex;
 	flex-direction: column;
 	gap: var( --space-1 );
@@ -4193,11 +4519,139 @@ body.tdh-portal-page .site-footer { display: none; }
 /* A full-width panel on a portal view (Listings, Members …), stacked. */
 .portal-panel-block { margin-bottom: var( --space-5 ); }
 
+.portal-status-filters {
+	display: flex;
+	align-items: center;
+	gap: var( --space-2 );
+	overflow-x: auto;
+	margin-bottom: var( --space-5 );
+	padding-bottom: var( --space-1 );
+}
+
+.portal-status-filters a {
+	flex: none;
+	padding: var( --space-2 ) var( --space-3 );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-pill );
+	background: var( --bg-surface );
+	color: var( --text-muted );
+	font-size: var( --text-xs );
+	font-weight: var( --weight-semibold );
+	text-decoration: none;
+}
+
+.portal-status-filters a:hover,
+.portal-status-filters a.is-current {
+	border-color: var( --color-gold );
+	background: var( --bg-surface-accent );
+	color: var( --text-default );
+}
+
+.portal-setup-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: var( --space-4 );
+	margin-bottom: var( --space-5 );
+}
+
+.portal-setup-card {
+	display: grid;
+	grid-template-columns: auto minmax( 0, 1fr );
+	align-items: start;
+	gap: var( --space-4 );
+	padding: var( --space-5 );
+}
+
+.portal-setup-card > i {
+	display: grid;
+	place-items: center;
+	width: var( --icon-well );
+	height: var( --icon-well );
+	border-radius: var( --radius-xs );
+	background: var( --bg-surface-accent );
+	color: var( --color-gold-ink );
+}
+
+.portal-setup-card > span { min-width: 0; }
+.portal-setup-card h2 { margin: 0 0 var( --space-1 ); font-size: var( --text-h5 ); }
+.portal-setup-card p { margin: 0 0 var( --space-2 ); color: var( --text-muted ); font-size: var( --text-sm ); }
+.portal-setup-card small { color: var( --text-subtle ); }
+.portal-setup-card > button { grid-column: 1 / -1; justify-self: start; }
+.portal-setup-card > button:disabled { cursor: not-allowed; opacity: var( --disabled-opacity ); }
+
+.portal-editor { overflow: hidden; }
+
+.portal-editor > summary,
+.portal-member > summary {
+	list-style: none;
+	cursor: pointer;
+}
+
+.portal-editor > summary::-webkit-details-marker,
+.portal-member > summary::-webkit-details-marker { display: none; }
+
+.portal-editor > summary {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var( --space-4 );
+	padding: var( --space-5 );
+}
+
+.portal-editor > summary > span {
+	display: flex;
+	flex-direction: column;
+	gap: var( --space-1 );
+}
+
+.portal-editor > summary small { color: var( --text-muted ); }
+.portal-editor[open] > summary { border-bottom: 1px solid var( --border-soft ); }
+.portal-editor[open] > summary > .tdh-icon { transform: rotate( 45deg ); }
+
+.portal-admin-form { padding: var( --space-5 ); }
+.portal-admin-form .form-grid { margin-bottom: var( --space-5 ); }
+.portal-admin-form .form-field { margin-bottom: 0; }
+
+.portal-member { border-bottom: 1px solid var( --border-soft ); }
+.portal-member:last-child { border-bottom: 0; }
+.portal-member > .portal-approval { border-bottom: 0; }
+.portal-member > summary > .tdh-icon { flex: none; transition: transform var( --duration-fast ) var( --ease ); }
+.portal-member[open] > summary > .tdh-icon { transform: rotate( 180deg ); }
+
+.portal-member-edit {
+	padding: 0 var( --space-4 ) var( --space-5 ) calc( var( --space-12 ) - var( --space-1 ) );
+	background: var( --bg-surface-tint );
+}
+
+.portal-member-edit .portal-admin-form { padding-inline: 0; }
+
+.portal-member-actions {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var( --space-3 );
+	padding-top: var( --space-4 );
+	border-top: 1px solid var( --border-default );
+}
+
+.portal-member-actions form { margin: 0; }
+
+.portal-check {
+	display: flex;
+	align-items: center;
+	gap: var( --space-2 );
+	margin-bottom: var( --space-5 );
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+}
+
 /* Approve / Request changes on a queue row: two small forms side by side. */
 .portal-row-actions {
 	display: flex;
 	gap: var( --space-2 );
 	flex: none;
+	margin-left: auto;
+	align-items: center;
 }
 
 .portal-row-actions > form { margin: 0; }
@@ -4208,14 +4662,12 @@ body.tdh-portal-page .site-footer { display: none; }
 	font-size: var( --text-xs );
 }
 
-/* The developer's wp-admin door takes the sidebar's bottom push; the
-   Public website link sits directly under it. */
-.portal-wp + .portal-return { margin-top: var( --space-1 ); }
-
 /* --- Narrow -------------------------------------------------------------- */
 
 @media ( max-width: 62rem ) {
 	.portal { grid-template-columns: 1fr; }
+	.portal.is-sidebar-collapsed { grid-template-columns: 1fr; }
+	.portal.is-sidebar-collapsed .portal-side { display: none; }
 
 	/* The sidebar becomes a strip: brand, then the nav as a scrollable row.
 	   NOT display:none, which is what the prototype does — hiding it leaves
@@ -4254,6 +4706,8 @@ body.tdh-portal-page .site-footer { display: none; }
 @media ( max-width: 43.75rem ) {
 	.portal-body { padding: var( --space-5 ) var( --space-4 ); }
 	.portal-top { padding: 0 var( --space-4 ); }
+	.portal-top-context > span { display: none; }
+	.portal-menu-toggle > span { display: none; }
 
 	.portal-heading { flex-direction: column; align-items: flex-start; }
 
@@ -4263,6 +4717,10 @@ body.tdh-portal-page .site-footer { display: none; }
 	/* Queue rows fold: the action buttons drop under the text. */
 	.portal-approval { flex-wrap: wrap; }
 	.portal-row-actions { width: 100%; justify-content: flex-end; }
+	.portal-member-edit { padding-left: var( --space-4 ); }
+	.portal-member-actions { align-items: stretch; flex-direction: column; }
+	.portal-member-actions button { width: 100%; }
+	.portal-setup-grid { grid-template-columns: 1fr; }
 }
 
 /* =========================================================================
@@ -4399,6 +4857,11 @@ body.tdh-portal-page .site-footer { display: none; }
 /* Same treatment as .form-field controls, restated under this scope rather
    than shared with it: the two sections must be free to diverge without
    either one dragging the other along. */
+/* background-COLOR, not the background shorthand.
+   The shorthand resets background-image to none, which would wipe the
+   custom dropdown arrow set further down — and the focus rule below would
+   wipe it again the moment the field was focused. Longhand keeps the two
+   independent. */
 .lform-field > input,
 .lform-field > select,
 .lform-field > textarea {
@@ -4406,11 +4869,11 @@ body.tdh-portal-page .site-footer { display: none; }
 	padding: var( --space-4 );
 	border: 1px solid var( --border-default );
 	border-radius: var( --radius-sm );
-	background: var( --bg-surface-tint );
+	background-color: var( --bg-surface-tint );
 	color: var( --text-default );
 	font: inherit;
 	transition: border-color var( --duration-fast ) var( --ease ),
-	            background var( --duration-fast ) var( --ease ),
+	            background-color var( --duration-fast ) var( --ease ),
 	            box-shadow var( --duration-fast ) var( --ease );
 }
 
@@ -4427,7 +4890,7 @@ body.tdh-portal-page .site-footer { display: none; }
 .lform-field > select:focus-visible,
 .lform-field > textarea:focus-visible {
 	outline: none;
-	background: var( --bg-surface );
+	background-color: var( --bg-surface );
 	border-color: var( --color-gold );
 	box-shadow: 0 0 0 3px rgba( 215, 185, 103, 0.28 );
 }
@@ -4666,6 +5129,61 @@ body.tdh-portal-page .site-footer { display: none; }
 	font-size: var( --text-sm );
 	font-weight: var( --weight-semibold );
 	color: var( --color-navy );
+}
+
+/* --- Chosen, but not uploaded yet -------------------------------------- */
+
+/* Drawn by the browser from the files themselves the moment they are
+   picked, before anything is sent. Deliberately unlike the stored
+   photographs above: a gold dashed frame and a caption saying these are
+   still pending, so nobody mistakes a selection for a saved photo. */
+.lform-preview {
+	margin-top: var( --space-4 );
+	padding: var( --space-4 );
+	border: 1px dashed var( --color-gold );
+	border-radius: var( --radius-sm );
+	background: var( --bg-surface-tint );
+}
+
+.lform-preview-head {
+	display: flex;
+	align-items: baseline;
+	gap: var( --space-2 );
+	flex-wrap: wrap;
+	margin: 0 0 var( --space-3 );
+}
+
+.lform-preview-head > b { font-size: var( --text-sm ); color: var( --color-gold-ink ); }
+.lform-preview-head > small { color: var( --text-muted ); font-size: var( --text-xs ); }
+
+.lform-preview-grid {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var( --space-3 );
+}
+
+.lform-preview-item {
+	width: 5.5rem;
+	margin: 0;
+}
+
+.lform-preview-item > img {
+	display: block;
+	width: 5.5rem;
+	height: 5.5rem;
+	object-fit: cover;
+	border-radius: var( --radius-xs );
+}
+
+/* The file name, kept to one line — a phone camera name is long enough to
+   break the row on its own. */
+.lform-preview-item > figcaption {
+	margin-top: var( --space-1 );
+	font-size: var( --text-2xs );
+	color: var( --text-muted );
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .lform-desc { margin-top: var( --space-5 ); }

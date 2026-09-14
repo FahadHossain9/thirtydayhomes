@@ -23,7 +23,7 @@ defined( 'ABSPATH' ) || exit;
  *
  *   [tdh_property_grid count="3" columns="3" orderby="date"
  *                      neighborhood="shadyside" heading="Homes ready"
- *                      eyebrow="Explore Pittsburgh" show_link="yes"]
+ *                      eyebrow="Explore homes" show_link="yes"]
  *
  *   [tdh_hero_search heading="Stay a while." accent="Feel at home."
  *                    require_dates="yes"]

@@ -67,12 +67,15 @@ final class Site_Structure {
 			}
 		}
 
+		$this->seed_vocabularies();
 		$this->set_front_page( $ids );
 		$this->build_menus( $ids );
 		$this->remove_sample_content();
 		$this->set_site_icon();
 
-		update_option( 'blogdescription', __( 'Furnished 30+ day homes near Pittsburgh’s medical centres', 'thirtydayhomes' ) );
+		// City-neutral: the tagline appears in search results and on every
+		// page, and the site lists in more than one market.
+		update_option( 'blogdescription', __( 'Furnished 30+ day homes near the places you need to be', 'thirtydayhomes' ) );
 
 		/*
 		 * Say plainly what was left alone. A run that protects something and
@@ -308,7 +311,7 @@ final class Site_Structure {
 				// Shortcodes, so the page renders correctly even with
 				// Elementor deactivated. The Elementor layout step
 				// overlays a visual version on top of this.
-				'content' => "[tdh_hero_search]\n\n[tdh_audience]\n\n[tdh_property_grid count=\"3\" columns=\"3\" eyebrow=\"Explore Pittsburgh\" heading=\"Homes ready when you are\" show_link=\"yes\"]\n\n[tdh_split_feature]\n\n[tdh_owner_cta]",
+				'content' => "[tdh_hero_search]\n\n[tdh_audience]\n\n[tdh_property_grid count=\"3\" columns=\"3\" eyebrow=\"Explore homes\" heading=\"Homes ready when you are\" show_link=\"yes\"]\n\n[tdh_split_feature]\n\n[tdh_owner_cta]",
 			],
 			'how-it-works' => [
 				'title'    => __( 'How it works', 'thirtydayhomes' ),
@@ -427,6 +430,77 @@ final class Site_Structure {
 				'noindex' => true,
 			],
 		];
+	}
+
+	/**
+	 * The property-type vocabulary.
+	 *
+	 * ─── WHY THIS IS STRUCTURE, NOT SAMPLE CONTENT ─────────────────────────
+	 *
+	 * These terms used to exist only as a side effect of the demo listings:
+	 * the four types the samples happened to use were the four types a
+	 * landlord could pick, and removing the sample content removed the
+	 * vocabulary with it. That is how "Single Family House" — the most
+	 * common rental in the markets this site is opening in — was missing
+	 * from the wizard's dropdown when the owner reviewed it.
+	 *
+	 * A fixed vocabulary for the same reason the amenity catalogue is fixed:
+	 * types are a filter renters browse by, and free entry would split
+	 * "House", "house" and "Single family" into three filters that each
+	 * miss the other's homes.
+	 *
+	 * @return array<string,string[]> Taxonomy => term names.
+	 */
+	public static function vocabularies(): array {
+		return [
+			Post_Types::TAX_TYPE => [
+				__( 'Apartment', 'thirtydayhomes' ),
+				__( 'Condo', 'thirtydayhomes' ),
+				__( 'Duplex', 'thirtydayhomes' ),
+				__( 'Guest House', 'thirtydayhomes' ),
+				__( 'Loft', 'thirtydayhomes' ),
+				__( 'Single Family House', 'thirtydayhomes' ),
+				__( 'Studio', 'thirtydayhomes' ),
+				__( 'Townhouse', 'thirtydayhomes' ),
+			],
+		];
+	}
+
+	/**
+	 * Create any vocabulary term that is missing.
+	 *
+	 * Additive only. It never renames or deletes, because a client who adds
+	 * their own property type must not lose it to the next importer run —
+	 * the same rule the page fingerprint enforces for content.
+	 */
+	private function seed_vocabularies(): void {
+
+		$added = 0;
+
+		foreach ( self::vocabularies() as $taxonomy => $terms ) {
+
+			if ( ! taxonomy_exists( $taxonomy ) ) {
+				continue;
+			}
+
+			foreach ( $terms as $term ) {
+
+				if ( term_exists( $term, $taxonomy ) ) {
+					continue;
+				}
+
+				if ( ! is_wp_error( wp_insert_term( $term, $taxonomy ) ) ) {
+					++$added;
+				}
+			}
+		}
+
+		$this->importer->log(
+			$added > 0
+				/* translators: %d: number of terms created */
+				? sprintf( __( '%d property type(s) added', 'thirtydayhomes' ), $added )
+				: __( 'property types already complete', 'thirtydayhomes' )
+		);
 	}
 
 	/**

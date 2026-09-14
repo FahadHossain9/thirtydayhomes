@@ -447,6 +447,20 @@ final class Account_Render {
 		return self::shell(
 			'lost',
 			static function () use ( $notice ) {
+				if ( '' !== $notice['success'] ) {
+					?>
+					<div class="password-reset-sent" role="status">
+						<i aria-hidden="true"><?php echo function_exists( 'tdh_icon' ) ? tdh_icon( 'circle-check', 24 ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+						<p class="overline"><?php esc_html_e( 'Password recovery', 'thirtydayhomes' ); ?></p>
+						<h1><?php esc_html_e( 'Check your email', 'thirtydayhomes' ); ?></h1>
+						<p><?php echo esc_html( $notice['success'] ); ?></p>
+						<p class="muted"><?php esc_html_e( 'Open the message from ThirtyDayHomes and use the secure link to choose a new password. Check your spam folder if it does not arrive within a few minutes.', 'thirtydayhomes' ); ?></p>
+						<a class="primary full big" href="<?php echo esc_url( Accounts::url( 'login' ) ); ?>"><?php esc_html_e( 'Return to sign in', 'thirtydayhomes' ); ?></a>
+						<a class="password-reset-again" href="<?php echo esc_url( Accounts::url( 'lost-password' ) ); ?>"><?php esc_html_e( 'Send another reset link', 'thirtydayhomes' ); ?></a>
+					</div>
+					<?php
+					return;
+				}
 				?>
 			<div class="form-intro">
 				<h1><?php esc_html_e( 'Reset your password', 'thirtydayhomes' ); ?></h1>
@@ -574,6 +588,15 @@ final class Account_Render {
 			}
 		}
 
+		if ( isset( $_GET['tdh_portal_error'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$reason   = sanitize_key( wp_unslash( (string) $_GET['tdh_portal_error'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$messages = Billing\Customer_Portal::messages();
+
+			if ( isset( $messages[ $reason ] ) ) {
+				$notice['errors'][] = $messages[ $reason ];
+			}
+		}
+
 		/*
 		 * Someone returning from the listing wizard. A boolean flag, not a
 		 * message from the URL — the copy lives here, so the query string
@@ -622,7 +645,7 @@ final class Account_Render {
 		 */
 		$view = isset( $_GET['view'] ) ? sanitize_key( wp_unslash( (string) $_GET['view'] ) ) : 'overview'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
-		if ( ! in_array( $view, [ 'overview', 'listings', 'inquiries', 'membership' ], true ) ) {
+		if ( ! in_array( $view, [ 'overview', 'listings', 'inquiries', 'membership', 'profile' ], true ) ) {
 			$view = 'overview';
 		}
 
@@ -638,7 +661,9 @@ final class Account_Render {
 
 		$copy = [
 			Membership::NONE      => __( 'Choose a plan to publish your first home. Nothing is charged until you do.', 'thirtydayhomes' ),
-			Membership::ACTIVE    => __( 'Your listings are visible to renters searching Pittsburgh.', 'thirtydayhomes' ),
+			// No city here: this line is shown to every landlord, and the
+			// owner lists in more than one market.
+			Membership::ACTIVE    => __( 'Your listings are visible to renters searching your area.', 'thirtydayhomes' ),
 			Membership::PAST_DUE  => __( 'Your listings are hidden until payment succeeds. They come back automatically — nothing is deleted.', 'thirtydayhomes' ),
 			Membership::CANCELLED => __( 'Your membership runs to the end of the paid period, then your listings come down.', 'thirtydayhomes' ),
 			Membership::EXPIRED   => __( 'Your membership has ended and your listings are hidden. Restart a plan to bring them back.', 'thirtydayhomes' ),
@@ -652,7 +677,7 @@ final class Account_Render {
 		?>
 		<div class="portal">
 
-			<aside class="portal-side">
+			<aside class="portal-side" id="portal-sidebar">
 				<a class="portal-brand" href="<?php echo esc_url( home_url( '/' ) ); ?>">
 					<?php
 					if ( function_exists( 'tdh_the_logo' ) ) {
@@ -671,11 +696,13 @@ final class Account_Render {
 					'listings'   => [ 'building-2', __( 'My listings', 'thirtydayhomes' ) ],
 					'inquiries'  => [ 'mail', __( 'Inquiries', 'thirtydayhomes' ) ],
 					'membership' => [ 'wallet-cards', __( 'Membership', 'thirtydayhomes' ) ],
+					'profile'    => [ 'user', __( 'Account details', 'thirtydayhomes' ) ],
 				];
 				?>
 				<nav class="portal-nav" aria-label="<?php esc_attr_e( 'Dashboard', 'thirtydayhomes' ); ?>">
 					<?php foreach ( $nav as $slug => [ $nav_icon, $label ] ) : ?>
 						<a class="<?php echo $view === $slug ? 'is-current' : ''; ?>"
+							title="<?php echo esc_attr( $label ); ?>"
 							href="<?php echo esc_url( 'overview' === $slug ? Accounts::url( 'account' ) : add_query_arg( 'view', $slug, Accounts::url( 'account' ) ) ); ?>">
 							<?php echo $icon( $nav_icon, 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 							<?php echo esc_html( $label ); ?>
@@ -684,13 +711,9 @@ final class Account_Render {
 							<?php endif; ?>
 						</a>
 					<?php endforeach; ?>
-					<a href="<?php echo esc_url( Accounts::url( 'profile' ) ); ?>">
-						<?php echo $icon( 'user', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
-						<?php esc_html_e( 'Profile', 'thirtydayhomes' ); ?>
-					</a>
 				</nav>
 
-				<a class="portal-return" href="<?php echo esc_url( home_url( '/' ) ); ?>">
+				<a class="portal-return" title="<?php esc_attr_e( 'Public website', 'thirtydayhomes' ); ?>" href="<?php echo esc_url( home_url( '/' ) ); ?>">
 					<?php echo $icon( 'arrow-left', 16 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 					<?php esc_html_e( 'Public website', 'thirtydayhomes' ); ?>
 				</a>
@@ -699,15 +722,21 @@ final class Account_Render {
 			<div class="portal-main" id="overview">
 
 				<div class="portal-top">
-					<span>
-						<?php
-						printf(
-							/* translators: %s: display name */
-							esc_html__( 'Welcome back, %s', 'thirtydayhomes' ),
-							esc_html( $user->display_name )
-						);
-						?>
-					</span>
+					<div class="portal-top-context">
+						<button class="portal-menu-toggle" type="button" aria-controls="portal-sidebar" aria-expanded="true" aria-label="<?php esc_attr_e( 'Collapse dashboard sidebar', 'thirtydayhomes' ); ?>">
+							<span class="portal-toggle-collapse"><?php echo $icon( 'chevron-left', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?></span>
+							<span class="portal-toggle-expand"><?php echo $icon( 'chevron-right', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?></span>
+						</button>
+						<span>
+							<?php
+							printf(
+								/* translators: %s: display name */
+								esc_html__( 'Welcome back, %s', 'thirtydayhomes' ),
+								esc_html( $user->display_name )
+							);
+							?>
+						</span>
+					</div>
 					<div>
 						<a class="portal-signout" href="<?php echo esc_url( Accounts::logout_url() ); ?>"><?php esc_html_e( 'Sign out', 'thirtydayhomes' ); ?></a>
 						<i class="portal-avatar" aria-hidden="true"><?php echo esc_html( $initials ); ?></i>
@@ -722,6 +751,7 @@ final class Account_Render {
 						'listings'   => [ __( 'My listings', 'thirtydayhomes' ), __( 'Every home on your account, in every status.', 'thirtydayhomes' ) ],
 						'inquiries'  => [ __( 'Inquiries', 'thirtydayhomes' ), __( 'Renters who asked about your homes.', 'thirtydayhomes' ) ],
 						'membership' => [ __( 'Membership', 'thirtydayhomes' ), __( 'Your plan, allowance and renewal.', 'thirtydayhomes' ) ],
+						'profile'    => [ __( 'Account details', 'thirtydayhomes' ), __( 'Manage your contact information and sign-in security.', 'thirtydayhomes' ) ],
 					];
 					?>
 					<div class="portal-heading">
@@ -755,12 +785,15 @@ final class Account_Render {
 						</span>
 
 						<?php if ( Membership::ACTIVE === $status ) : ?>
+							<span class="portal-plan-tier">
+								<small><?php esc_html_e( 'Current plan', 'thirtydayhomes' ); ?></small>
+								<b><?php echo esc_html( self::plan_label( $user_id ) ); ?></b>
+							</span>
 							<span class="portal-renews">
 								<?php
 								printf(
-									/* translators: 1: plan name, 2: renewal date */
-									esc_html__( '%1$s · renews %2$s', 'thirtydayhomes' ),
-									esc_html( Membership::plan( $user_id ) ),
+									/* translators: %s: renewal date */
+									esc_html__( 'Renews %s', 'thirtydayhomes' ),
 									esc_html( $expires ? date_i18n( 'j M Y', $expires ) : __( 'soon', 'thirtydayhomes' ) )
 								);
 								?>
@@ -824,7 +857,7 @@ final class Account_Render {
 							<div class="portal-health">
 								<div>
 									<small><?php esc_html_e( 'Plan', 'thirtydayhomes' ); ?></small>
-									<b><?php echo esc_html( Membership::plan( $user_id ) ?: '—' ); ?></b>
+									<b><?php echo esc_html( self::plan_label( $user_id ) ); ?></b>
 								</div>
 								<div>
 									<small><?php esc_html_e( 'Listings used', 'thirtydayhomes' ); ?></small>
@@ -845,7 +878,24 @@ final class Account_Render {
 									<b><?php echo esc_html( $expires ? date_i18n( 'j M Y', $expires ) : '—' ); ?></b>
 								</div>
 							</div>
+							<?php if ( in_array( $status, [ Membership::ACTIVE, Membership::PAST_DUE ], true ) ) : ?>
+								<form class="portal-billing-actions" method="post" action="<?php echo esc_url( add_query_arg( 'view', 'membership', Accounts::url( 'account' ) ) ); ?>">
+									<?php echo \TDH\Billing\Customer_Portal::form_fields(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+									<button class="secondary" type="submit"><?php esc_html_e( 'Manage or cancel membership', 'thirtydayhomes' ); ?></button>
+									<small>
+										<?php
+										echo esc_html(
+											\TDH\Billing\Customer_Portal::is_ready( $user_id )
+												? __( 'Cancellation takes effect according to your billing period in Stripe.', 'thirtydayhomes' )
+												: __( 'If online billing is unavailable, support can update this membership.', 'thirtydayhomes' )
+										);
+										?>
+									</small>
+								</form>
+							<?php endif; ?>
 						</div>
+					<?php elseif ( 'profile' === $view ) : ?>
+						<?php self::landlord_profile( $user ); ?>
 					<?php endif; ?>
 
 				</div>
@@ -853,6 +903,39 @@ final class Account_Render {
 		</div>
 		<?php
 		return (string) ob_get_clean();
+	}
+
+	/** Human-facing membership tier, never a database slug. */
+	private static function plan_label( int $user_id ): string {
+		$plan = trim( Membership::plan( $user_id ) );
+		return '' === $plan
+			? __( 'No plan selected', 'thirtydayhomes' )
+			: ucwords( str_replace( [ '-', '_' ], ' ', $plan ) );
+	}
+
+	/** Account editing belongs inside the landlord portal shell. */
+	private static function landlord_profile( \WP_User $user ): void {
+		?>
+		<form class="panel portal-profile" method="post" action="">
+			<?php self::form_head( 'profile' ); ?>
+			<div class="panel-title">
+				<span><h3><?php esc_html_e( 'Personal information', 'thirtydayhomes' ); ?></h3><p><?php esc_html_e( 'Used for your account and renter enquiries.', 'thirtydayhomes' ); ?></p></span>
+			</div>
+			<div class="form-grid">
+				<div class="form-field"><label for="tdh-p-name"><?php esc_html_e( 'Your name', 'thirtydayhomes' ); ?></label><input id="tdh-p-name" name="tdh_name" type="text" autocomplete="name" required value="<?php echo esc_attr( $user->display_name ); ?>"></div>
+				<div class="form-field"><label for="tdh-p-email"><?php esc_html_e( 'Email address', 'thirtydayhomes' ); ?></label><input id="tdh-p-email" name="tdh_email" type="email" autocomplete="email" required value="<?php echo esc_attr( $user->user_email ); ?>"></div>
+				<div class="form-field"><label for="tdh-p-phone"><?php esc_html_e( 'Phone (optional)', 'thirtydayhomes' ); ?></label><input id="tdh-p-phone" name="tdh_phone" type="tel" autocomplete="tel" value="<?php echo esc_attr( (string) get_user_meta( $user->ID, '_tdh_phone', true ) ); ?>"></div>
+				<div class="form-field"><label for="tdh-p-company"><?php esc_html_e( 'Company (optional)', 'thirtydayhomes' ); ?></label><input id="tdh-p-company" name="tdh_company" type="text" autocomplete="organization" value="<?php echo esc_attr( (string) get_user_meta( $user->ID, '_tdh_company', true ) ); ?>"></div>
+			</div>
+			<hr>
+			<div class="panel-title"><span><h3><?php esc_html_e( 'Password and security', 'thirtydayhomes' ); ?></h3><p><?php esc_html_e( 'Leave these blank unless you want to change your password.', 'thirtydayhomes' ); ?></p></span></div>
+			<div class="form-grid">
+				<div class="form-field"><label for="tdh-p-current"><?php esc_html_e( 'Current password', 'thirtydayhomes' ); ?></label><input id="tdh-p-current" name="tdh_password_current" type="password" autocomplete="current-password"><small class="form-hint--show"><?php esc_html_e( 'Required when changing your email or password.', 'thirtydayhomes' ); ?></small></div>
+				<div class="form-field"><label for="tdh-p-new"><?php esc_html_e( 'New password', 'thirtydayhomes' ); ?></label><input id="tdh-p-new" name="tdh_password_new" type="password" autocomplete="new-password" minlength="<?php echo esc_attr( (string) self::MIN_PASSWORD ); ?>"><small class="form-hint--show"><?php printf( esc_html__( 'At least %d characters.', 'thirtydayhomes' ), (int) self::MIN_PASSWORD ); ?></small></div>
+			</div>
+			<div class="portal-profile-actions"><button class="primary" type="submit"><?php esc_html_e( 'Save account details', 'thirtydayhomes' ); ?></button></div>
+		</form>
+		<?php
 	}
 
 	/* ---------------------------------------------------------------------
@@ -898,7 +981,7 @@ final class Account_Render {
 		// overview, not an error page.
 		$view = isset( $_GET['view'] ) ? sanitize_key( wp_unslash( (string) $_GET['view'] ) ) : 'overview'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
-		if ( ! in_array( $view, [ 'overview', 'listings', 'members', 'inquiries', 'facilities' ], true ) ) {
+		if ( ! in_array( $view, [ 'overview', 'listings', 'listing-setup', 'members', 'inquiries', 'facilities' ], true ) ) {
 			$view = 'overview';
 		}
 
@@ -912,7 +995,7 @@ final class Account_Render {
 		?>
 		<div class="portal">
 
-			<aside class="portal-side">
+			<aside class="portal-side" id="portal-sidebar">
 				<a class="portal-brand" href="<?php echo esc_url( home_url( '/' ) ); ?>">
 					<?php
 					if ( function_exists( 'tdh_the_logo' ) ) {
@@ -934,6 +1017,7 @@ final class Account_Render {
 				$nav = [
 					[ 'overview', 'layout-dashboard', __( 'Overview', 'thirtydayhomes' ) ],
 					[ 'listings', 'building-2', __( 'Listings', 'thirtydayhomes' ) ],
+					[ 'listing-setup', 'settings-2', __( 'Listing setup', 'thirtydayhomes' ) ],
 					[ 'members', 'users', __( 'Members', 'thirtydayhomes' ) ],
 					[ 'facilities', 'stethoscope', __( 'Facilities', 'thirtydayhomes' ) ],
 					[ 'inquiries', 'mail', __( 'Inquiries', 'thirtydayhomes' ) ],
@@ -941,7 +1025,7 @@ final class Account_Render {
 				?>
 				<nav class="portal-nav" aria-label="<?php esc_attr_e( 'Administration', 'thirtydayhomes' ); ?>">
 					<?php foreach ( $nav as [ $slug, $nav_icon, $label ] ) : ?>
-						<a class="<?php echo $view === $slug ? 'is-current' : ''; ?>" href="<?php echo esc_url( self::mk_url( $slug ) ); ?>">
+						<a class="<?php echo $view === $slug ? 'is-current' : ''; ?>" title="<?php echo esc_attr( $label ); ?>" href="<?php echo esc_url( self::mk_url( $slug ) ); ?>">
 							<?php echo $icon( $nav_icon, 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 							<?php echo esc_html( $label ); ?>
 							<?php if ( 'listings' === $slug && $pending_total > 0 ) : ?>
@@ -949,19 +1033,13 @@ final class Account_Render {
 							<?php endif; ?>
 						</a>
 					<?php endforeach; ?>
-					<a href="<?php echo esc_url( admin_url( 'edit.php?post_type=page' ) ); ?>">
+					<a title="<?php esc_attr_e( 'Site content', 'thirtydayhomes' ); ?>" href="<?php echo esc_url( admin_url( 'edit.php?post_type=page' ) ); ?>">
 						<?php echo $icon( 'file-text', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 						<?php esc_html_e( 'Site content', 'thirtydayhomes' ); ?>
 					</a>
 				</nav>
 
-				<?php // The developer's separate door: full WordPress, everything. ?>
-				<a class="portal-return portal-wp" href="<?php echo esc_url( admin_url() ); ?>">
-					<?php echo $icon( 'wrench', 16 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
-					<?php esc_html_e( 'WordPress dashboard', 'thirtydayhomes' ); ?>
-				</a>
-
-				<a class="portal-return" href="<?php echo esc_url( home_url( '/' ) ); ?>">
+				<a class="portal-return" title="<?php esc_attr_e( 'Public website', 'thirtydayhomes' ); ?>" href="<?php echo esc_url( home_url( '/' ) ); ?>">
 					<?php echo $icon( 'arrow-left', 16 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 					<?php esc_html_e( 'Public website', 'thirtydayhomes' ); ?>
 				</a>
@@ -970,7 +1048,13 @@ final class Account_Render {
 			<div class="portal-main" id="overview">
 
 				<div class="portal-top">
-					<span><?php esc_html_e( 'Marketplace administration', 'thirtydayhomes' ); ?></span>
+					<div class="portal-top-context">
+						<button class="portal-menu-toggle" type="button" aria-controls="portal-sidebar" aria-expanded="true" aria-label="<?php esc_attr_e( 'Collapse dashboard sidebar', 'thirtydayhomes' ); ?>">
+							<span class="portal-toggle-collapse"><?php echo $icon( 'chevron-left', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?></span>
+							<span class="portal-toggle-expand"><?php echo $icon( 'chevron-right', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?></span>
+						</button>
+						<span><?php esc_html_e( 'Marketplace administration', 'thirtydayhomes' ); ?></span>
+					</div>
 					<div>
 						<a class="portal-signout" href="<?php echo esc_url( Accounts::logout_url() ); ?>"><?php esc_html_e( 'Sign out', 'thirtydayhomes' ); ?></a>
 						<i class="portal-avatar" aria-hidden="true"><?php echo esc_html( $initials ); ?></i>
@@ -984,6 +1068,7 @@ final class Account_Render {
 					<?php
 					match ( $view ) {
 						'listings'   => self::mk_listings(),
+						'listing-setup' => self::mk_listing_setup(),
 						'members'    => self::mk_members(),
 						'inquiries'  => self::mk_inquiries(),
 						'facilities' => self::mk_facilities(),
@@ -1027,7 +1112,7 @@ final class Account_Render {
 	}
 
 	/**
-	 * "$2,400/mo · Shadyside · Jane Landlord" — whichever parts exist.
+	 * "$2,400/mo · Shadyside · Landlord: Jane" — owner is always explicit.
 	 */
 	private static function mk_listing_line( int $post_id ): string {
 
@@ -1037,6 +1122,9 @@ final class Account_Render {
 
 		$author = (int) get_post_field( 'post_author', $post_id );
 		$owner  = $author ? get_userdata( $author ) : null;
+		$owner_label = $owner
+			? sprintf( __( 'Landlord: %s', 'thirtydayhomes' ), $owner->display_name )
+			: __( 'Landlord: Unassigned', 'thirtydayhomes' );
 
 		return implode(
 			' · ',
@@ -1045,7 +1133,7 @@ final class Account_Render {
 					/* translators: %s: monthly rent */
 					'' !== $rent ? sprintf( __( '$%s/mo', 'thirtydayhomes' ), number_format_i18n( (float) $rent ) ) : '',
 					$hood,
-					$owner ? $owner->display_name : '',
+					$owner_label,
 				]
 			)
 		);
@@ -1173,6 +1261,12 @@ final class Account_Render {
 
 	private static function mk_listings(): void {
 
+		$labels         = Statuses::all();
+		$requested      = isset( $_GET['listing_status'] ) ? sanitize_key( wp_unslash( (string) $_GET['listing_status'] ) ) : 'all'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$active_filter  = array_key_exists( $requested, $labels ) ? $requested : 'all';
+		$all_statuses   = array_values( array_unique( array_merge( [ 'publish', 'pending', 'draft' ], array_keys( $labels ) ) ) );
+		$query_statuses = 'all' === $active_filter ? $all_statuses : [ $active_filter ];
+
 		$pending = new \WP_Query(
 			[
 				'post_type'             => Post_Types::LISTING,
@@ -1187,13 +1281,12 @@ final class Account_Render {
 		$all = new \WP_Query(
 			[
 				'post_type'             => Post_Types::LISTING,
-				'post_status'           => array_merge( [ 'publish', 'pending', 'draft' ], array_keys( Statuses::all() ) ),
+				'post_status'           => $query_statuses,
 				'posts_per_page'        => 20,
 				'tdh_bypass_visibility' => true,
 			]
 		);
 
-		$labels = Statuses::all();
 		$badges = [
 			'publish'              => 'live',
 			'pending'              => 'pending',
@@ -1204,13 +1297,20 @@ final class Account_Render {
 		<div class="portal-heading">
 			<span>
 				<h1><?php esc_html_e( 'Listings', 'thirtydayhomes' ); ?></h1>
-				<p><?php esc_html_e( 'Approve submissions here; open a listing in WordPress for edits.', 'thirtydayhomes' ); ?></p>
+				<p><?php esc_html_e( 'Create, edit, review and publish homes without leaving the marketplace portal.', 'thirtydayhomes' ); ?></p>
 			</span>
 			<a class="primary" href="<?php echo esc_url( Listing_Form::url() ); ?>">
 				<?php echo self::mk_icon( 'plus', 16 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 				<?php esc_html_e( 'Add listing', 'thirtydayhomes' ); ?>
 			</a>
 		</div>
+
+		<nav class="portal-status-filters" aria-label="<?php esc_attr_e( 'Filter listings by status', 'thirtydayhomes' ); ?>">
+			<a class="<?php echo 'all' === $active_filter ? 'is-current' : ''; ?>" href="<?php echo esc_url( self::mk_url( 'listings' ) ); ?>"><?php esc_html_e( 'All', 'thirtydayhomes' ); ?></a>
+			<?php foreach ( $labels as $status_key => $status_label ) : ?>
+				<a class="<?php echo $status_key === $active_filter ? 'is-current' : ''; ?>" href="<?php echo esc_url( add_query_arg( 'listing_status', $status_key, self::mk_url( 'listings' ) ) ); ?>"><?php echo esc_html( $status_label ); ?></a>
+			<?php endforeach; ?>
+		</nav>
 
 		<div class="panel portal-panel-block">
 			<div class="panel-title">
@@ -1258,10 +1358,6 @@ final class Account_Render {
 		<div class="panel portal-panel-block">
 			<div class="panel-title">
 				<h3><?php esc_html_e( 'All listings', 'thirtydayhomes' ); ?></h3>
-				<a href="<?php echo esc_url( admin_url( 'edit.php?post_type=' . Post_Types::LISTING ) ); ?>">
-					<?php esc_html_e( 'Open in WordPress', 'thirtydayhomes' ); ?>
-					<?php echo self::mk_icon( 'arrow-right', 15 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
-				</a>
 			</div>
 
 			<?php if ( ! $all->have_posts() ) : ?>
@@ -1275,9 +1371,7 @@ final class Account_Render {
 				while ( $all->have_posts() ) :
 					$all->the_post();
 					$state = (string) get_post_status();
-					$open  = 'publish' === $state
-						? get_permalink()
-						: admin_url( 'post.php?action=edit&post=' . get_the_ID() );
+					$open  = Listing_Form::url( 1, get_the_ID() );
 					?>
 					<div class="portal-approval">
 						<?php self::mk_row_media( get_the_ID() ); ?>
@@ -1292,6 +1386,54 @@ final class Account_Render {
 				<?php endwhile; ?>
 				<?php wp_reset_postdata(); ?>
 			<?php endif; ?>
+		</div>
+		<?php
+	}
+
+	/* --- Listing setup: the taxonomy menus WordPress nests under Listings. */
+
+	private static function mk_listing_setup(): void {
+
+		$groups = [
+			[ Post_Types::TAX_TYPE, 'building-2', __( 'Property Types', 'thirtydayhomes' ), __( 'Apartment, house, townhouse and other property categories.', 'thirtydayhomes' ) ],
+			[ Post_Types::TAX_NEIGHBORHOOD, 'map-pin', __( 'Neighborhoods', 'thirtydayhomes' ), __( 'The local areas renters use to narrow their search.', 'thirtydayhomes' ) ],
+			[ Post_Types::TAX_AMENITY, 'check', __( 'Amenities', 'thirtydayhomes' ), __( 'Reusable features landlords can assign to homes.', 'thirtydayhomes' ) ],
+			[ Post_Types::TAX_CITY, 'map-pinned', __( 'Cities', 'thirtydayhomes' ), __( 'Markets shared by listings and medical facilities.', 'thirtydayhomes' ) ],
+		];
+		?>
+		<div class="portal-heading">
+			<span>
+				<h1><?php esc_html_e( 'Listing setup', 'thirtydayhomes' ); ?></h1>
+				<p><?php esc_html_e( 'The supporting menus behind every property listing.', 'thirtydayhomes' ); ?></p>
+			</span>
+		</div>
+
+		<div class="portal-setup-grid">
+			<?php foreach ( $groups as [ $taxonomy, $group_icon, $title, $copy ] ) : ?>
+				<?php $count = wp_count_terms( [ 'taxonomy' => $taxonomy, 'hide_empty' => false ] ); ?>
+				<section class="panel portal-setup-card">
+					<i><?php echo self::mk_icon( $group_icon, 20 ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+					<span>
+						<h2><?php echo esc_html( $title ); ?></h2>
+						<p><?php echo esc_html( $copy ); ?></p>
+						<small>
+							<?php
+							printf(
+								/* translators: %s: taxonomy term count */
+								esc_html__( '%s configured', 'thirtydayhomes' ),
+								esc_html( number_format_i18n( is_wp_error( $count ) ? 0 : (int) $count ) )
+							);
+							?>
+						</small>
+					</span>
+					<button class="secondary" type="button" disabled aria-disabled="true"><?php esc_html_e( 'Manage — Milestone 2', 'thirtydayhomes' ); ?></button>
+				</section>
+			<?php endforeach; ?>
+		</div>
+
+		<div class="form-notice form-notice--info" role="status">
+			<?php echo self::mk_icon( 'calendar-days', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+			<p><?php esc_html_e( 'These controls are visible now so the administration scope is clear. Portal-based add, rename, merge and delete actions arrive in Milestone 2; listing authors can already use configured values in the listing form.', 'thirtydayhomes' ); ?></p>
 		</div>
 		<?php
 	}
@@ -1319,12 +1461,42 @@ final class Account_Render {
 		<div class="portal-heading">
 			<span>
 				<h1><?php esc_html_e( 'Members', 'thirtydayhomes' ); ?></h1>
-				<p><?php esc_html_e( 'Every landlord account, with its plan and listings.', 'thirtydayhomes' ); ?></p>
+				<p><?php esc_html_e( 'Create and manage landlord accounts, access, plans and listing allowances.', 'thirtydayhomes' ); ?></p>
 			</span>
-			<a class="secondary" href="<?php echo esc_url( admin_url( 'users.php' ) ); ?>">
-				<?php esc_html_e( 'Open in WordPress', 'thirtydayhomes' ); ?>
-			</a>
 		</div>
+
+		<details class="panel portal-panel-block portal-editor"<?php echo ! $members ? ' open' : ''; ?>>
+			<summary>
+				<span>
+					<b><?php esc_html_e( 'Add a member', 'thirtydayhomes' ); ?></b>
+					<small><?php esc_html_e( 'Create a landlord account and email them a secure password setup link.', 'thirtydayhomes' ); ?></small>
+				</span>
+				<?php echo self::mk_icon( 'plus', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+			</summary>
+			<form class="portal-admin-form" method="post" action="<?php echo esc_url( self::mk_url( 'members' ) ); ?>">
+				<input type="hidden" name="tdh_action" value="member_create">
+				<?php wp_nonce_field( 'tdh_member_create', 'tdh_nonce' ); ?>
+				<div class="form-grid">
+					<div class="form-field">
+						<label for="member-new-name"><?php esc_html_e( 'Name', 'thirtydayhomes' ); ?></label>
+						<input id="member-new-name" name="tdh_name" type="text" autocomplete="off" required>
+					</div>
+					<div class="form-field">
+						<label for="member-new-email"><?php esc_html_e( 'Email', 'thirtydayhomes' ); ?></label>
+						<input id="member-new-email" name="tdh_email" type="email" autocomplete="off" required>
+					</div>
+					<div class="form-field">
+						<label for="member-new-phone"><?php esc_html_e( 'Phone', 'thirtydayhomes' ); ?></label>
+						<input id="member-new-phone" name="tdh_phone" type="tel" autocomplete="off">
+					</div>
+					<div class="form-field">
+						<label for="member-new-company"><?php esc_html_e( 'Company', 'thirtydayhomes' ); ?></label>
+						<input id="member-new-company" name="tdh_company" type="text" autocomplete="off">
+					</div>
+				</div>
+				<button class="primary" type="submit"><?php esc_html_e( 'Create member', 'thirtydayhomes' ); ?></button>
+			</form>
+		</details>
 
 		<div class="panel portal-panel-block">
 			<?php if ( ! $members ) : ?>
@@ -1355,21 +1527,51 @@ final class Account_Render {
 						)
 					);
 					?>
-					<div class="portal-approval">
-						<i class="portal-avatar" aria-hidden="true"><?php echo esc_html( strtoupper( mb_substr( trim( $member->display_name ), 0, 2 ) ) ); ?></i>
-						<span>
-							<?php // The user editor link only for staff who can open it — the review persona cannot, and a link to "you need permission" is worse than a name. ?>
-							<?php if ( current_user_can( 'edit_users' ) ) : ?>
-								<b><a href="<?php echo esc_url( admin_url( 'user-edit.php?user_id=' . $m_id ) ); ?>"><?php echo esc_html( $member->display_name ); ?></a></b>
-							<?php else : ?>
+					<details class="portal-member">
+						<summary class="portal-approval">
+							<i class="portal-avatar" aria-hidden="true"><?php echo esc_html( strtoupper( mb_substr( trim( $member->display_name ), 0, 2 ) ) ); ?></i>
+							<span>
 								<b><?php echo esc_html( $member->display_name ); ?></b>
-							<?php endif; ?>
-							<small><?php echo esc_html( $line ); ?></small>
-						</span>
-						<span class="status <?php echo esc_attr( $status_badges[ $m_status ] ?? '' ); ?>">
-							<?php echo esc_html( $labels[ $m_status ] ?? $m_status ); ?>
-						</span>
-					</div>
+								<small><?php echo esc_html( $line ); ?></small>
+							</span>
+							<span class="status <?php echo esc_attr( $status_badges[ $m_status ] ?? '' ); ?>">
+								<?php echo esc_html( $labels[ $m_status ] ?? $m_status ); ?>
+							</span>
+							<?php echo self::mk_icon( 'chevron-down', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+						</summary>
+
+						<div class="portal-member-edit">
+							<form class="portal-admin-form" method="post" action="<?php echo esc_url( self::mk_url( 'members' ) ); ?>">
+								<input type="hidden" name="tdh_action" value="member_update">
+								<input type="hidden" name="tdh_member" value="<?php echo esc_attr( (string) $m_id ); ?>">
+								<?php wp_nonce_field( 'tdh_member_update', 'tdh_nonce' ); ?>
+								<div class="form-grid">
+									<div class="form-field"><label><?php esc_html_e( 'Name', 'thirtydayhomes' ); ?></label><input name="tdh_name" type="text" value="<?php echo esc_attr( $member->display_name ); ?>" required></div>
+									<div class="form-field"><label><?php esc_html_e( 'Email', 'thirtydayhomes' ); ?></label><input name="tdh_email" type="email" value="<?php echo esc_attr( $member->user_email ); ?>" required></div>
+									<div class="form-field"><label><?php esc_html_e( 'Phone', 'thirtydayhomes' ); ?></label><input name="tdh_phone" type="tel" value="<?php echo esc_attr( (string) get_user_meta( $m_id, '_tdh_phone', true ) ); ?>"></div>
+									<div class="form-field"><label><?php esc_html_e( 'Company', 'thirtydayhomes' ); ?></label><input name="tdh_company" type="text" value="<?php echo esc_attr( (string) get_user_meta( $m_id, '_tdh_company', true ) ); ?>"></div>
+									<div class="form-field"><label><?php esc_html_e( 'Membership status', 'thirtydayhomes' ); ?></label><select name="tdh_status"><?php foreach ( $labels as $value => $label ) : ?><option value="<?php echo esc_attr( $value ); ?>" <?php selected( $m_status, $value ); ?>><?php echo esc_html( $label ); ?></option><?php endforeach; ?></select></div>
+									<div class="form-field"><label><?php esc_html_e( 'Plan name', 'thirtydayhomes' ); ?></label><input name="tdh_plan" type="text" value="<?php echo esc_attr( $m_plan ); ?>" placeholder="<?php esc_attr_e( 'Professional', 'thirtydayhomes' ); ?>"></div>
+									<div class="form-field"><label><?php esc_html_e( 'Listing allowance', 'thirtydayhomes' ); ?></label><input name="tdh_quota" type="number" min="0" value="<?php echo esc_attr( (string) Membership::quota( $m_id ) ); ?>"></div>
+									<div class="form-field"><label><?php esc_html_e( 'Plan expiry', 'thirtydayhomes' ); ?></label><input name="tdh_expires" type="date" value="<?php echo esc_attr( Membership::expires( $m_id ) ? wp_date( 'Y-m-d', Membership::expires( $m_id ) ) : '' ); ?>"></div>
+								</div>
+								<button class="primary" type="submit"><?php esc_html_e( 'Save member', 'thirtydayhomes' ); ?></button>
+							</form>
+
+							<div class="portal-member-actions">
+								<form method="post" action="<?php echo esc_url( self::mk_url( 'members' ) ); ?>">
+									<input type="hidden" name="tdh_action" value="member_reset"><input type="hidden" name="tdh_member" value="<?php echo esc_attr( (string) $m_id ); ?>">
+									<?php wp_nonce_field( 'tdh_member_reset', 'tdh_nonce' ); ?>
+									<button class="secondary" type="submit"><?php esc_html_e( 'Send password reset', 'thirtydayhomes' ); ?></button>
+								</form>
+								<form method="post" action="<?php echo esc_url( self::mk_url( 'members' ) ); ?>" onsubmit="return confirm('<?php echo esc_js( __( 'Delete this member? Their listings will be reassigned to you.', 'thirtydayhomes' ) ); ?>');">
+									<input type="hidden" name="tdh_action" value="member_delete"><input type="hidden" name="tdh_member" value="<?php echo esc_attr( (string) $m_id ); ?>"><input type="hidden" name="tdh_confirm_delete" value="1">
+									<?php wp_nonce_field( 'tdh_member_delete', 'tdh_nonce' ); ?>
+									<button class="danger" type="submit"><?php esc_html_e( 'Delete member', 'thirtydayhomes' ); ?></button>
+								</form>
+							</div>
+						</div>
+					</details>
 				<?php endforeach; ?>
 			<?php endif; ?>
 		</div>
@@ -1454,29 +1656,70 @@ final class Account_Render {
 				<h1><?php esc_html_e( 'Facilities', 'thirtydayhomes' ); ?></h1>
 				<p><?php esc_html_e( 'The hospitals and campuses the distance search measures from.', 'thirtydayhomes' ); ?></p>
 			</span>
-			<a class="secondary" href="<?php echo esc_url( admin_url( 'edit.php?post_type=' . Post_Types::FACILITY ) ); ?>">
-				<?php esc_html_e( 'Open in WordPress', 'thirtydayhomes' ); ?>
-			</a>
 		</div>
+
+		<details class="panel portal-panel-block portal-editor"<?php echo ! $facilities ? ' open' : ''; ?>>
+			<summary><span><b><?php esc_html_e( 'Add a facility', 'thirtydayhomes' ); ?></b><small><?php esc_html_e( 'Add a hospital or campus used by distance search.', 'thirtydayhomes' ); ?></small></span><?php echo self::mk_icon( 'plus', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?></summary>
+			<form class="portal-admin-form" method="post" action="<?php echo esc_url( self::mk_url( 'facilities' ) ); ?>">
+				<input type="hidden" name="tdh_action" value="facility_save">
+				<?php wp_nonce_field( 'tdh_facility_save', 'tdh_nonce' ); ?>
+				<?php self::mk_facility_fields(); ?>
+				<button class="primary" type="submit"><?php esc_html_e( 'Add facility', 'thirtydayhomes' ); ?></button>
+			</form>
+		</details>
 
 		<div class="panel portal-panel-block">
 			<?php if ( ! $facilities ) : ?>
 				<div class="empty-state">
 					<i><?php echo self::mk_icon( 'stethoscope', 22 ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
 					<h4><?php esc_html_e( 'No facilities yet', 'thirtydayhomes' ); ?></h4>
-					<p><?php esc_html_e( 'Add hospitals and campuses in WordPress and they appear here.', 'thirtydayhomes' ); ?></p>
+					<p><?php esc_html_e( 'Use “Add a facility” above to create the first search destination.', 'thirtydayhomes' ); ?></p>
 				</div>
 			<?php else : ?>
 				<?php foreach ( $facilities as $facility ) : ?>
-					<div class="portal-approval">
-						<i aria-hidden="true"><?php echo self::mk_icon( 'stethoscope', 20 ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
-						<span>
-							<b><a href="<?php echo esc_url( admin_url( 'post.php?action=edit&post=' . $facility->ID ) ); ?>"><?php echo esc_html( get_the_title( $facility ) ); ?></a></b>
-						</span>
-					</div>
+					<details class="portal-member">
+						<summary class="portal-approval">
+							<i aria-hidden="true"><?php echo self::mk_icon( 'stethoscope', 20 ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
+							<span><b><?php echo esc_html( get_the_title( $facility ) ); ?></b><small><?php echo esc_html( (string) get_post_meta( $facility->ID, '_tdh_street_address', true ) ); ?></small></span>
+							<span class="status <?php echo get_post_meta( $facility->ID, '_tdh_active', true ) ? 'live' : 'inactive'; ?>"><?php echo get_post_meta( $facility->ID, '_tdh_active', true ) ? esc_html__( 'Active', 'thirtydayhomes' ) : esc_html__( 'Inactive', 'thirtydayhomes' ); ?></span>
+							<?php echo self::mk_icon( 'chevron-down', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+						</summary>
+						<div class="portal-member-edit">
+							<form class="portal-admin-form" method="post" action="<?php echo esc_url( self::mk_url( 'facilities' ) ); ?>">
+								<input type="hidden" name="tdh_action" value="facility_save"><input type="hidden" name="tdh_facility" value="<?php echo esc_attr( (string) $facility->ID ); ?>">
+								<?php wp_nonce_field( 'tdh_facility_save', 'tdh_nonce' ); ?>
+								<?php self::mk_facility_fields( $facility->ID ); ?>
+								<button class="primary" type="submit"><?php esc_html_e( 'Save facility', 'thirtydayhomes' ); ?></button>
+							</form>
+							<div class="portal-member-actions">
+								<form method="post" action="<?php echo esc_url( self::mk_url( 'facilities' ) ); ?>" onsubmit="return confirm('<?php echo esc_js( __( 'Delete this facility?', 'thirtydayhomes' ) ); ?>');">
+									<input type="hidden" name="tdh_action" value="facility_delete"><input type="hidden" name="tdh_facility" value="<?php echo esc_attr( (string) $facility->ID ); ?>"><input type="hidden" name="tdh_confirm_delete" value="1">
+									<?php wp_nonce_field( 'tdh_facility_delete', 'tdh_nonce' ); ?><button class="danger" type="submit"><?php esc_html_e( 'Delete facility', 'thirtydayhomes' ); ?></button>
+								</form>
+							</div>
+						</div>
+					</details>
 				<?php endforeach; ?>
 			<?php endif; ?>
 		</div>
+		<?php
+	}
+
+	private static function mk_facility_fields( int $facility_id = 0 ): void {
+		$value = static fn( string $key, string $default = '' ): string => $facility_id ? (string) get_post_meta( $facility_id, $key, true ) : $default;
+		$type  = $value( '_tdh_facility_type', 'hospital' );
+		?>
+		<div class="form-grid">
+			<div class="form-field"><label><?php esc_html_e( 'Facility name', 'thirtydayhomes' ); ?></label><input name="tdh_title" type="text" value="<?php echo esc_attr( $facility_id ? get_the_title( $facility_id ) : '' ); ?>" required></div>
+			<div class="form-field"><label><?php esc_html_e( 'Facility type', 'thirtydayhomes' ); ?></label><select name="tdh_meta[_tdh_facility_type]"><?php foreach ( Fields::facility_schema()['_tdh_facility_type']['options'] as $key => $label ) : ?><option value="<?php echo esc_attr( $key ); ?>" <?php selected( $type, $key ); ?>><?php echo esc_html( $label ); ?></option><?php endforeach; ?></select></div>
+			<div class="form-field"><label><?php esc_html_e( 'Street address', 'thirtydayhomes' ); ?></label><input name="tdh_meta[_tdh_street_address]" type="text" value="<?php echo esc_attr( $value( '_tdh_street_address' ) ); ?>"></div>
+			<div class="form-field"><label><?php esc_html_e( 'State', 'thirtydayhomes' ); ?></label><input name="tdh_meta[_tdh_state]" type="text" value="<?php echo esc_attr( $value( '_tdh_state', 'PA' ) ); ?>"></div>
+			<div class="form-field"><label><?php esc_html_e( 'ZIP code', 'thirtydayhomes' ); ?></label><input name="tdh_meta[_tdh_zip]" type="text" value="<?php echo esc_attr( $value( '_tdh_zip' ) ); ?>"></div>
+			<div class="form-field"><label><?php esc_html_e( 'Sort order', 'thirtydayhomes' ); ?></label><input name="tdh_meta[_tdh_sort_order]" type="number" value="<?php echo esc_attr( $value( '_tdh_sort_order', '0' ) ); ?>"></div>
+			<div class="form-field"><label><?php esc_html_e( 'Latitude', 'thirtydayhomes' ); ?></label><input name="tdh_meta[_tdh_lat]" type="number" step="any" value="<?php echo esc_attr( $value( '_tdh_lat' ) ); ?>"></div>
+			<div class="form-field"><label><?php esc_html_e( 'Longitude', 'thirtydayhomes' ); ?></label><input name="tdh_meta[_tdh_lng]" type="number" step="any" value="<?php echo esc_attr( $value( '_tdh_lng' ) ); ?>"></div>
+		</div>
+		<label class="portal-check"><input type="hidden" name="tdh_meta[_tdh_active]" value="0"><input name="tdh_meta[_tdh_active]" type="checkbox" value="1" <?php checked( $facility_id ? (bool) get_post_meta( $facility_id, '_tdh_active', true ) : true ); ?>> <?php esc_html_e( 'Active in renter search', 'thirtydayhomes' ); ?></label>
 		<?php
 	}
 
@@ -1767,6 +2010,17 @@ final class Account_Render {
 		if ( ! is_user_logged_in() ) {
 			return self::sign_in_wall( __( 'Sign in to manage your account details.', 'thirtydayhomes' ) );
 		}
+
+		// Preserve old /profile/ bookmarks while using the consistent portal UI.
+		$previous_view = $_GET['view'] ?? null; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$_GET['view']  = 'profile';
+		$portal        = self::dashboard();
+		if ( null === $previous_view ) {
+			unset( $_GET['view'] );
+		} else {
+			$_GET['view'] = $previous_view;
+		}
+		return $portal;
 
 		$user   = wp_get_current_user();
 		$notice = Accounts::take_notice();

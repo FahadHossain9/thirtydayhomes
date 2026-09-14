@@ -245,10 +245,13 @@ final class Listing_Form {
 		 * differently for "not yours" and "not real" would leak the
 		 * difference.
 		 */
+		$staff_statuses = array_merge( [ 'publish', 'pending', 'draft', 'future', 'private' ], array_keys( Statuses::all() ) );
+		$is_staff       = Accounts::is_staff();
+
 		if ( ! $post
 			|| Post_Types::LISTING !== $post->post_type
-			|| (int) $post->post_author !== get_current_user_id()
-			|| ! in_array( $post->post_status, [ 'draft', 'pending' ], true )
+			|| ( ! $is_staff && (int) $post->post_author !== get_current_user_id() )
+			|| ! in_array( $post->post_status, $is_staff ? $staff_statuses : [ 'draft', 'pending' ], true )
 		) {
 			return null;
 		}
@@ -298,6 +301,7 @@ final class Listing_Form {
 		$zip          = sanitize_text_field( wp_unslash( (string) ( $_POST['tdh_zip'] ?? '' ) ) );
 		$neighborhood = (int) ( $_POST['tdh_neighborhood'] ?? 0 );
 		$type         = (int) ( $_POST['tdh_type'] ?? 0 );
+		$city         = (int) ( $_POST['tdh_city'] ?? 0 );
 		$rent         = (float) ( $_POST['tdh_rent'] ?? 0 );
 		$deposit      = sanitize_text_field( wp_unslash( (string) ( $_POST['tdh_deposit'] ?? '' ) ) );
 		$beds         = (int) ( $_POST['tdh_beds'] ?? 0 );
@@ -385,6 +389,13 @@ final class Listing_Form {
 			wp_set_object_terms( $id, [ $type ], Post_Types::TAX_TYPE );
 		}
 
+		// The city the public pages read back. Verified like the others: an
+		// id from another taxonomy assigns nothing rather than inventing a
+		// city term the search would then offer to renters.
+		if ( $city > 0 && term_exists( $city, Post_Types::TAX_CITY ) ) {
+			wp_set_object_terms( $id, [ $city ], Post_Types::TAX_CITY );
+		}
+
 		// "Save draft" saves the same way Continue does — the only difference
 		// is staying put, with the save acknowledged.
 		if ( ! empty( $_POST['tdh_save_only'] ) ) {
@@ -394,13 +405,35 @@ final class Listing_Form {
 		$this->go( 2, $id );
 	}
 
+	/**
+	 * Every step handler needs the draft it is editing. When that draft
+	 * cannot be opened, SAY SO.
+	 *
+	 * This used to be a bare redirect to step 1, and it is exactly how a
+	 * landlord could choose a photo, press Continue, and be shown an empty
+	 * form with nothing saved and nothing explained. Silence is the worst
+	 * answer a form can give — it reads as a broken site.
+	 *
+	 * One message for "not yours" and "no longer editable" alike: which
+	 * listing ids exist under which numbers is not information this screen
+	 * hands out, and current_listing() deliberately cannot tell the two
+	 * apart. The wording covers both honestly.
+	 */
+	private function lost_listing(): void {
+		$this->fail(
+			1,
+			[
+				__( 'That listing could not be opened for editing, so nothing was saved. It may already be published, or it may not be on your account — your dashboard lists every home you own.', 'thirtydayhomes' ),
+			]
+		);
+	}
+
 	private function save_features(): void {
 
 		$listing = self::current_listing();
 
 		if ( ! $listing ) {
-			wp_safe_redirect( self::url() );
-			exit;
+			$this->lost_listing();
 		}
 
 		$stay = sanitize_key( wp_unslash( (string) ( $_POST['tdh_stay'] ?? '' ) ) );
@@ -484,8 +517,7 @@ final class Listing_Form {
 		$listing = self::current_listing();
 
 		if ( ! $listing ) {
-			wp_safe_redirect( self::url() );
-			exit;
+			$this->lost_listing();
 		}
 
 		$errors = [];
@@ -573,6 +605,25 @@ final class Listing_Form {
 						continue;
 					}
 
+					/*
+					 * PHP's own verdict comes first. When the upload failed
+					 * before WordPress ever saw it — no temp directory, disk
+					 * not writable, transfer cut off — media_handle_upload()
+					 * reports something generic, and the landlord is left
+					 * guessing at a problem only the server can fix. Name it.
+					 */
+					$code = (int) ( $files['error'][ $i ] ?? UPLOAD_ERR_OK );
+
+					if ( UPLOAD_ERR_OK !== $code ) {
+						$errors[] = sprintf(
+							/* translators: 1: file name, 2: reason the upload failed */
+							__( '“%1$s” did not upload: %2$s', 'thirtydayhomes' ),
+							sanitize_text_field( (string) $files['name'][ $i ] ),
+							self::upload_error( $code )
+						);
+						continue;
+					}
+
 					// media_handle_upload() reads one $_FILES slot by key, so
 					// each file from the multi-input is staged under its own.
 					$_FILES['tdh_photo_one'] = [
@@ -622,7 +673,45 @@ final class Listing_Form {
 			$this->go( 3, $listing->ID, true );
 		}
 
-		$this->go( 4, $listing->ID );
+		/*
+		 * One press: Continue uploads what was chosen AND moves on.
+		 *
+		 * An earlier version stopped here to show the photographs, and a
+		 * still earlier one had a separate Upload button. Both were ways of
+		 * proving the upload had worked — but the proof now arrives without
+		 * costing a click: the browser draws the chosen photographs the
+		 * moment they are picked, and the review step counts them back and
+		 * says how many were added.
+		 *
+		 * So the extra stop earned nothing and cost a press on every
+		 * listing. The count travels forward instead.
+		 */
+		$added = isset( $incoming ) ? (int) $incoming : 0;
+
+		$this->go( 4, $listing->ID, false, $added > 0 ? [ 'added' => $added ] : [] );
+	}
+
+	/**
+	 * PHP's upload error codes, in words a landlord can act on.
+	 *
+	 * Half of these are server faults, not user faults, and saying which
+	 * is the difference between "try a smaller photo" (useless when the
+	 * disk is full) and a message whoever maintains the site can act on.
+	 */
+	private static function upload_error( int $code ): string {
+
+		$reasons = [
+			UPLOAD_ERR_INI_SIZE   => __( 'it is larger than this server accepts.', 'thirtydayhomes' ),
+			UPLOAD_ERR_FORM_SIZE  => __( 'it is larger than this form accepts.', 'thirtydayhomes' ),
+			UPLOAD_ERR_PARTIAL    => __( 'the upload was interrupted. Please try again.', 'thirtydayhomes' ),
+			UPLOAD_ERR_NO_FILE    => __( 'no file arrived with the form.', 'thirtydayhomes' ),
+			UPLOAD_ERR_NO_TMP_DIR => __( 'the server has no temporary folder to receive uploads. This is a hosting setting, not something you can fix — please tell us.', 'thirtydayhomes' ),
+			UPLOAD_ERR_CANT_WRITE => __( 'the server could not write the file to disk. This is a hosting setting, not something you can fix — please tell us.', 'thirtydayhomes' ),
+			UPLOAD_ERR_EXTENSION  => __( 'a server extension blocked it. Please tell us so we can look.', 'thirtydayhomes' ),
+		];
+
+		/* translators: %d: PHP's numeric upload error code */
+		return $reasons[ $code ] ?? sprintf( __( 'the server refused it (error %d).', 'thirtydayhomes' ), $code );
 	}
 
 	/**
@@ -653,8 +742,7 @@ final class Listing_Form {
 		$listing = self::current_listing();
 
 		if ( ! $listing ) {
-			wp_safe_redirect( self::url() );
-			exit;
+			$this->lost_listing();
 		}
 
 		/*
@@ -682,7 +770,12 @@ final class Listing_Form {
 		wp_update_post(
 			[
 				'ID'          => $listing->ID,
-				'post_status' => 'pending',
+				// A staff edit must not silently unpublish a live home or turn a
+				// rejected record back into a pending submission. Landlords still
+				// enter the normal review queue.
+				'post_status' => Accounts::is_staff() && 'draft' !== $listing->post_status
+					? $listing->post_status
+					: 'pending',
 			]
 		);
 
@@ -694,9 +787,15 @@ final class Listing_Form {
 		 *
 		 * @param int $listing_id
 		 */
-		do_action( 'tdh_listing_submitted', $listing->ID );
+		if ( ! Accounts::is_staff() ) {
+			do_action( 'tdh_listing_submitted', $listing->ID );
+		}
 
-		wp_safe_redirect( add_query_arg( 'tdh_submitted', '1', Accounts::url( 'account' ) ) );
+		$destination = Accounts::is_staff()
+			? add_query_arg( 'view', 'listings', Accounts::url( 'account' ) )
+			: Accounts::url( 'account' );
+
+		wp_safe_redirect( add_query_arg( 'tdh_submitted', '1', $destination ) );
 		exit;
 	}
 
@@ -716,12 +815,19 @@ final class Listing_Form {
 		return add_query_arg( $args, $base );
 	}
 
-	private function go( int $step, int $listing, bool $saved = false ): void {
+	/**
+	 * @param array<string,int|string> $extra Query arguments to carry along.
+	 */
+	private function go( int $step, int $listing, bool $saved = false, array $extra = [] ): void {
 
 		$url = self::url( $step, $listing );
 
 		if ( $saved ) {
 			$url = add_query_arg( 'saved', '1', $url );
+		}
+
+		if ( $extra ) {
+			$url = add_query_arg( $extra, $url );
 		}
 
 		wp_safe_redirect( $url );

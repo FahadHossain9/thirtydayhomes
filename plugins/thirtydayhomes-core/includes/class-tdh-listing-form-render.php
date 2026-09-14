@@ -61,6 +61,11 @@ final class Listing_Form_Render {
 		$errors = Listing_Form::take_errors();
 		$saved  = isset( $_GET['saved'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
+		// How many photographs the previous step just stored. A number, not
+		// a message, so the wording lives here and the URL cannot be edited
+		// into claiming something that did not happen.
+		$added = isset( $_GET['added'] ) ? max( 0, (int) $_GET['added'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
 		ob_start();
 		?>
 		<div class="lform">
@@ -107,6 +112,21 @@ final class Listing_Form_Render {
 				</div>
 			<?php endif; ?>
 
+			<?php if ( $added > 0 ) : ?>
+				<div class="form-notice form-notice--ok lform-notice" role="status">
+					<?php echo self::icon( 'check', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+					<p>
+						<?php
+						printf(
+							/* translators: %s: number of photos added */
+							esc_html( _n( '%s photo added to this listing.', '%s photos added to this listing.', $added, 'thirtydayhomes' ) ),
+							esc_html( number_format_i18n( $added ) )
+						);
+						?>
+					</p>
+				</div>
+			<?php endif; ?>
+
 			<?php
 			match ( $step ) {
 				1 => self::step_basics( $listing ),
@@ -131,9 +151,17 @@ final class Listing_Form_Render {
 
 		$neighborhoods = get_terms( [ 'taxonomy' => Post_Types::TAX_NEIGHBORHOOD, 'hide_empty' => false ] );
 		$types         = get_terms( [ 'taxonomy' => Post_Types::TAX_TYPE, 'hide_empty' => false ] );
+		$cities        = get_terms( [ 'taxonomy' => Post_Types::TAX_CITY, 'hide_empty' => false ] );
 
 		$current_hood = $id ? (int) ( wp_get_object_terms( $id, Post_Types::TAX_NEIGHBORHOOD, [ 'fields' => 'ids' ] )[0] ?? 0 ) : 0;
 		$current_type = $id ? (int) ( wp_get_object_terms( $id, Post_Types::TAX_TYPE, [ 'fields' => 'ids' ] )[0] ?? 0 ) : 0;
+		$current_city = $id ? (int) ( wp_get_object_terms( $id, Post_Types::TAX_CITY, [ 'fields' => 'ids' ] )[0] ?? 0 ) : 0;
+
+		// One city, and it is the only one on offer? Then choosing it is not
+		// a decision, so it is preselected rather than made a required act.
+		if ( 0 === $current_city && is_array( $cities ) && 1 === count( $cities ) ) {
+			$current_city = (int) $cities[0]->term_id;
+		}
 		?>
 		<form class="lform-card" method="post" action="<?php echo esc_url( Listing_Form::url( 1, $id ) ); ?>">
 			<?php self::head( 'listing_basics' ); ?>
@@ -163,6 +191,29 @@ final class Listing_Form_Render {
 						<option value=""><?php esc_html_e( 'Choose…', 'thirtydayhomes' ); ?></option>
 						<?php foreach ( (array) $neighborhoods as $term ) : ?>
 							<option value="<?php echo esc_attr( (string) $term->term_id ); ?>" <?php selected( $current_hood, $term->term_id ); ?>>
+								<?php echo esc_html( $term->name ); ?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+				</label>
+
+				<?php
+				/*
+				 * The city, asked for rather than assumed.
+				 *
+				 * Every card and banner used to end in the literal word
+				 * "Pittsburgh" because the form never asked which city a
+				 * home was in. The owner lists in more than one, so the
+				 * question is now put to the landlord and the answer is
+				 * what the public pages read back.
+				 */
+				?>
+				<label class="lform-field">
+					<span><b><?php esc_html_e( 'City', 'thirtydayhomes' ); ?></b></span>
+					<select name="tdh_city" required>
+						<option value=""><?php esc_html_e( 'Choose…', 'thirtydayhomes' ); ?></option>
+						<?php foreach ( (array) $cities as $term ) : ?>
+							<option value="<?php echo esc_attr( (string) $term->term_id ); ?>" <?php selected( $current_city, $term->term_id ); ?>>
 								<?php echo esc_html( $term->name ); ?>
 							</option>
 						<?php endforeach; ?>
@@ -359,6 +410,39 @@ final class Listing_Form_Render {
 				</small>
 				<span><?php esc_html_e( 'Choose photos', 'thirtydayhomes' ); ?></span>
 			</label>
+
+			<?php
+			/*
+			 * An explicit Upload, outside the label.
+			 *
+			 * "Choose photos" only opens the file picker — nothing leaves
+			 * the browser until the form is posted, and the owner read that
+			 * gap as a broken upload. Continue used to be the only thing
+			 * that sent them, which made one button mean two things.
+			 *
+			 * Outside the <label> deliberately: a button inside it would
+			 * re-open the file picker on every click instead of submitting.
+			 */
+			?>
+			<?php
+			/*
+			 * Where the browser shows what was just chosen.
+			 *
+			 * Empty and hidden until then, and filled entirely on the
+			 * client from the files themselves — nothing here has been
+			 * sent yet, and the caption says so. Choosing a photo used to
+			 * change one line of text, which was too quiet to register:
+			 * the owner reported picking files and seeing "nothing happen".
+			 */
+			?>
+			<div class="lform-preview" hidden>
+				<p class="lform-preview-head">
+					<b><?php esc_html_e( 'Ready to upload', 'thirtydayhomes' ); ?></b>
+					<small><?php esc_html_e( 'These are added when you press Continue', 'thirtydayhomes' ); ?></small>
+				</p>
+				<div class="lform-preview-grid"></div>
+			</div>
+
 			<script>
 			/* Confirmation that the choice registered — the input itself is
 			   invisible under the dropzone, so without this the picker closes
@@ -414,6 +498,116 @@ final class Listing_Form_Render {
 
 			<?php self::actions( __( 'Continue', 'thirtydayhomes' ), Listing_Form::url( 2, $id ) ); ?>
 		</form>
+		<script>
+		/* Two silences this closes.
+
+		   Choosing photographs changed one line of text, which was too
+		   quiet to notice — the owner picked files and reported that
+		   nothing happened. Now the browser draws them immediately, from
+		   the files themselves, and the Upload button counts them.
+
+		   Uploading then travelled with the page saying nothing, which read
+		   as a broken feature. The pressed button now names what it is
+		   doing and refuses a second click.
+
+		   Enhancement only. With JavaScript off the form still posts, the
+		   photographs still arrive, and the server still reports refusals —
+		   this only makes a working thing visible sooner. */
+		( function () {
+			var s = document.currentScript, form = s ? s.previousElementSibling : null;
+			if ( ! form ) { return; }
+
+			var input   = form.querySelector( 'input[type="file"]' );
+			var title   = form.querySelector( '.lform-drop > b' );
+			var preview = form.querySelector( '.lform-preview' );
+			var grid    = form.querySelector( '.lform-preview-grid' );
+
+			var TXT = {
+				one:    <?php echo wp_json_encode( __( 'photo selected', 'thirtydayhomes' ) ); ?>,
+				many:   <?php echo wp_json_encode( __( 'photos selected', 'thirtydayhomes' ) ); ?>,
+				drop:   title ? title.textContent : '',
+				big:    <?php echo wp_json_encode( __( 'Some of these are bigger than the server accepts — they will be refused.', 'thirtydayhomes' ) ); ?>,
+				busy:   <?php echo wp_json_encode( __( 'Uploading…', 'thirtydayhomes' ) ); ?>,
+				saving: <?php echo wp_json_encode( __( 'Saving…', 'thirtydayhomes' ) ); ?>
+			};
+
+			var max  = parseInt( form.querySelector( '.lform-drop' ).dataset.max, 10 ) || 0;
+			var urls = [];
+
+			function clearPreviews() {
+				urls.forEach( function ( u ) { URL.revokeObjectURL( u ); } );
+				urls = [];
+				if ( grid ) { grid.textContent = ''; }
+			}
+
+			function reset() {
+				clearPreviews();
+				if ( preview ) { preview.hidden = true; }
+				if ( title ) { title.textContent = TXT.drop; }
+			}
+
+			if ( input ) {
+				input.addEventListener( 'change', function () {
+
+					var files = input.files || [];
+					clearPreviews();
+
+					if ( ! files.length ) { reset(); return; }
+
+					var total = 0, tooBig = false, i, file, url, fig;
+
+					for ( i = 0; i < files.length; i++ ) {
+						file   = files[ i ];
+						total += file.size;
+
+						if ( max && file.size > max ) { tooBig = true; }
+
+						if ( grid && file.type.indexOf( 'image/' ) === 0 ) {
+							url = URL.createObjectURL( file );
+							urls.push( url );
+
+							fig = document.createElement( 'figure' );
+							fig.className = 'lform-preview-item';
+
+							var img = document.createElement( 'img' );
+							img.src = url;
+							img.alt = '';
+
+							var cap = document.createElement( 'figcaption' );
+							cap.textContent = file.name;
+
+							fig.appendChild( img );
+							fig.appendChild( cap );
+							grid.appendChild( fig );
+						}
+					}
+
+					if ( title ) {
+						title.textContent = tooBig
+							? TXT.big
+							: files.length + ' ' + ( 1 === files.length ? TXT.one : TXT.many )
+								+ ' · ' + ( total / 1048576 ).toFixed( 1 ) + ' MB';
+					}
+
+					if ( preview ) { preview.hidden = false; }
+				} );
+			}
+
+			form.addEventListener( 'submit', function ( e ) {
+				var button = e.submitter || form.querySelector( 'button.primary' );
+				if ( ! button ) { return; }
+
+				button.textContent = ( input && input.files && input.files.length ) ? TXT.busy : TXT.saving;
+				button.disabled    = true;
+
+				// Re-enable when the browser restores this page from
+				// history, otherwise Back leaves a dead button behind.
+				window.addEventListener( 'pageshow', function () {
+					button.disabled = false;
+				} );
+			} );
+		} )();
+		</script>
 		<?php
 	}
 
@@ -423,8 +617,9 @@ final class Listing_Form_Render {
 
 	private static function step_review( ?\WP_Post $listing ): void {
 
-		$id   = $listing ? $listing->ID : 0;
-		$rent = (string) get_post_meta( $id, '_tdh_price_monthly', true );
+		$id     = $listing ? $listing->ID : 0;
+		$rent   = (string) get_post_meta( $id, '_tdh_price_monthly', true );
+		$photos = count( Listing_Form::photos( $id ) );
 
 		$hood = wp_get_object_terms( $id, Post_Types::TAX_NEIGHBORHOOD, [ 'fields' => 'names' ] );
 		$hood = is_wp_error( $hood ) ? [] : $hood;
@@ -432,15 +627,19 @@ final class Listing_Form_Render {
 		$amen = is_wp_error( $amen ) ? [] : $amen;
 
 		/*
-		 * ", Pittsburgh" is the single listing template's own precedent —
-		 * its banner eyebrow prints "{neighborhood} · Pittsburgh". Launch
-		 * is one city; when a second one arrives, both places change
-		 * together or the tests catch the drift.
+		 * The city was typed in here as "Pittsburgh", with a note saying
+		 * that when a second city arrived this and the listing template
+		 * would have to change together. That has happened: the form now
+		 * asks for the city, and both places read the listing's own terms.
 		 */
-		$location = $hood
-			/* translators: %s: neighborhood name */
-			? sprintf( __( '%s, Pittsburgh', 'thirtydayhomes' ), implode( ', ', $hood ) )
-			: __( 'Pittsburgh', 'thirtydayhomes' );
+		$city = wp_get_object_terms( $id, Post_Types::TAX_CITY, [ 'fields' => 'names' ] );
+		$city = is_wp_error( $city ) ? [] : $city;
+
+		$location = implode( ', ', array_filter( array_merge( $hood, $city ) ) );
+
+		if ( '' === $location ) {
+			$location = '—';
+		}
 
 		$rows = [
 			__( 'Title', 'thirtydayhomes' )        => $listing && '' !== $listing->post_title
@@ -451,6 +650,20 @@ final class Listing_Form_Render {
 			__( 'Amenities', 'thirtydayhomes' )    =>
 				/* translators: %s: amenity count */
 				sprintf( __( '%s selected', 'thirtydayhomes' ), number_format_i18n( count( $amen ) ) ),
+
+			/*
+			 * Photographs, counted back.
+			 *
+			 * The review listed everything a landlord had entered EXCEPT
+			 * the photos, so the one step with no confirmation was the one
+			 * that takes longest and matters most. The owner reported the
+			 * upload as broken on that basis while it was working. A count
+			 * here is how the wizard says "yes, they arrived".
+			 */
+			__( 'Photos', 'thirtydayhomes' )       => $photos
+				/* translators: %s: number of photos */
+				? sprintf( _n( '%s photo', '%s photos', $photos, 'thirtydayhomes' ), number_format_i18n( $photos ) )
+				: __( 'None yet', 'thirtydayhomes' ),
 		];
 		?>
 		<form class="lform-card" method="post" action="<?php echo esc_url( Listing_Form::url( 4, $id ) ); ?>">

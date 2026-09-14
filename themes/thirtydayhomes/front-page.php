@@ -175,9 +175,18 @@ elseif ( ! tdh_elementor_location( 'single' ) ) :
 	<section class="section">
 		<div class="section-title">
 			<div>
-				<p class="overline gold"><?php esc_html_e( 'Explore Pittsburgh', 'thirtydayhomes' ); ?></p>
+				<?php
+				/*
+				 * City-neutral. The owner lists in Pittsburgh and Cleveland
+				 * and asked that the site be worded to scale, so the section
+				 * names what these homes ARE rather than where the first
+				 * ones happen to be. Each card still states its own city,
+				 * read from the listing.
+				 */
+				?>
+				<p class="overline gold"><?php esc_html_e( 'Explore homes', 'thirtydayhomes' ); ?></p>
 				<h2><?php esc_html_e( 'Homes ready when you are', 'thirtydayhomes' ); ?></h2>
-				<p><?php esc_html_e( 'Handpicked monthly rentals close to Pittsburgh’s leading medical centres.', 'thirtydayhomes' ); ?></p>
+				<p><?php esc_html_e( 'Handpicked monthly rentals close to leading medical centres.', 'thirtydayhomes' ); ?></p>
 			</div>
 			<a class="text-btn" href="<?php echo esc_url( $archive ); ?>">
 				<?php esc_html_e( 'View all homes →', 'thirtydayhomes' ); ?>
