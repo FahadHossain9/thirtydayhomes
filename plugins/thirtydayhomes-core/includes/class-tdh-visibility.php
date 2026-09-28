@@ -72,6 +72,10 @@ final class Visibility {
 			return;
 		}
 
+		if ( self::permits_preview( $query ) ) {
+			return;
+		}
+
 		$query->set( 'post_status', Statuses::public_status() );
 
 		$inactive = self::inactive_member_ids();
@@ -79,6 +83,46 @@ final class Visibility {
 			$existing = (array) $query->get( 'author__not_in' );
 			$query->set( 'author__not_in', array_values( array_unique( array_merge( $existing, $inactive ) ) ) );
 		}
+	}
+
+	/**
+	 * May this request preview a listing that is not public?
+	 *
+	 * The approval queue links every waiting home to its preview, and the
+	 * link opened a bare "Page not found": this rule forced every front-end
+	 * listing query to `publish`, staff included, so the one person who
+	 * needed to see an unapproved home before deciding could not.
+	 *
+	 * Narrow on purpose. Only the MAIN query of a single-listing PREVIEW
+	 * request, and only for someone WordPress already lets edit that exact
+	 * listing — its landlord, or staff. Everyone else still gets not-found,
+	 * and nothing about who owns what is revealed. WordPress core then
+	 * applies its own protected-status check on top.
+	 */
+	public static function permits_preview( \WP_Query $query ): bool {
+
+		if ( ! $query->is_main_query() || ! $query->is_preview() || ! is_user_logged_in() ) {
+			return false;
+		}
+
+		$id   = (int) $query->get( 'p' );
+		$post = $id > 0 ? get_post( $id ) : null;
+
+		/*
+		 * A home that was live once — paused, sent back, held for billing —
+		 * keeps its pretty address, so WordPress builds its preview link as
+		 * /homes/its-name/?preview=true, with no id in it. Found by name.
+		 */
+		$name = (string) $query->get( 'name' );
+
+		if ( ! $post && '' !== $name && Post_Types::LISTING === $query->get( 'post_type' ) ) {
+			$post = get_page_by_path( $name, OBJECT, Post_Types::LISTING );
+			$id   = $post instanceof \WP_Post ? (int) $post->ID : 0;
+		}
+
+		return $post instanceof \WP_Post
+			&& Post_Types::LISTING === $post->post_type
+			&& current_user_can( 'edit_post', $id );
 	}
 
 	/**
@@ -98,7 +142,7 @@ final class Visibility {
 		// Archive and taxonomy requests do not set post_type explicitly.
 		return $query->is_main_query()
 			&& ( $query->is_post_type_archive( Post_Types::LISTING )
-				|| $query->is_tax( [ Post_Types::TAX_TYPE, Post_Types::TAX_NEIGHBORHOOD, Post_Types::TAX_AMENITY ] ) );
+				|| $query->is_tax( [ Post_Types::TAX_TYPE, Post_Types::TAX_NEIGHBORHOOD, Post_Types::TAX_AMENITY, Post_Types::TAX_CITY ] ) );
 	}
 
 	/**

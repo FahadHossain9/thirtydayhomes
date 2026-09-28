@@ -65,6 +65,31 @@ final class Shortcode_Reference {
 				],
 			],
 			[
+				'tag'     => 'tdh_search_results',
+				'title'   => __( 'Search results', 'thirtydayhomes' ),
+				'summary' => __( 'The homes the current search found, with the search box and the filters. It works on any page: on Find a home it uses that page\'s own search, and anywhere else it runs the same search itself, so the filters in the address bar always decide which homes appear. Which homes appear is never set here.', 'thirtydayhomes' ),
+				'example' => '[tdh_search_results heading="Homes in Pittsburgh" per_page="6"]',
+				'atts'    => [
+					[ 'heading', __( 'any text', 'thirtydayhomes' ), '—', __( 'Heading above the results. Omit for no heading.', 'thirtydayhomes' ) ],
+					[ 'intro', __( 'any text', 'thirtydayhomes' ), '—', __( 'One sentence under the heading.', 'thirtydayhomes' ) ],
+					[ 'show_search', 'yes, no', 'yes', __( 'The search box at the top.', 'thirtydayhomes' ) ],
+					[ 'show_filters', 'yes, no', 'yes', __( 'The filter row: price, dates, hospital, bedrooms and the rest.', 'thirtydayhomes' ) ],
+					[ 'show_view_toggle', 'yes, no', 'yes', __( 'The List and Map buttons. They appear only when a maps key is set up.', 'thirtydayhomes' ) ],
+					[ 'per_page', '1–48', __( 'the site setting', 'thirtydayhomes' ), __( 'How many homes per page. Ignored on Find a home itself, where the page decides.', 'thirtydayhomes' ) ],
+				],
+			],
+			[
+				'tag'     => 'tdh_nearby_facilities',
+				'title'   => __( 'Nearby hospitals', 'thirtydayhomes' ),
+				'summary' => __( 'The hospitals nearest to a home, with the distance to each. Every distance is measured by the site from the home\'s own location, so it is never typed in and never goes stale. It shows something only on a property page.', 'thirtydayhomes' ),
+				'example' => '[tdh_nearby_facilities heading="Close to care" count="3"]',
+				'atts'    => [
+					[ 'heading', __( 'any text', 'thirtydayhomes' ), '—', __( 'Heading above the list. Omit for no heading.', 'thirtydayhomes' ) ],
+					[ 'count', '1–5', __( 'the Listing setup value', 'thirtydayhomes' ), __( 'How many hospitals to list. Leave empty to follow Listing setup.', 'thirtydayhomes' ) ],
+					[ 'listing', __( 'a listing ID', 'thirtydayhomes' ), __( 'the home being viewed', 'thirtydayhomes' ), __( 'Only needed to show one particular home outside its own page.', 'thirtydayhomes' ) ],
+				],
+			],
+			[
 				'tag'     => 'tdh_hero_search',
 				'title'   => __( 'Hero search', 'thirtydayhomes' ),
 				'summary' => __( 'The large banner with the headline and the search form. The form always posts to the listing archive — the field names are fixed so search cannot be broken by an edit.', 'thirtydayhomes' ),

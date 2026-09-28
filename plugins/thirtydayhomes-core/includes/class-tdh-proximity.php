@@ -25,20 +25,53 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Proximity {
 
-	/** Cached nearest-facility result. */
+	/** Cached nearest-facility result (one row). Replaced by META_LIST. */
 	private const META_CACHE = '_tdh_nearest_facility';
+
+	/** Cached nearest facilities, sorted, with their distances. */
+	private const META_LIST = '_tdh_nearest_facilities';
+
+	/**
+	 * How many facilities the cache holds.
+	 *
+	 * Never fewer than the largest list a page may show (MAX_COUNT), so the
+	 * cached rows are always the candidates for any count and any radius the
+	 * administrator sets. Changing a setting then costs no rebuild.
+	 */
+	private const CACHE_ROWS = 10;
+
+	/** Settings, and the bounds a stored value is read back through. */
+	private const OPTION_COUNT  = 'tdh_proximity_count';
+	private const OPTION_RADIUS = 'tdh_proximity_radius';
+	public const DEFAULT_COUNT  = 3;
+	public const DEFAULT_RADIUS = 15;
+	public const MAX_COUNT      = 5;
+	public const MAX_RADIUS     = 100;
 
 	/** Mean radius of the Earth in miles. */
 	private const EARTH_RADIUS_MILES = 3958.7613;
 
 	public function register(): void {
+		// Before the hospital band, because when both are on a card the
+		// renter's own question ("how far from where I searched?") is the
+		// one they are scanning for.
+		add_action( 'tdh_listing_card_proximity', [ $this, 'render_area_band' ], 9 );
 		add_action( 'tdh_listing_card_proximity', [ $this, 'render_band' ] );
+		add_action( 'tdh_listing_proximity', [ $this, 'render_list' ] );
 
 		// A listing that moves, or a facility that opens, closes or moves,
 		// invalidates every cached answer that could depend on it.
 		add_action( 'save_post_' . Post_Types::LISTING, [ $this, 'clear_listing_cache' ] );
 		add_action( 'save_post_' . Post_Types::FACILITY, [ $this, 'clear_all_caches' ] );
 		add_action( 'deleted_post', [ $this, 'clear_on_delete' ], 10, 2 );
+
+		// A point can also arrive without a save: the geocoder writes it at
+		// the end of a request, and `wp tdh geocode` writes it with no post
+		// save at all. Without this, distances stay stale on live until
+		// somebody happens to re-save the facility.
+		add_action( 'added_post_meta', [ $this, 'clear_on_point' ], 10, 3 );
+		add_action( 'updated_post_meta', [ $this, 'clear_on_point' ], 10, 3 );
+		add_action( 'deleted_post_meta', [ $this, 'clear_on_point' ], 10, 3 );
 	}
 
 	/**
@@ -63,58 +96,132 @@ final class Proximity {
 	/**
 	 * The nearest active facility to a listing.
 	 *
-	 * @return array{id:int,title:string,miles:float}|null Null when the
-	 *         listing has no coordinates or no facility is reachable.
+	 * No radius: the card band answers "what is the nearest hospital", and a
+	 * home twenty miles out still has one. The property page's list is the
+	 * place where "within 15 miles" applies.
+	 *
+	 * @return array{id:int,title:string,type:string,miles:float}|null Null when
+	 *         the listing has no coordinates or no facility is reachable.
 	 */
 	public static function nearest( int $listing_id ): ?array {
+		return self::ranked( $listing_id )[0] ?? null;
+	}
 
-		$cached = get_post_meta( $listing_id, self::META_CACHE, true );
-		if ( is_array( $cached ) && isset( $cached['id'], $cached['title'], $cached['miles'] ) ) {
-			return [
-				'id'    => (int) $cached['id'],
-				'title' => (string) $cached['title'],
-				'miles' => (float) $cached['miles'],
-			];
+	/**
+	 * The nearest facilities, closest first, within a radius.
+	 *
+	 * @param int|null   $count  How many at most; the setting when null.
+	 * @param float|null $radius Miles; the setting when null.
+	 * @return array<int,array{id:int,title:string,type:string,miles:float}>
+	 *         Empty when the listing has no location or nothing is in range.
+	 */
+	public static function nearest_n( int $listing_id, ?int $count = null, ?float $radius = null ): array {
+
+		$count  = null === $count ? self::count_setting() : self::clamp_count( $count );
+		$radius = null === $radius ? self::radius_setting() : self::clamp_radius( $radius );
+
+		$within = array_filter(
+			self::ranked( $listing_id ),
+			// Exactly at the radius is within it: "within 15 miles" includes 15.
+			static fn( array $row ): bool => $row['miles'] <= $radius
+		);
+
+		return array_slice( array_values( $within ), 0, $count );
+	}
+
+	/**
+	 * Every candidate facility for one listing, closest first.
+	 *
+	 * Cached in post meta: a grid of twelve cards would otherwise run twelve
+	 * facility queries per page load. The cache holds CACHE_ROWS rows, which
+	 * is more than any page shows, so the count and radius settings are
+	 * applied when reading and changing them rebuilds nothing.
+	 *
+	 * @return array<int,array{id:int,title:string,type:string,miles:float}>
+	 */
+	private static function ranked( int $listing_id ): array {
+
+		$cached = get_post_meta( $listing_id, self::META_LIST, true );
+
+		if ( is_array( $cached ) ) {
+			return array_map(
+				static fn( $row ): array => [
+					'id'    => (int) ( $row['id'] ?? 0 ),
+					'title' => (string) ( $row['title'] ?? '' ),
+					'type'  => (string) ( $row['type'] ?? '' ),
+					'miles' => (float) ( $row['miles'] ?? 0 ),
+				],
+				array_filter( $cached, 'is_array' )
+			);
 		}
 
-		$lat = get_post_meta( $listing_id, '_tdh_lat', true );
-		$lng = get_post_meta( $listing_id, '_tdh_lng', true );
+		// An un-geocoded listing gets no distances at all. Showing "0.0 mi"
+		// because a coordinate is missing would be worse than showing nothing
+		// — and an empty box once saved as 0,0, which is not a place
+		// (Geocoder decides).
+		$home = Geocoder::coordinates( $listing_id );
 
-		// An un-geocoded listing gets no band. Showing "0.0 mi" because a
-		// coordinate is missing would be worse than showing nothing.
-		if ( '' === $lat || '' === $lng || null === $lat || null === $lng ) {
-			return null;
+		if ( null === $home ) {
+			return [];
 		}
 
-		$best = null;
+		$rows = [];
 
 		foreach ( self::active_facilities() as $facility ) {
 
-			$f_lat = get_post_meta( $facility->ID, '_tdh_lat', true );
-			$f_lng = get_post_meta( $facility->ID, '_tdh_lng', true );
+			$place = Geocoder::coordinates( (int) $facility->ID );
 
-			if ( '' === $f_lat || '' === $f_lng ) {
+			if ( null === $place ) {
 				continue;
 			}
 
-			$miles = self::miles( (float) $lat, (float) $lng, (float) $f_lat, (float) $f_lng );
-
-			if ( null === $best || $miles < $best['miles'] ) {
-				$best = [
-					'id'    => (int) $facility->ID,
-					'title' => (string) get_the_title( $facility ),
-					'miles' => $miles,
-				];
-			}
+			$rows[] = [
+				'id'    => (int) $facility->ID,
+				'title' => (string) get_the_title( $facility ),
+				'type'  => (string) get_post_meta( (int) $facility->ID, '_tdh_facility_type', true ),
+				'miles' => self::miles( $home['lat'], $home['lng'], $place['lat'], $place['lng'] ),
+			];
 		}
 
-		if ( null === $best ) {
-			return null;
-		}
+		usort( $rows, static fn( array $a, array $b ): int => $a['miles'] <=> $b['miles'] );
 
-		update_post_meta( $listing_id, self::META_CACHE, $best );
+		$rows = array_slice( $rows, 0, self::CACHE_ROWS );
 
-		return $best;
+		update_post_meta( $listing_id, self::META_LIST, $rows );
+
+		return $rows;
+	}
+
+	/** How many facilities a property page lists. */
+	public static function count_setting(): int {
+		return self::clamp_count( (int) get_option( self::OPTION_COUNT, self::DEFAULT_COUNT ) );
+	}
+
+	/** How far out a property page looks, in miles. */
+	public static function radius_setting(): float {
+		return self::clamp_radius( (float) get_option( self::OPTION_RADIUS, self::DEFAULT_RADIUS ) );
+	}
+
+	/**
+	 * Store both settings.
+	 *
+	 * Clamped on the way in as well as on the way out, so a value written by
+	 * anything else — a migration, wp-cli, a plugin — can never make a page
+	 * list fifty hospitals or none.
+	 */
+	public static function save_settings( int $count, float $radius ): void {
+		update_option( self::OPTION_COUNT, self::clamp_count( $count ) );
+		update_option( self::OPTION_RADIUS, self::clamp_radius( $radius ) );
+	}
+
+	/** 1 to MAX_COUNT; anything unusable becomes the default. */
+	private static function clamp_count( int $count ): int {
+		return $count < 1 || $count > self::MAX_COUNT ? self::DEFAULT_COUNT : $count;
+	}
+
+	/** 1 to MAX_RADIUS miles; anything unusable becomes the default. */
+	private static function clamp_radius( float $radius ): float {
+		return $radius < 1 || $radius > self::MAX_RADIUS ? (float) self::DEFAULT_RADIUS : $radius;
 	}
 
 	/**
@@ -122,9 +229,32 @@ final class Proximity {
 	 *
 	 * @return \WP_Post[]
 	 */
+	public static function facilities(): array {
+		return self::active_facilities();
+	}
+
+	/**
+	 * A radius as a bare number for a URL: 15, 2.5.
+	 *
+	 * Not `miles_phrase()`, which adds the word, and not `format_miles()`,
+	 * which abbreviates it. A query string wants the number alone.
+	 */
+	public static function miles_number( float $miles ): string {
+		return fmod( $miles, 1.0 ) > 0 ? rtrim( rtrim( number_format( $miles, 1, '.', '' ), '0' ), '.' ) : (string) (int) $miles;
+	}
+
+	/**
+	 * @return \WP_Post[]
+	 */
 	private static function active_facilities(): array {
 
-		$facilities = get_posts(
+		/**
+		 * The query behind every distance on the site.
+		 *
+		 * @param array<string,mixed> $args WP_Query arguments.
+		 */
+		$args = apply_filters(
+			'tdh_facility_query_args',
 			[
 				'post_type'        => Post_Types::FACILITY,
 				'post_status'      => 'publish',
@@ -147,6 +277,8 @@ final class Proximity {
 			]
 		);
 
+		$facilities = get_posts( is_array( $args ) ? $args : [] );
+
 		return is_array( $facilities ) ? $facilities : [];
 	}
 
@@ -156,12 +288,93 @@ final class Proximity {
 	 * Prints nothing when there is no answer. An empty band is a layout
 	 * hole; a fabricated distance is a lie. Silence is the third option
 	 * and the correct one.
+	 *
+	 * When the renter has chosen a hospital (task C3) the band measures to
+	 * THAT one instead of to this home's own nearest. Reading "0.4 mi from
+	 * Shadyside" down a list you asked to sort by distance from Mercy is
+	 * the defect the search was built to remove, so the two must agree.
 	 */
+	/**
+	 * How far this home is from the place the renter typed.
+	 *
+	 * Only when they typed one. A list ordered by distance has to say what
+	 * the distance is, or the order looks arbitrary and the renter has no
+	 * way to judge whether the third home is a mile or an hour further out
+	 * than the first.
+	 *
+	 * Kept apart from the hospital band on purpose: a postcode is not a
+	 * hospital, and the two answer different questions, so a card in a
+	 * postcode search shows both — how far from where they searched, and
+	 * how far from care.
+	 */
+	public function render_area_band( int $listing_id ): void {
+
+		if ( ! class_exists( '\TDH\Search' ) ) {
+			return;
+		}
+
+		$f = Search::filters();
+
+		// A chosen hospital already puts a distance on the card, measured
+		// from the hospital. Two distances on one card is a puzzle.
+		if ( null === ( $f['area'] ?? null ) || null !== $f['facility'] ) {
+			return;
+		}
+
+		$miles = Search::miles_to_choice( $listing_id );
+
+		// Here for some other reason, or never geocoded: no invented number.
+		if ( null === $miles ) {
+			return;
+		}
+
+		?>
+		<p class="from-area">
+			<?php
+			if ( function_exists( 'tdh_the_icon' ) ) {
+				tdh_the_icon( 'map-pin', 16 );
+			}
+			printf(
+				/* translators: 1: distance in miles, 2: the postcode or town the renter typed */
+				esc_html__( '%1$s from %2$s', 'thirtydayhomes' ),
+				'<b>' . esc_html( self::format_miles( $miles ) ) . '</b>', // phpcs:ignore WordPress.Security.EscapeOutput
+				esc_html( Search::anchor_label() )
+			);
+			?>
+		</p>
+		<?php
+	}
+
 	public function render_band( int $listing_id ): void {
 
-		$nearest = self::nearest( $listing_id );
+		$title = '';
+		$miles = null;
 
-		if ( null === $nearest ) {
+		if ( class_exists( '\TDH\Search' ) ) {
+
+			$chosen = Search::filters()['facility'] ?? null;
+
+			if ( $chosen instanceof \WP_Post ) {
+				$title = $chosen->post_title;
+				$miles = Search::miles_to_choice( $listing_id );
+			}
+		}
+
+		if ( '' === $title ) {
+
+			$nearest = self::nearest( $listing_id );
+
+			if ( null === $nearest ) {
+				return;
+			}
+
+			$title = (string) $nearest['title'];
+			$miles = (float) $nearest['miles'];
+		}
+
+		// A chosen hospital and a home with no point: the home is here for
+		// some other reason, and we do not invent a distance for it.
+		if ( null === $miles ) {
 			return;
 		}
 
@@ -174,12 +387,136 @@ final class Proximity {
 			printf(
 				/* translators: 1: distance in miles, 2: facility name */
 				esc_html__( '%1$s from %2$s', 'thirtydayhomes' ),
-				'<b>' . esc_html( self::format_miles( $nearest['miles'] ) ) . '</b>', // phpcs:ignore WordPress.Security.EscapeOutput
-				esc_html( $nearest['title'] )
+				'<b>' . esc_html( self::format_miles( $miles ) ) . '</b>', // phpcs:ignore WordPress.Security.EscapeOutput
+				esc_html( $title )
 			);
 			?>
 		</p>
 		<?php
+	}
+
+	/**
+	 * The nearest facilities on the property page, under "Close to care".
+	 *
+	 * A home with no location prints nothing: the section still has its map
+	 * note, and an empty list would only raise a question it cannot answer.
+	 * A home with a location but nothing in range says so — hiding it would
+	 * read as "we forgot", and a renter choosing on hospital distance needs
+	 * to know the answer is "none this close", not silence.
+	 */
+	public function render_list( int $listing_id ): void {
+		echo self::list_html( $listing_id ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped inside.
+	}
+
+	/**
+	 * The same list, returned rather than printed.
+	 *
+	 * The action callback above echoes, because that is what a `do_action`
+	 * hook wants; the Elementor widget and the shortcode want a string, and
+	 * one of them wants a different number of rows. Splitting it this way
+	 * keeps a single copy of the markup: the day a row changes, it changes
+	 * in one place and the property page and the widget cannot disagree.
+	 *
+	 * @param int|null $count How many to list, or null for the staff
+	 *                        setting. Clamped to the same 1–5 staff are
+	 *                        held to, so a widget cannot quietly promise
+	 *                        more than the product supports.
+	 */
+	public static function list_html( int $listing_id, ?int $count = null ): string {
+
+		if ( null === Geocoder::coordinates( $listing_id ) ) {
+			return '';
+		}
+
+		$near  = self::nearest_n( $listing_id, $count );
+		$miles = self::miles_phrase( self::radius_setting() );
+
+		ob_start();
+
+		if ( ! $near ) {
+			?>
+			<p class="facility-none">
+				<?php
+				printf(
+					/* translators: %s: a distance, already written with its unit ("15 miles") */
+					esc_html__( 'No medical facilities within %s of this home.', 'thirtydayhomes' ),
+					esc_html( $miles )
+				);
+				?>
+			</p>
+			<?php
+			return (string) ob_get_clean();
+		}
+
+		$types = self::type_labels();
+		?>
+		<div class="facility-list">
+			<p class="facility-lead">
+				<?php
+				printf(
+					/* translators: 1: number of facilities, 2: a distance with its unit ("15 miles") */
+					esc_html( _n( '%1$s medical facility within %2$s', '%1$s medical facilities within %2$s', count( $near ), 'thirtydayhomes' ) ),
+					esc_html( number_format_i18n( count( $near ) ) ),
+					esc_html( $miles )
+				);
+				?>
+			</p>
+
+			<ul>
+				<?php foreach ( $near as $row ) : ?>
+					<li>
+						<?php
+						/*
+						 * Decorative, and hidden from a screen reader by the
+						 * helper: the facility's name and type are already
+						 * beside it in words.
+						 */
+						if ( function_exists( 'tdh_the_icon' ) ) {
+							tdh_the_icon( 'stethoscope', 18 );
+						}
+						?>
+						<span>
+							<b><?php echo esc_html( $row['title'] ); ?></b>
+							<?php if ( isset( $types[ $row['type'] ] ) ) : ?>
+								<small><?php echo esc_html( $types[ $row['type'] ] ); ?></small>
+							<?php endif; ?>
+						</span>
+						<b class="facility-miles"><?php echo esc_html( self::format_miles( $row['miles'] ) ); ?></b>
+					</li>
+				<?php endforeach; ?>
+			</ul>
+		</div>
+		<?php
+		return (string) ob_get_clean();
+	}
+
+	/**
+	 * Facility types in words, from the one schema that defines them.
+	 *
+	 * @return array<string,string>
+	 */
+	private static function type_labels(): array {
+		$options = Fields::facility_schema()['_tdh_facility_type']['options'] ?? [];
+
+		return is_array( $options ) ? $options : [];
+	}
+
+	/**
+	 * A radius written the way it is read: "15 miles", "2.5 miles", "1 mile".
+	 *
+	 * One mile is a setting a staff member can choose, so the singular is not
+	 * hypothetical — and "within 1 miles" on every property page of a live
+	 * marketplace is the kind of detail that makes the rest look careless.
+	 */
+	public static function miles_phrase( float $miles ): string {
+
+		$written = number_format_i18n( $miles, fmod( $miles, 1.0 ) > 0 ? 1 : 0 );
+
+		return sprintf(
+			/* translators: %s: a distance in miles */
+			_n( '%s mile', '%s miles', 1.0 === $miles ? 1 : 2, 'thirtydayhomes' ),
+			$written
+		);
 	}
 
 	/**
@@ -204,7 +541,37 @@ final class Proximity {
 	 * Drop one listing's cached answer.
 	 */
 	public function clear_listing_cache( int $post_id ): void {
+		delete_post_meta( $post_id, self::META_LIST );
 		delete_post_meta( $post_id, self::META_CACHE );
+	}
+
+	/**
+	 * A coordinate was written or removed outside a post save.
+	 *
+	 * @param int|int[] $meta_id   Ignored; deleted_post_meta passes an array.
+	 * @param int       $object_id The post the meta belongs to.
+	 * @param string    $meta_key  The meta key that changed.
+	 */
+	public function clear_on_point( $meta_id, int $object_id, string $meta_key ): void {
+
+		if ( ! in_array( $meta_key, [ '_tdh_lat', '_tdh_lng' ], true ) ) {
+			return;
+		}
+
+		$type = (string) get_post_type( $object_id );
+
+		if ( Post_Types::LISTING === $type ) {
+			$this->clear_listing_cache( $object_id );
+			return;
+		}
+
+		// One facility's move changes an unknowable set of listings, so every
+		// cached answer goes. A run of `wp tdh geocode` writes two keys per
+		// facility and so calls this many times; after the first, the query
+		// below finds nothing left to delete, which is the cheap case.
+		if ( Post_Types::FACILITY === $type ) {
+			$this->clear_all_caches();
+		}
 	}
 
 	/**
@@ -217,15 +584,22 @@ final class Proximity {
 	public function clear_all_caches(): void {
 		global $wpdb;
 
-		$wpdb->delete( $wpdb->postmeta, [ 'meta_key' => self::META_CACHE ] ); // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key, WordPress.DB.DirectDatabaseQuery
+		// Found by query, then deleted one at a time through the API. A
+		// single DELETE would be one statement instead of a handful, but it
+		// leaves the object cache holding rows the database no longer has —
+		// and this runs in the same request as the geocoder's writes, so the
+		// next read would answer from that stale cache. Facilities change a
+		// few times a year; this is not a hot path.
+		$listing_ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$wpdb->prepare(
+				"SELECT DISTINCT post_id FROM {$wpdb->postmeta} WHERE meta_key IN ( %s, %s )",
+				self::META_LIST,
+				self::META_CACHE
+			)
+		);
 
-		// A direct DELETE leaves the object cache holding rows that no
-		// longer exist. Group flushing is WP 6.1+ and optional even then,
-		// so fall back to invalidating all post meta.
-		if ( function_exists( 'wp_cache_supports' ) && wp_cache_supports( 'flush_group' ) ) {
-			wp_cache_flush_group( 'post_meta' );
-		} else {
-			wp_cache_set_posts_last_changed();
+		foreach ( (array) $listing_ids as $listing_id ) {
+			$this->clear_listing_cache( (int) $listing_id );
 		}
 	}
 

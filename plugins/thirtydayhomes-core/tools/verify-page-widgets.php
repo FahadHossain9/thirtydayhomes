@@ -201,6 +201,267 @@ foreach ( $pages as $name => $page ) {
 }
 
 /* -------------------------------------------------------------------------
+ * The two search bands (task C5)
+ *
+ * These are not whole-page widgets and cannot be tested like them: they read
+ * the page they are on. A results band on an ordinary page must be nothing,
+ * and on the listing archive it must be the same list the archive already
+ * renders. So each is rendered twice, in two pretended requests.
+ * ---------------------------------------------------------------------- */
+
+echo "\n=== the search bands: registered and controllable ===\n";
+
+$bands = [
+	'tdh-search-results'    => [ 'heading', 'intro', 'show_search', 'show_filters', 'show_view_toggle', 'per_page' ],
+	'tdh-nearby-facilities' => [ 'heading', 'count' ],
+];
+
+foreach ( $bands as $type => $controls ) {
+
+	$w = $mgr->get_widget_types( $type );
+
+	ok( sprintf( '%s is registered', $type ), (bool) $w );
+
+	if ( ! $w ) {
+		continue;
+	}
+
+	ok( sprintf( '...%s is in the ThirtyDayHomes category', $type ), in_array( TDH\Elementor\Registrar::CATEGORY, $w->get_categories(), true ) );
+
+	$have    = $w->get_controls();
+	$missing = array_values( array_filter( $controls, static fn( string $k ): bool => ! isset( $have[ $k ] ) ) );
+
+	ok( sprintf( '...every %s setting exists', $type ), [] === $missing, $missing ? 'no control for: ' . implode( ', ', $missing ) : '' );
+}
+
+echo "\n=== on an ordinary page ===\n";
+
+/*
+ * The two bands differ here, on purpose.
+ *
+ * A search of all the homes makes sense anywhere, so the results band
+ * runs its own query and shows real homes on any page somebody builds.
+ * Hospital distances are measured FROM a home, so with no home in context
+ * there is nothing true to show: a visitor gets nothing at all, and only
+ * the person in the editor gets a line and an example. An empty box on a
+ * public page is the site showing its own plumbing.
+ */
+$anywhere = render_widget( 'tdh-search-results' );
+
+ok( 'the results band works on an ordinary page too', '' !== trim( $anywhere ) );
+ok( '...showing real homes, not a placeholder', str_contains( $anywhere, 'property-card' ) || str_contains( $anywhere, 'No homes are listed yet' ) );
+ok( '...and its own query obeys the same filters, so it is the plugin deciding', str_contains( $anywhere, 'data-tdh-filters' ) );
+
+ok( 'the hospitals band prints nothing for a visitor with no home in context', '' === trim( render_widget( 'tdh-nearby-facilities' ) ) );
+ok( '...and neither does its shortcode', '' === trim( do_shortcode( '[tdh_nearby_facilities]' ) ) );
+
+$six = render_widget( 'tdh-search-results', [ 'per_page' => 2 ] );
+ok( 'asking for two homes a page shows two', 2 === substr_count( $six, 'property-card' ), sprintf( '%d cards', substr_count( $six, 'property-card' ) ) );
+
+/*
+ * A page holding the results band must take the full width. Ordinary pages
+ * put their content in a narrow reading column, and the first version of
+ * this widget was squeezed into it with no way for the person building the
+ * page to know why. The plugin answers the theme's question for them.
+ */
+$wide_page = (int) wp_insert_post(
+	[
+		'post_type'    => 'page',
+		'post_status'  => 'publish',
+		'post_title'   => 'Widget width probe',
+		'post_content' => '',
+	]
+);
+
+update_post_meta( $wide_page, '_elementor_data', wp_slash( wp_json_encode( [ [ 'id' => 'a1', 'elType' => 'section', 'settings' => [], 'elements' => [ [ 'id' => 'b1', 'elType' => 'column', 'settings' => [], 'elements' => [ [ 'id' => 'c1', 'elType' => 'widget', 'widgetType' => 'tdh-search-results', 'settings' => [], 'elements' => [] ] ] ] ] ] ] ) ) );
+
+$plain_page = (int) wp_insert_post(
+	[
+		'post_type'    => 'page',
+		'post_status'  => 'publish',
+		'post_title'   => 'Ordinary page probe',
+		'post_content' => 'Just some words.',
+	]
+);
+
+$shorted = (int) wp_insert_post(
+	[
+		'post_type'    => 'page',
+		'post_status'  => 'publish',
+		'post_title'   => 'Shortcode width probe',
+		'post_content' => '[tdh_search_results]',
+	]
+);
+
+$widener = new TDH\Shortcodes();
+
+ok( 'a page holding the results widget asks for the full width', $widener->wide_for_results( false, $wide_page ) );
+ok( '...and so does one holding the shortcode', $widener->wide_for_results( false, $shorted ) );
+ok( 'an ordinary page keeps its reading column', ! $widener->wide_for_results( false, $plain_page ) );
+ok( '...and a page already marked wide is left as it is', $widener->wide_for_results( true, $plain_page ) );
+
+/*
+ * The same question decides which scripts load. A page with the band but
+ * without filters.js has a Filters button that does nothing on a phone,
+ * and without map.js a map panel that says "Loading the map" for ever.
+ * Offering a control that cannot work is worse than not offering it.
+ */
+ok( 'the page holding the band is recognised, so its scripts are loaded', TDH\Search::page_holds_results( $wide_page ) );
+ok( '...whether it was built in Elementor or written as a shortcode', TDH\Search::page_holds_results( $shorted ) );
+ok( '...and an ordinary page loads neither', ! TDH\Search::page_holds_results( $plain_page ) );
+
+foreach ( [ $wide_page, $plain_page, $shorted ] as $probe ) {
+	wp_delete_post( $probe, true );
+}
+
+echo "\n=== on the page they do belong to ===\n";
+
+/** Run something as though this request were the listing archive. */
+function as_archive( callable $render ): string {
+
+	$archive = new WP_Query(
+		[
+			'post_type'      => 'tdh_listing',
+			'post_status'    => 'publish',
+			'posts_per_page' => 3,
+		]
+	);
+
+	$archive->is_archive           = true;
+	$archive->is_post_type_archive = true;
+
+	$was     = $GLOBALS['wp_query'];
+	$was_the = $GLOBALS['wp_the_query'];
+
+	$GLOBALS['wp_query']     = $archive;
+	$GLOBALS['wp_the_query'] = $archive;
+
+	$out = $render();
+
+	$GLOBALS['wp_query']     = $was;
+	$GLOBALS['wp_the_query'] = $was_the;
+	wp_reset_postdata();
+
+	return $out;
+}
+
+$on_archive = as_archive( static fn(): string => render_widget( 'tdh-search-results' ) );
+
+ok( 'the results band renders on the listing archive', '' !== trim( $on_archive ) );
+ok( '...with the search box', str_contains( $on_archive, 'search-bar' ) );
+ok( '...with the filters', str_contains( $on_archive, 'data-tdh-filters' ) );
+ok( '...and with real homes, not a placeholder', str_contains( $on_archive, 'property-card' ) || str_contains( $on_archive, 'No homes are listed yet' ) );
+
+$headed = as_archive( static fn(): string => render_widget( 'tdh-search-results', [ 'heading' => 'Homes near the hospital' ] ) );
+ok( 'a heading typed in the editor appears on the page', str_contains( $headed, 'Homes near the hospital' ) );
+
+$bare = as_archive( static fn(): string => render_widget( 'tdh-search-results', [ 'show_search' => '', 'show_filters' => '' ] ) );
+ok( 'switching the filters off removes them', ! str_contains( $bare, 'data-tdh-filters' ) );
+ok( '...and switching the search box off removes it', ! str_contains( $bare, 'search-bar' ) );
+ok( '...but the homes are still there, because the widget never decides which homes', str_contains( $bare, 'property-grid' ) );
+
+$by_shortcode = as_archive( static fn(): string => do_shortcode( '[tdh_search_results]' ) );
+ok( 'the shortcode renders the same page as the widget', words( $by_shortcode ) === words( $on_archive ), sprintf( 'shortcode %d words, widget %d', words( $by_shortcode ), words( $on_archive ) ) );
+
+echo "\n=== the hospitals band on a property page ===\n";
+
+$placed = get_posts(
+	[
+		'post_type'      => 'tdh_listing',
+		'post_status'    => 'publish',
+		'posts_per_page' => 1,
+		'fields'         => 'ids',
+		// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+		'meta_query'     => [ [ 'key' => '_tdh_lat', 'compare' => 'EXISTS' ] ],
+	]
+);
+
+$home = $placed ? (int) $placed[0] : 0;
+
+if ( ! $home ) {
+	ok( 'a home with a location exists to measure from', false, 'none found — seed the demo content' );
+} else {
+
+	/** Run something as though this request were that home's page. */
+	$as_home = static function ( callable $render ) use ( $home ): string {
+
+		$single = new WP_Query( [ 'p' => $home, 'post_type' => 'tdh_listing' ] );
+
+		$single->is_singular = true;
+		$single->is_single   = true;
+
+		$was     = $GLOBALS['wp_query'];
+		$was_the = $GLOBALS['wp_the_query'];
+
+		$GLOBALS['wp_query']     = $single;
+		$GLOBALS['wp_the_query'] = $single;
+
+		$out = $render();
+
+		$GLOBALS['wp_query']     = $was;
+		$GLOBALS['wp_the_query'] = $was_the;
+		wp_reset_postdata();
+
+		return $out;
+	};
+
+	$near = $as_home( static fn(): string => render_widget( 'tdh-nearby-facilities' ) );
+
+	ok( 'the hospitals band renders on a property page', '' !== trim( $near ) );
+	ok( '...listing real facilities with distances', str_contains( $near, 'facility-list' ) || str_contains( $near, 'facility-none' ) );
+
+	$titled = $as_home( static fn(): string => render_widget( 'tdh-nearby-facilities', [ 'heading' => 'Hospitals nearby' ] ) );
+	ok( 'its heading is editable', str_contains( $titled, 'Hospitals nearby' ) );
+
+	if ( str_contains( $near, 'facility-list' ) ) {
+		$one = $as_home( static fn(): string => render_widget( 'tdh-nearby-facilities', [ 'count' => 1 ] ) );
+		ok( 'asking for one hospital lists one', 1 === substr_count( $one, '<li>' ), sprintf( '%d rows', substr_count( $one, '<li>' ) ) );
+
+		$many = $as_home( static fn(): string => render_widget( 'tdh-nearby-facilities', [ 'count' => 99 ] ) );
+		ok( '...and asking for ninety-nine is clamped to what staff may set', substr_count( $many, '<li>' ) <= TDH\Proximity::MAX_COUNT );
+	}
+
+	ok( 'the widget arrives with a heading already written, so dragging it in gives a finished band', str_contains( $near, 'Close to care' ) );
+
+	/*
+	 * Compared with the heading turned off, because the two defaults differ
+	 * on purpose: the widget is dropped onto a blank page and needs its own
+	 * heading, while the shortcode sits inside a section on the property
+	 * page that already has one, and a second would be a duplicate.
+	 */
+	$shortcoded = $as_home( static fn(): string => do_shortcode( '[tdh_nearby_facilities]' ) );
+	$headless   = $as_home( static fn(): string => render_widget( 'tdh-nearby-facilities', [ 'heading' => '' ] ) );
+
+	ok( 'the shortcode renders the same list as the widget', words( $shortcoded ) === words( $headless ), sprintf( 'shortcode %d words, widget %d', words( $shortcoded ), words( $headless ) ) );
+}
+
+echo "\n=== nothing is typed in that should be measured ===\n";
+
+/*
+ * The contract names this: distances must come from the plugin and must
+ * not be duplicated in Elementor. So neither band may offer a control that
+ * would let somebody write a distance, a price or a home's name by hand.
+ */
+foreach ( $bands as $type => $controls ) {
+
+	$w = $mgr->get_widget_types( $type );
+
+	if ( ! $w ) {
+		continue;
+	}
+
+	$keys    = array_keys( $w->get_controls() );
+	$forbids = array_values(
+		array_filter(
+			$keys,
+			static fn( string $k ): bool => (bool) preg_match( '/(miles|distance|price|address|latitude|longitude|hospital_name)/i', $k )
+		)
+	);
+
+	ok( sprintf( '%s has no control for data the site measures', $type ), [] === $forbids, $forbids ? 'found: ' . implode( ', ', $forbids ) : '' );
+}
+
+/* -------------------------------------------------------------------------
  * The shortcodes still work, which is the whole fallback
  * ---------------------------------------------------------------------- */
 

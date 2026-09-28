@@ -23,8 +23,8 @@ defined( 'ABSPATH' ) || exit;
  * technically delivered and practically filed as spam.
  *
  * That is not a cosmetic problem here. This site emails a landlord when an
- * enquiry arrives, and emails a visitor a password-reset link. A landlord who
- * pays and never hears about an enquiry cancels and blames the product; a
+ * inquiry arrives, and emails a visitor a password-reset link. A landlord who
+ * pays and never hears about an inquiry cancels and blames the product; a
  * visitor who cannot reset a password never signs in again. Both failures are
  * silent — nobody reports an email they did not know was coming.
  *
@@ -260,7 +260,15 @@ final class Smtp {
 	 */
 	public static function sender_problems(): array {
 
-		$from = ( new Mail() )->from_address( '' );
+		$configured = trim( (string) get_option( Mail::OPTION_FROM, '' ) );
+		$from       = ( new Mail() )->from_address( '' );
+
+		// Mail safely falls back when a stored value is malformed, but the
+		// configuration still needs to be visible to the administrator rather
+		// than silently appearing healthy.
+		if ( '' !== $configured && ! is_email( $configured ) ) {
+			$from = $configured;
+		}
 
 		if ( is_email( $from ) ) {
 			return [];

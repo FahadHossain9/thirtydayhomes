@@ -8,7 +8,12 @@ are, without being re-briefed.
 **Keep it current.** When a piece of work lands, move it in this file.
 A stale tracker is worse than none, because it is believed.
 
-Last updated: 9 September 2026.
+Last updated: 16 September 2026.
+
+**Milestone 2 is open.** Rob gave the go-ahead in writing on 15 September
+2026 ("should be good to get milestone 2 started"). The Milestone 2 plan,
+task order and hand-over format live in `MILESTONE-2-PLAN.md`; this file
+stays the record of rules, architecture, environment and Milestone 1.
 
 ---
 
@@ -26,8 +31,10 @@ once, which is a failure of this file, not of the person asking.**
    task before it. A screenshot that looks right is not the signal.
 4. **Never `git push`.** Pushing deploys to the live client site. The
    push is the user's decision, always.
-5. **Milestone 1 only** until the client has paid for it. M2 items get
-   written into the email, never into the code.
+5. **Current milestone only.** Milestone 2 from 17 September 2026
+   (scope: `MILESTONE-2-PLAN.md` §1). Anything outside it is written into
+   the requests register there (§6), never into the code. Milestone 3
+   waits for written acceptance and payment of Milestone 2.
 6. **Verify on localhost, not live.** New work is not on the live site
    until the user pushes.
 7. **Anything the client will read must be short.** No reasoning, no
@@ -42,6 +49,9 @@ once, which is a failure of this file, not of the person asking.**
 ---
 
 ## 0b. The three standards every piece of work must meet
+
+> The current, fuller wording — including the pillar plan written before
+> any code — is `AGENTS.md` §4. This section is kept as the original.
 
 **Not optional, and not only when asked.** Every task on this project is
 checked against all three before it is handed over. The client's group
@@ -447,8 +457,10 @@ The full moderation workflow was placed in **M3** in the same reply.
 
 ---
 
-## 9. Milestone 2 does not start until M1 is paid
+## 9. Milestone 2
 
-M1 is invoiced on written acceptance; M2 begins after that clears. The
-listing wizard already built is prior M2 work delivered early on
-instruction — it is not a precedent for adding more.
+Opened on Rob's written go-ahead of 15 September 2026; work starts
+17 September 2026. Confirm the Milestone 1 approval on Upwork is recorded.
+Everything about Milestone 2 — scope, current state, task order, hand-over
+format, client dependencies, decisions pending, requests register — is in
+`MILESTONE-2-PLAN.md`. Do not duplicate it here.

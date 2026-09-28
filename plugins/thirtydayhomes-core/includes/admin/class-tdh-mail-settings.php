@@ -10,6 +10,7 @@ declare( strict_types = 1 );
 namespace TDH\Admin;
 
 use TDH\Mail;
+use TDH\Notifications;
 use TDH\Smtp;
 
 defined( 'ABSPATH' ) || exit;
@@ -17,9 +18,9 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Listings → Email delivery.
  *
- * Three forms, because they are three separate decisions and one Save button
- * across all of them means changing the sender name also rewrites the server
- * credentials. The same reasoning splits the Payments screen.
+ * A form per decision, because one Save button across all of them means
+ * changing the sender name also rewrites the server credentials. The same
+ * reasoning splits the Payments screen.
  *
  * The screen leads with STATUS rather than fields. Whoever opens this page has
  * almost always arrived because something did not arrive, and the first
@@ -90,6 +91,7 @@ final class Mail_Settings {
 			'sender' => $this->save_sender(),
 			'smtp'   => $this->save_smtp(),
 			'test'   => $this->send_test(),
+			'copy'   => $this->save_copy(),
 			default  => null,
 		};
 	}
@@ -123,6 +125,50 @@ final class Mail_Settings {
 			'' === $address
 				? __( 'Sender saved. With the address blank it falls back to noreply@ on this site’s own domain.', 'thirtydayhomes' )
 				: __( 'Sender saved.', 'thirtydayhomes' )
+		);
+
+		$this->redirect();
+	}
+
+	/**
+	 * The copy of every inquiry email.
+	 *
+	 * Switched on with a blank or unusable address is refused rather than
+	 * stored: it would read as "copies are on" on this screen while every
+	 * copy went nowhere, and nobody would find out until somebody asked
+	 * why the business mailbox was empty.
+	 */
+	private function save_copy(): void {
+
+		$on = ! empty( $_POST['tdh_copy_on'] );
+
+		$to = isset( $_POST['tdh_copy_to'] )
+			? trim( sanitize_text_field( wp_unslash( (string) $_POST['tdh_copy_to'] ) ) )
+			: '';
+
+		if ( $on && ! is_email( $to ) ) {
+			$this->notice(
+				'error',
+				'' === $to
+					? __( 'Add the address the copies should go to, then switch it on.', 'thirtydayhomes' )
+					: __( 'That is not a valid email address. Copies were left switched off.', 'thirtydayhomes' )
+			);
+			$this->redirect();
+		}
+
+		/*
+		 * The address is kept even when the switch is off, so turning
+		 * copies off for a week does not lose it.
+		 */
+		update_option( Notifications::OPTION_COPY_TO, $to );
+		update_option( Notifications::OPTION_COPY, $on ? '1' : '' );
+
+		$this->notice(
+			'success',
+			$on
+				/* translators: %s: an email address */
+				? sprintf( __( 'Copies of every inquiry will go to %s.', 'thirtydayhomes' ), $to )
+				: __( 'Copies are off. Only the landlord is emailed.', 'thirtydayhomes' )
 		);
 
 		$this->redirect();
@@ -278,6 +324,8 @@ final class Mail_Settings {
 
 			<?php $this->render_sender_form( $from, $fromname ); ?>
 
+			<?php $this->render_copy_form(); ?>
+
 			<?php $this->render_smtp_form(); ?>
 
 			<?php $this->render_test_form(); ?>
@@ -424,6 +472,60 @@ final class Mail_Settings {
 				</table>
 
 				<?php submit_button( __( 'Save sender', 'thirtydayhomes' ) ); ?>
+			</form>
+		</div>
+		<?php
+	}
+
+	private function render_copy_form(): void {
+
+		$on = '1' === (string) get_option( Notifications::OPTION_COPY, '' );
+		$to = (string) get_option( Notifications::OPTION_COPY_TO, '' );
+		?>
+		<div class="tdh-card">
+			<h2><?php esc_html_e( 'Copies of inquiry emails', 'thirtydayhomes' ); ?></h2>
+
+			<p class="description">
+				<?php esc_html_e( 'The landlord is always emailed. This sends a second copy to one more address, so somebody here can see that inquiries are arriving.', 'thirtydayhomes' ); ?>
+			</p>
+
+			<form method="post">
+				<?php wp_nonce_field( 'tdh_mail_copy' ); ?>
+				<input type="hidden" name="tdh_mail_action" value="copy">
+
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Send copies', 'thirtydayhomes' ); ?></th>
+						<td>
+							<label for="tdh-copy-on">
+								<input id="tdh-copy-on" name="tdh_copy_on" type="checkbox" value="1" <?php checked( $on ); ?>>
+								<?php esc_html_e( 'Yes, copy every inquiry', 'thirtydayhomes' ); ?>
+							</label>
+							<p class="description">
+								<?php
+								echo $on
+									? esc_html__( 'On. Copies are going out now.', 'thirtydayhomes' )
+									: esc_html__( 'Off. Only the landlord is emailed.', 'thirtydayhomes' );
+								?>
+							</p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row">
+							<label for="tdh-copy-to"><?php esc_html_e( 'Copy to', 'thirtydayhomes' ); ?></label>
+						</th>
+						<td>
+							<input id="tdh-copy-to" name="tdh_copy_to" type="email" class="regular-text"
+								value="<?php echo esc_attr( $to ); ?>"
+								placeholder="<?php echo esc_attr( (string) get_option( 'admin_email', '' ) ); ?>">
+							<p class="description">
+								<?php esc_html_e( 'The copy leaves out the renter’s phone number and message, exactly as the landlord’s own email does.', 'thirtydayhomes' ); ?>
+							</p>
+						</td>
+					</tr>
+				</table>
+
+				<?php submit_button( __( 'Save copies', 'thirtydayhomes' ) ); ?>
 			</form>
 		</div>
 		<?php

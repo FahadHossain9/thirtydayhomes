@@ -65,3 +65,31 @@ function tdh_listing_location( int $post_id, string $separator = ' · ' ): strin
 
 	return implode( $separator, $parts );
 }
+
+/**
+ * What a renter pays for utilities, as one line.
+ *
+ * "Utilities included — Water, gas and Wi-Fi", "Some utilities included —
+ * Water and trash", "Utilities not included". The answer comes from the
+ * landlord's Included / Partly / Not choice; the details are their own words.
+ *
+ * A listing from before the choice existed has only the words, and they are
+ * shown as they were written rather than guessed into an answer.
+ */
+function tdh_listing_utilities( int $post_id ): string {
+
+	$answer  = (string) get_post_meta( $post_id, '_tdh_utilities_included', true );
+	$details = trim( (string) get_post_meta( $post_id, '_tdh_utilities', true ) );
+
+	$lead = [
+		'yes'     => __( 'Utilities included', 'thirtydayhomes' ),
+		'partial' => __( 'Some utilities included', 'thirtydayhomes' ),
+		'no'      => __( 'Utilities not included', 'thirtydayhomes' ),
+	][ $answer ] ?? '';
+
+	if ( '' === $lead ) {
+		return $details;
+	}
+
+	return '' !== $details ? $lead . ' — ' . $details : $lead;
+}

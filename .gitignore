@@ -9,9 +9,26 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Files the client sends (Word, Excel) stay on this machine only: they can
+# hold real addresses and business details. Readable copies live in
+# client-data/ — anything private in client-data/private/, never committed.
+/rob/
+/client-data/private/
+/*.xlsx
+/Pittsburgh_Greensburg_Washington_Hospital_List.docx
+
 # A second clone of this project lives here, pointing at a different remote.
 # It carries its own .git, and Git cannot store a repository inside another
 # one: it records a submodule pointer instead, which shows up as an empty
 # folder and fails for anyone who clones. It is a working copy, not source.
 New folder/
 
+
+# Never commit a WordPress config: it holds the database password and keys.
+# A live backup was committed by accident on 26 Sep 2026 (cbaf6a3).
+wp-config.php
+/Rob-text-alerts-guide/
+
+# Internal team documents (payment strategy) - never handed to the client
+/tools/client-report/completion-plan.php
+/ThirtyDayHomes-Completion-Plan.docx

@@ -96,6 +96,7 @@ final class Webhook {
 			// Not configured. 500 rather than 200, because this one IS worth
 			// retrying — the secret may be minutes away from being pasted in,
 			// and silently discarding a payment event would be worse.
+			self::rejected( 'not_configured', $mode );
 			return new \WP_REST_Response( [ 'error' => 'not_configured' ], 500 );
 		}
 
@@ -104,12 +105,14 @@ final class Webhook {
 		$header  = (string) $request->get_header( 'stripe_signature' );
 
 		if ( ! self::verify( $payload, $header, $secret ) ) {
+			self::rejected( 'bad_signature', $mode );
 			return new \WP_REST_Response( [ 'error' => 'bad_signature' ], 400 );
 		}
 
 		$event = json_decode( $payload, true );
 
 		if ( ! is_array( $event ) || empty( $event['id'] ) || empty( $event['type'] ) ) {
+			self::rejected( 'malformed', $mode );
 			return new \WP_REST_Response( [ 'error' => 'malformed' ], 400 );
 		}
 
@@ -123,12 +126,14 @@ final class Webhook {
 		$event_is_live = ! empty( $event['livemode'] );
 
 		if ( $event_is_live !== ( Stripe::MODE_LIVE === $mode ) ) {
+			self::rejected( 'mode_mismatch', $mode );
 			return new \WP_REST_Response( [ 'ignored' => 'mode_mismatch' ], 200 );
 		}
 
 		$id = (string) $event['id'];
 
 		if ( self::already_seen( $id ) ) {
+			self::rejected( 'duplicate', $mode );
 			return new \WP_REST_Response( [ 'ignored' => 'duplicate' ], 200 );
 		}
 
@@ -137,9 +142,35 @@ final class Webhook {
 		// already done.
 		self::mark_seen( $id );
 
+		/**
+		 * Fires for every verified, first-seen Stripe event, before it is
+		 * handled. The log's seam.
+		 *
+		 * @param string $type     Stripe event type.
+		 * @param string $event_id Stripe event id.
+		 * @param string $mode     test or live.
+		 */
+		do_action( 'tdh_stripe_received', (string) $event['type'], $id, $mode );
+
 		$this->dispatch( (string) $event['type'], (array) ( $event['data']['object'] ?? [] ), $mode );
 
 		return new \WP_REST_Response( [ 'received' => true ], 200 );
+	}
+
+	/**
+	 * An event that was not handled, and why.
+	 *
+	 * @param string $reason not_configured | bad_signature | malformed |
+	 *                       mode_mismatch | duplicate.
+	 */
+	private static function rejected( string $reason, string $mode ): void {
+		/**
+		 * Fires when a Stripe webhook call is refused or ignored.
+		 *
+		 * @param string $reason Why.
+		 * @param string $mode   test or live.
+		 */
+		do_action( 'tdh_stripe_rejected', $reason, $mode );
 	}
 
 	/* ---------------------------------------------------------------------

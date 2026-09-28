@@ -67,6 +67,7 @@ final class Accounts {
 	public function register(): void {
 
 		add_action( 'template_redirect', [ $this, 'handle_forms' ] );
+		add_action( 'template_redirect', [ $this, 'redirect_signed_in_auth_pages' ], 20 );
 
 		// Keep landlords out of wp-admin and off the admin bar.
 		add_action( 'admin_init', [ $this, 'block_admin_access' ] );
@@ -110,25 +111,60 @@ final class Accounts {
 			return $items;
 		}
 
-		$login   = untrailingslashit( self::url( 'login' ) );
-		$account = self::url( 'account' );
+		$login    = untrailingslashit( self::url( 'login' ) );
+		$register = untrailingslashit( self::url( 'register' ) );
+		$account  = self::url( 'account' );
+		$visible  = [];
 
 		foreach ( $items as $item ) {
 
 			$url = untrailingslashit( (string) $item->url );
 
-			// wp_login_url() is matched too: the demo menu was seeded
-			// pointing at wp-login.php before front-end auth existed, and
-			// any site imported before that fix still carries it.
-			if ( $url !== $login && $url !== untrailingslashit( wp_login_url() ) ) {
+			// The gold registration CTA has completed its job once somebody is
+			// authenticated. Keeping it creates two competing actions and sends
+			// a member back to an account-creation page they cannot use.
+			if ( $url === $register ) {
 				continue;
 			}
 
-			$item->url   = $account;
-			$item->title = __( 'Dashboard', 'thirtydayhomes' );
+			// wp_login_url() is matched too: the demo menu was seeded
+			// pointing at wp-login.php before front-end auth existed, and
+			// any site imported before that fix still carries it.
+			if ( $url === $login || $url === untrailingslashit( wp_login_url() ) ) {
+				$item->url     = $account;
+				$item->title   = __( 'Dashboard', 'thirtydayhomes' );
+				$item->classes = array_values( array_unique( array_merge( (array) $item->classes, [ 'nav-cta' ] ) ) );
+			}
+
+			$visible[] = $item;
 		}
 
-		return $items;
+		return $visible;
+	}
+
+	/**
+	 * Authenticated visitors have no useful work on registration/login pages.
+	 */
+	public function redirect_signed_in_auth_pages(): void {
+
+		if ( ! is_user_logged_in() || ! is_singular( 'page' ) ) {
+			return;
+		}
+
+		$seed = (string) get_post_meta( get_queried_object_id(), '_tdh_seed_key', true );
+
+		if ( ! in_array( $seed, [ 'register', 'login', 'profile' ], true ) ) {
+			return;
+		}
+
+		$destination = match ( $seed ) {
+			'register' => add_query_arg( 'view', 'listings', self::url( 'account' ) ),
+			'profile'  => add_query_arg( 'view', 'profile', self::url( 'account' ) ),
+			default    => self::url( 'account' ),
+		};
+
+		wp_safe_redirect( $destination );
+		exit;
 	}
 
 	/**
@@ -167,6 +203,13 @@ final class Accounts {
 			'lost_password'  => 'do_lost_password',
 			'reset_password' => 'do_reset_password',
 			'profile'        => 'do_profile',
+			'member_create'  => 'do_member_create',
+			'member_update'  => 'do_member_update',
+			'member_reset'   => 'do_member_reset',
+			'member_delete'  => 'do_member_delete',
+			'facility_save'  => 'do_facility_save',
+			'facility_delete' => 'do_facility_delete',
+			'proximity_save' => 'do_proximity_save',
 		];
 
 		if ( ! isset( $handlers[ $action ] ) ) {
@@ -184,6 +227,303 @@ final class Accounts {
 		}
 
 		$this->{$handlers[ $action ]}();
+	}
+
+	/* ---------------------------------------------------------------------
+	 * Marketplace staff: landlord member administration
+	 * ------------------------------------------------------------------ */
+
+	private function members_url(): string {
+		return add_query_arg( 'view', 'members', self::url( 'account' ) );
+	}
+
+	private function require_member_admin(): void {
+		if ( ! self::is_staff() ) {
+			$this->fail( __( 'You do not have permission to manage members.', 'thirtydayhomes' ), [], self::url( 'account' ) );
+		}
+	}
+
+	private function landlord_from_request(): \WP_User {
+		$this->require_member_admin();
+
+		$user = get_userdata( (int) ( $_POST['tdh_member'] ?? 0 ) );
+
+		if ( ! $user || ! in_array( Roles::LANDLORD, (array) $user->roles, true ) ) {
+			$this->fail( __( 'That landlord account could not be found.', 'thirtydayhomes' ), [], $this->members_url() );
+		}
+
+		return $user;
+	}
+
+	private function do_member_create(): void {
+		$this->require_member_admin();
+
+		$name  = sanitize_text_field( wp_unslash( (string) ( $_POST['tdh_name'] ?? '' ) ) );
+		$email = sanitize_email( wp_unslash( (string) ( $_POST['tdh_email'] ?? '' ) ) );
+
+		if ( '' === $name || ! is_email( $email ) ) {
+			$this->fail( __( 'Enter a name and a valid email address.', 'thirtydayhomes' ), [], $this->members_url() );
+		}
+
+		if ( email_exists( $email ) ) {
+			$this->fail( __( 'An account already uses that email address.', 'thirtydayhomes' ), [], $this->members_url() );
+		}
+
+		$user_id = wp_insert_user(
+			[
+				'user_login'   => $email,
+				'user_email'   => $email,
+				'user_pass'    => wp_generate_password( 24, true, true ),
+				'display_name' => $name,
+				'first_name'   => $name,
+				'role'         => Roles::LANDLORD,
+			]
+		);
+
+		if ( is_wp_error( $user_id ) ) {
+			$this->fail( $user_id->get_error_message(), [], $this->members_url() );
+		}
+
+		$user_id = (int) $user_id;
+		update_user_meta( $user_id, '_tdh_phone', sanitize_text_field( wp_unslash( (string) ( $_POST['tdh_phone'] ?? '' ) ) ) );
+		update_user_meta( $user_id, '_tdh_company', sanitize_text_field( wp_unslash( (string) ( $_POST['tdh_company'] ?? '' ) ) ) );
+		update_user_meta( $user_id, Membership::META_STATUS, Membership::NONE );
+		wp_new_user_notification( $user_id, null, 'user' );
+
+		$this->succeed( __( 'Member created. A password setup email was sent to them.', 'thirtydayhomes' ), $this->members_url() );
+	}
+
+	private function do_member_update(): void {
+		$user  = $this->landlord_from_request();
+		$name  = sanitize_text_field( wp_unslash( (string) ( $_POST['tdh_name'] ?? '' ) ) );
+		$email = sanitize_email( wp_unslash( (string) ( $_POST['tdh_email'] ?? '' ) ) );
+
+		if ( '' === $name || ! is_email( $email ) ) {
+			$this->fail( __( 'Enter a name and a valid email address.', 'thirtydayhomes' ), [], $this->members_url() );
+		}
+
+		$owner = email_exists( $email );
+		if ( $owner && (int) $owner !== (int) $user->ID ) {
+			$this->fail( __( 'Another account already uses that email address.', 'thirtydayhomes' ), [], $this->members_url() );
+		}
+
+		$updated = wp_update_user(
+			[
+				'ID'           => $user->ID,
+				'user_email'   => $email,
+				'display_name' => $name,
+				'first_name'   => $name,
+			]
+		);
+
+		if ( is_wp_error( $updated ) ) {
+			$this->fail( $updated->get_error_message(), [], $this->members_url() );
+		}
+
+		update_user_meta( $user->ID, '_tdh_phone', sanitize_text_field( wp_unslash( (string) ( $_POST['tdh_phone'] ?? '' ) ) ) );
+		update_user_meta( $user->ID, '_tdh_company', sanitize_text_field( wp_unslash( (string) ( $_POST['tdh_company'] ?? '' ) ) ) );
+
+		$status  = sanitize_key( wp_unslash( (string) ( $_POST['tdh_status'] ?? Membership::NONE ) ) );
+		$expires = sanitize_text_field( wp_unslash( (string) ( $_POST['tdh_expires'] ?? '' ) ) );
+		Membership::apply(
+			(int) $user->ID,
+			[
+				'status'  => $status,
+				'plan'    => sanitize_text_field( wp_unslash( (string) ( $_POST['tdh_plan'] ?? '' ) ) ),
+				'quota'   => max( 0, (int) ( $_POST['tdh_quota'] ?? 0 ) ),
+				'expires' => '' === $expires ? 0 : (int) strtotime( $expires . ' 23:59:59' ),
+			]
+		);
+
+		$this->succeed( __( 'Member details and membership were updated.', 'thirtydayhomes' ), $this->members_url() );
+	}
+
+	private function do_member_reset(): void {
+		$user = $this->landlord_from_request();
+		$sent = retrieve_password( $user->user_login );
+
+		if ( is_wp_error( $sent ) ) {
+			$this->fail( __( 'The password reset email could not be sent.', 'thirtydayhomes' ), [], $this->members_url() );
+		}
+
+		$this->succeed( __( 'A password reset link was sent to the member.', 'thirtydayhomes' ), $this->members_url() );
+	}
+
+	private function do_member_delete(): void {
+		$user = $this->landlord_from_request();
+
+		if ( empty( $_POST['tdh_confirm_delete'] ) ) {
+			$this->fail( __( 'Confirm the account deletion before continuing.', 'thirtydayhomes' ), [], $this->members_url() );
+		}
+
+		require_once ABSPATH . 'wp-admin/includes/user.php';
+		$deleted = wp_delete_user( (int) $user->ID, get_current_user_id() );
+
+		if ( ! $deleted ) {
+			$this->fail( __( 'The member could not be deleted.', 'thirtydayhomes' ), [], $this->members_url() );
+		}
+
+		$this->succeed( __( 'Member deleted. Their listings were reassigned to the administrator.', 'thirtydayhomes' ), $this->members_url() );
+	}
+
+	private function facilities_url(): string {
+		return add_query_arg( 'view', 'facilities', self::url( 'account' ) );
+	}
+
+	private function do_facility_save(): void {
+		$this->require_member_admin();
+
+		$facility_id = (int) ( $_POST['tdh_facility'] ?? 0 );
+		$title       = sanitize_text_field( wp_unslash( (string) ( $_POST['tdh_title'] ?? '' ) ) );
+		$existing    = $facility_id ? get_post( $facility_id ) : null;
+
+		if ( '' === $title ) {
+			$this->fail( __( 'Enter a facility name.', 'thirtydayhomes' ), [], $this->facilities_url() );
+		}
+
+		if ( $facility_id && ( ! $existing || Post_Types::FACILITY !== $existing->post_type ) ) {
+			$this->fail( __( 'That facility could not be found.', 'thirtydayhomes' ), [], $this->facilities_url() );
+		}
+
+		$post_id = wp_insert_post(
+			[
+				'ID'          => $facility_id,
+				'post_type'   => Post_Types::FACILITY,
+				'post_status' => 'publish',
+				'post_title'  => $title,
+			],
+			true
+		);
+
+		if ( is_wp_error( $post_id ) ) {
+			$this->fail( $post_id->get_error_message(), [], $this->facilities_url() );
+		}
+
+		$submitted = isset( $_POST['tdh_meta'] ) && is_array( $_POST['tdh_meta'] ) ? wp_unslash( $_POST['tdh_meta'] ) : [];
+		foreach ( Fields::facility_schema() as $key => $definition ) {
+			if ( ! array_key_exists( $key, $submitted ) || 'readonly' === ( $definition['control'] ?? '' ) ) {
+				continue;
+			}
+
+			// An empty coordinate box is "no point" — it used to be stored as
+			// 0, a place in the ocean. Emptied, the address is looked up.
+			if ( in_array( $key, [ '_tdh_lat', '_tdh_lng' ], true ) && '' === trim( (string) $submitted[ $key ] ) ) {
+				delete_post_meta( (int) $post_id, $key );
+				continue;
+			}
+
+			$sanitize = Fields::sanitizer( (string) $definition['type'] );
+			$value    = $sanitize( $submitted[ $key ] );
+
+			if ( 'select' === ( $definition['control'] ?? '' ) && ! array_key_exists( (string) $value, (array) ( $definition['options'] ?? [] ) ) ) {
+				continue;
+			}
+			update_post_meta( (int) $post_id, $key, $value );
+		}
+
+		// Look the address up now, so the message can say how it went.
+		Geocoder::flush();
+
+		$message = $facility_id ? __( 'Facility updated.', 'thirtydayhomes' ) : __( 'Facility added.', 'thirtydayhomes' );
+
+		$message .= ' ' . match ( Geocoder::state( (int) $post_id ) ) {
+			'found'  => __( 'Its location was found from the address.', 'thirtydayhomes' ),
+			'failed' => __( 'Its address wasn’t found on the map — check it, or type the latitude and longitude.', 'thirtydayhomes' ),
+			'pending' => Geocoder::configured()
+				? __( 'Its location isn’t checked yet: the map service didn’t answer. It’s tried again next time you save.', 'thirtydayhomes' )
+				: __( 'Its location isn’t checked yet because the Google Maps key isn’t set up. Type the latitude and longitude to use it in distances now.', 'thirtydayhomes' ),
+			default  => '',
+		};
+
+		// At the top of the page, where the message is — not jumped past it.
+		$this->succeed( trim( $message ), $this->facilities_url() );
+	}
+
+	private function do_facility_delete(): void {
+		$this->require_member_admin();
+		$post = get_post( (int) ( $_POST['tdh_facility'] ?? 0 ) );
+
+		if ( ! $post || Post_Types::FACILITY !== $post->post_type || empty( $_POST['tdh_confirm_delete'] ) ) {
+			$this->fail( __( 'Confirm a valid facility before deleting it.', 'thirtydayhomes' ), [], $this->facilities_url() );
+		}
+
+		if ( ! wp_delete_post( $post->ID, true ) ) {
+			$this->fail( __( 'The facility could not be deleted.', 'thirtydayhomes' ), [], $this->facilities_url() );
+		}
+
+		$this->succeed( __( 'Facility deleted.', 'thirtydayhomes' ), $this->facilities_url() );
+	}
+
+	private function setup_url(): string {
+		return add_query_arg( 'view', 'listing-setup', self::url( 'account' ) );
+	}
+
+	/**
+	 * How many hospitals a property page lists, and how far out it looks.
+	 *
+	 * Both numbers are refused rather than silently corrected: a typed 12
+	 * that quietly became 3 would look like the setting had been ignored.
+	 */
+	private function do_proximity_save(): void {
+		$this->require_member_admin();
+
+		$count  = (int) ( $_POST['tdh_count'] ?? 0 );
+		$radius = (float) str_replace( ',', '.', (string) ( $_POST['tdh_radius'] ?? '' ) );
+		$errors = [];
+
+		if ( $count < 1 || $count > Proximity::MAX_COUNT ) {
+			$errors[] = sprintf(
+				/* translators: %s: largest allowed count */
+				__( 'Choose between 1 and %s facilities.', 'thirtydayhomes' ),
+				number_format_i18n( Proximity::MAX_COUNT )
+			);
+		}
+
+		if ( $radius < 1 || $radius > Proximity::MAX_RADIUS ) {
+			$errors[] = sprintf(
+				/* translators: %s: largest allowed radius */
+				__( 'Choose a distance between 1 and %s miles.', 'thirtydayhomes' ),
+				number_format_i18n( Proximity::MAX_RADIUS )
+			);
+		}
+
+		if ( $errors ) {
+			// The typed numbers come back with the refusal: retyping something
+			// the form already knows is busywork.
+			$this->fail(
+				$errors,
+				[
+					'tdh_count'  => (string) ( $_POST['tdh_count'] ?? '' ),
+					'tdh_radius' => (string) ( $_POST['tdh_radius'] ?? '' ),
+				],
+				$this->setup_url()
+			);
+		}
+
+		Proximity::save_settings( $count, $radius );
+
+		/**
+		 * Fires when staff change how many facilities a property page lists.
+		 *
+		 * @param int   $count  How many.
+		 * @param float $radius Within how many miles.
+		 */
+		do_action( 'tdh_proximity_settings_saved', $count, $radius );
+
+		$this->succeed(
+			sprintf(
+				/* translators: 1: number of facilities, 2: a distance with its unit ("15 miles") */
+				_n(
+					'Saved. Every property page now lists the nearest %1$s facility within %2$s.',
+					'Saved. Every property page now lists the nearest %1$s facilities within %2$s.',
+					$count,
+					'thirtydayhomes'
+				),
+				number_format_i18n( $count ),
+				Proximity::miles_phrase( $radius )
+			),
+			$this->setup_url()
+		);
 	}
 
 	/* ---------------------------------------------------------------------
@@ -224,7 +564,7 @@ final class Accounts {
 		}
 
 		if ( empty( $_POST['tdh_terms'] ) ) {
-			$errors[] = __( 'Please accept the Terms of Use and Fair Housing policy.', 'thirtydayhomes' );
+			$errors[] = __( 'Please accept the Terms of Service and Fair Housing policy.', 'thirtydayhomes' );
 		}
 
 		// Honeypot. A field a person never sees and a bot fills in. Cheaper
@@ -271,12 +611,21 @@ final class Accounts {
 
 		wp_new_user_notification( $user_id, null, 'admin' );
 
+		// F1: the address must be proven before they can pay or submit.
+		$sent = Email_Verification::start( $user_id );
+
 		// Log them straight in. Asking someone to type the password they
 		// just chose, on the next screen, achieves nothing.
 		wp_set_current_user( $user_id );
 		wp_set_auth_cookie( $user_id, true );
 
-		$this->succeed( __( 'Welcome. Your landlord account is ready.', 'thirtydayhomes' ), self::url( 'account' ) );
+		$this->succeed(
+			$sent
+				/* translators: %s: email address */
+				? sprintf( __( 'Welcome. Your account is ready — one last step: click the link we sent to %s.', 'thirtydayhomes' ), $email )
+				: __( 'Welcome. Your account is ready, but the confirmation email could not be sent. Press Send a new link below.', 'thirtydayhomes' ),
+			self::url( 'account' )
+		);
 	}
 
 	/* ---------------------------------------------------------------------
@@ -295,6 +644,13 @@ final class Accounts {
 		// someone probing whether they are near the per-account ceiling,
 		// and the address kept in the form is the same either way.
 		if ( $this->is_throttled( $login ) ) {
+			/**
+			 * Fires when a sign-in is refused because of too many attempts.
+			 *
+			 * @param string $login What was typed in the email/username box.
+			 */
+			do_action( 'tdh_login_throttled', $login );
+
 			$this->fail(
 				__( 'Too many failed attempts. Please try again in fifteen minutes.', 'thirtydayhomes' ),
 				[ 'tdh_email' => $login ]
@@ -316,7 +672,7 @@ final class Accounts {
 			// One message for a wrong email and a wrong password alike.
 			// Distinguishing them tells an attacker which addresses are
 			// registered, which is a list worth having.
-			$this->fail( __( 'That email address and password do not match.', 'thirtydayhomes' ), [ 'tdh_email' => $login ] );
+			$this->fail( __( 'That email or username and password do not match.', 'thirtydayhomes' ), [ 'tdh_email' => $login ] );
 		}
 
 		$this->clear_failed_logins( $login );
@@ -346,7 +702,7 @@ final class Accounts {
 		$confirmation = __( 'If that address has an account, a reset link is on its way.', 'thirtydayhomes' );
 
 		if ( ! $user ) {
-			$this->succeed( $confirmation, self::url( 'login' ) );
+			$this->succeed( $confirmation, self::url( 'lost-password' ) );
 		}
 
 		$sent = retrieve_password( $user->user_login );
@@ -355,7 +711,7 @@ final class Accounts {
 			$this->fail( __( 'We could not send the reset email. Please try again shortly.', 'thirtydayhomes' ) );
 		}
 
-		$this->succeed( $confirmation, self::url( 'login' ) );
+		$this->succeed( $confirmation, self::url( 'lost-password' ) );
 	}
 
 	private function do_reset_password(): void {
@@ -442,7 +798,7 @@ final class Accounts {
 		}
 
 		if ( $errors ) {
-			$this->fail( $errors, [], self::url( 'profile' ) );
+			$this->fail( $errors, [], add_query_arg( 'view', 'profile', self::url( 'account' ) ) );
 		}
 
 		$update = [
@@ -459,10 +815,21 @@ final class Accounts {
 		$result = wp_update_user( $update );
 
 		if ( is_wp_error( $result ) ) {
-			$this->fail( $result->get_error_message(), [], self::url( 'profile' ) );
+			$this->fail( $result->get_error_message(), [], add_query_arg( 'view', 'profile', self::url( 'account' ) ) );
 		}
 
-		update_user_meta( $user_id, '_tdh_phone', $phone );
+		/*
+		 * Only when the form actually carried a phone field. The number now
+		 * lives on the Text message alerts card (D4), which posts on its
+		 * own; writing '' here because the details form no longer has the
+		 * field would wipe a verified number every time somebody changed
+		 * their name. The staff member form still posts tdh_phone and is
+		 * unaffected.
+		 */
+		if ( isset( $_POST['tdh_phone'] ) ) {
+			update_user_meta( $user_id, '_tdh_phone', $phone );
+		}
+
 		update_user_meta( $user_id, '_tdh_company', $company );
 
 		// wp_update_user() with a new password clears the current session's
@@ -472,7 +839,14 @@ final class Accounts {
 			wp_set_auth_cookie( $user_id, true );
 		}
 
-		$this->succeed( __( 'Your details have been saved.', 'thirtydayhomes' ), self::url( 'profile' ) );
+		// F1: a new address is proven like the first one. Staff are exempt.
+		if ( strtolower( $email ) !== strtolower( (string) $user->user_email ) && ! self::is_staff( $user_id ) ) {
+			Email_Verification::start( $user_id );
+			/* translators: %s: email address */
+			$this->succeed( sprintf( __( 'Your details have been saved. Please confirm your new address with the link we sent to %s.', 'thirtydayhomes' ), $email ), add_query_arg( 'view', 'profile', self::url( 'account' ) ) );
+		}
+
+		$this->succeed( __( 'Your details have been saved.', 'thirtydayhomes' ), add_query_arg( 'view', 'profile', self::url( 'account' ) ) );
 	}
 
 	/* ---------------------------------------------------------------------
@@ -760,6 +1134,20 @@ final class Accounts {
 				'success' => $success,
 				'values'  => $values,
 			],
+			5 * MINUTE_IN_SECONDS
+		);
+	}
+
+	/**
+	 * Stash a notice from another class (F1's link and Resend handlers), on
+	 * the same visitor key as every account form. Never carries typed values.
+	 *
+	 * @param string[] $errors
+	 */
+	public static function notify( array $errors, string $success = '' ): void {
+		set_transient(
+			self::TRANSIENT_PREFIX . self::visitor_key( true ),
+			[ 'errors' => $errors, 'success' => $success, 'values' => [] ],
 			5 * MINUTE_IN_SECONDS
 		);
 	}

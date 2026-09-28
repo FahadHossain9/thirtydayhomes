@@ -236,6 +236,26 @@ final class Membership {
 	}
 
 	/**
+	 * "3 of 5 used" — or, for an account holding more homes than its plan
+	 * covers (after moving to a smaller plan), "7 homes · plan covers 2",
+	 * never the broken-looking "7 of 2 used" (R40).
+	 */
+	public static function usage( int $used, int $quota ): string {
+
+		if ( $used > $quota ) {
+			return sprintf(
+				/* translators: 1: homes held, 2: the plan's allowance */
+				_n( '%1$s home · plan covers %2$s', '%1$s homes · plan covers %2$s', $used, 'thirtydayhomes' ),
+				number_format_i18n( $used ),
+				number_format_i18n( $quota )
+			);
+		}
+
+		/* translators: 1: used, 2: allowed */
+		return sprintf( __( '%1$s of %2$s used', 'thirtydayhomes' ), number_format_i18n( $used ), number_format_i18n( $quota ) );
+	}
+
+	/**
 	 * Whether this landlord may create another listing.
 	 */
 	public static function can_add_listing( int $user_id = 0 ): bool {

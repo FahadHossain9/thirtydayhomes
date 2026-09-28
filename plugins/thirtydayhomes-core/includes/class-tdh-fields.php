@@ -93,15 +93,17 @@ final class Fields {
 				'type' => 'number', 'private' => true, 'group' => 'location',
 				'label' => __( 'Longitude', 'thirtydayhomes' ), 'control' => 'number', 'step' => 'any',
 			],
+			// Written by TDH\Geocoder only: '' not checked yet · ok found ·
+			// failed not found · manual typed by staff. Read-only here so a
+			// select can never claim "found" for a home with no point.
 			'_tdh_geocode_status' => [
 				'type' => 'string', 'private' => true, 'group' => 'location',
-				'label' => __( 'Geocode status', 'thirtydayhomes' ), 'control' => 'select',
-				'options' => [
-					''        => __( 'Not yet geocoded', 'thirtydayhomes' ),
-					'ok'      => __( 'OK', 'thirtydayhomes' ),
-					'failed'  => __( 'Failed — needs manual coordinates', 'thirtydayhomes' ),
-					'manual'  => __( 'Set manually', 'thirtydayhomes' ),
-				],
+				'label' => __( 'Location status', 'thirtydayhomes' ), 'control' => 'readonly',
+				'help' => __( 'ok = found from the address · failed = address not found · manual = coordinates typed by hand · empty = not checked yet. Typing coordinates above marks them as set by hand.', 'thirtydayhomes' ),
+			],
+			'_tdh_geocode_reason' => [
+				'type' => 'string', 'private' => true, 'group' => 'location',
+				'label' => __( 'Location lookup note', 'thirtydayhomes' ), 'control' => 'readonly',
 			],
 
 			// --- Pricing --------------------------------------------------
@@ -120,6 +122,12 @@ final class Fields {
 			'_tdh_pet_fee' => [
 				'type' => 'number', 'private' => false, 'group' => 'pricing',
 				'label' => __( 'Pet fee', 'thirtydayhomes' ), 'control' => 'number', 'step' => '1',
+			],
+			// The owner's review, comment 5: a one-off cleaning charge is
+			// the fee renters ask about most, and it had nowhere to live.
+			'_tdh_cleaning_fee' => [
+				'type' => 'number', 'private' => false, 'group' => 'pricing',
+				'label' => __( 'Cleaning fee', 'thirtydayhomes' ), 'control' => 'number', 'step' => '1',
 			],
 
 			// --- Property -------------------------------------------------
@@ -184,22 +192,56 @@ final class Fields {
 			'_tdh_available_from' => [
 				'type' => 'string', 'private' => false, 'group' => 'terms',
 				'label' => __( 'Available from', 'thirtydayhomes' ), 'control' => 'date',
+				'help' => __( 'Blank means the home is free now.', 'thirtydayhomes' ),
+			],
+			// Plain lines, not a serialised array, so this box stays readable
+			// and correctable here. TDH\Availability reads it forgivingly.
+			'_tdh_blocked_ranges' => [
+				'type' => 'string', 'private' => false, 'group' => 'terms',
+				'label' => __( 'Unavailable dates', 'thirtydayhomes' ), 'control' => 'textarea',
+				'help' => __( 'One period per line, first and last day included: 2026-12-15 to 2027-01-05. The landlord sets these from the listing form or the dashboard.', 'thirtydayhomes' ),
 			],
 			'_tdh_lease_term' => [
 				'type' => 'string', 'private' => false, 'group' => 'terms',
 				'label' => __( 'Lease term', 'thirtydayhomes' ), 'control' => 'text',
 			],
+			/*
+			 * Utilities as an answer, not a sentence — the owner's review,
+			 * comment 7: included, not included, or partly.
+			 *
+			 * A NEW key beside the old free-text one rather than a change of
+			 * type. Every existing listing already holds a sentence in
+			 * _tdh_utilities ("Water and trash included"); turning that key
+			 * into a select would have made each of those an invalid option
+			 * overnight. The sentence stays, as the details of the answer.
+			 *
+			 * The empty option is real: without it, saving a listing in
+			 * wp-admin would submit the first option and quietly answer a
+			 * question the landlord never did.
+			 */
+			'_tdh_utilities_included' => [
+				'type' => 'string', 'private' => false, 'group' => 'terms',
+				'label' => __( 'Utilities', 'thirtydayhomes' ), 'control' => 'select',
+				'options' => [
+					''        => __( 'Not given', 'thirtydayhomes' ),
+					'yes'     => __( 'Included', 'thirtydayhomes' ),
+					'partial' => __( 'Partly included', 'thirtydayhomes' ),
+					'no'      => __( 'Not included', 'thirtydayhomes' ),
+				],
+			],
 			'_tdh_utilities' => [
 				'type' => 'string', 'private' => false, 'group' => 'terms',
-				'label' => __( 'Utilities included', 'thirtydayhomes' ), 'control' => 'textarea',
+				'label' => __( 'Utilities details', 'thirtydayhomes' ), 'control' => 'text',
+				'help' => __( 'Which utilities, e.g. "Water, gas and Wi-Fi".', 'thirtydayhomes' ),
 			],
 			'_tdh_pet_policy' => [
 				'type' => 'string', 'private' => false, 'group' => 'terms',
 				'label' => __( 'Pet policy', 'thirtydayhomes' ), 'control' => 'select',
 				'options' => [
-					'no'         => __( 'Not allowed', 'thirtydayhomes' ),
-					'considered' => __( 'Considered', 'thirtydayhomes' ),
+					''           => __( 'Not given', 'thirtydayhomes' ),
 					'yes'        => __( 'Allowed', 'thirtydayhomes' ),
+					'considered' => __( 'Considered', 'thirtydayhomes' ),
+					'no'         => __( 'Not allowed', 'thirtydayhomes' ),
 				],
 				'help' => __( 'Three states, not a yes/no toggle — spec §D asks for "considered" as a distinct answer.', 'thirtydayhomes' ),
 			],
@@ -250,6 +292,15 @@ final class Fields {
 				'type' => 'integer', 'private' => true, 'group' => 'moderation',
 				'label' => __( 'Approved by', 'thirtydayhomes' ), 'control' => 'readonly',
 			],
+			'_tdh_live_since' => [
+				'type' => 'string', 'private' => true, 'group' => 'moderation',
+				'label' => __( 'Live since', 'thirtydayhomes' ), 'control' => 'readonly',
+				'help' => __( 'Set on approval, and again when a paused home is resumed.', 'thirtydayhomes' ),
+			],
+			'_tdh_paused_at' => [
+				'type' => 'string', 'private' => true, 'group' => 'moderation',
+				'label' => __( 'Paused at', 'thirtydayhomes' ), 'control' => 'readonly',
+			],
 		];
 	}
 
@@ -296,6 +347,11 @@ final class Fields {
 				'type' => 'number', 'private' => false, 'group' => 'facility',
 				'label' => __( 'Longitude', 'thirtydayhomes' ), 'control' => 'number', 'step' => 'any',
 			],
+			'_tdh_geocode_status' => [
+				'type' => 'string', 'private' => true, 'group' => 'facility',
+				'label' => __( 'Location status', 'thirtydayhomes' ), 'control' => 'readonly',
+				'help' => __( 'Filled in by the address lookup. Typing coordinates marks them as set by hand.', 'thirtydayhomes' ),
+			],
 			'_tdh_active' => [
 				'type' => 'boolean', 'private' => false, 'group' => 'facility',
 				'label' => __( 'Active in renter search', 'thirtydayhomes' ), 'control' => 'checkbox', 'default' => true,
@@ -330,7 +386,7 @@ final class Fields {
 			 * this list omits is a key nobody in wp-admin can ever read, which
 			 * is precisely how a stored message became unrecoverable once.
 			 */
-			'_tdh_inquiry_kind'  => [ 'type' => 'string',  'private' => true, 'group' => 'inquiry', 'label' => __( 'Kind', 'thirtydayhomes' ), 'control' => 'readonly', 'help' => __( 'Blank for an enquiry about a listing; "contact" for a message sent from the Contact page.', 'thirtydayhomes' ) ],
+			'_tdh_inquiry_kind'  => [ 'type' => 'string',  'private' => true, 'group' => 'inquiry', 'label' => __( 'Kind', 'thirtydayhomes' ), 'control' => 'readonly', 'help' => __( 'Blank for an inquiry about a listing; "contact" for a message sent from the Contact page.', 'thirtydayhomes' ) ],
 			'_tdh_topic'         => [ 'type' => 'string',  'private' => true, 'group' => 'inquiry', 'label' => __( 'Topic', 'thirtydayhomes' ), 'control' => 'readonly' ],
 			'_tdh_notified'      => [
 				'type' => 'string', 'private' => true, 'group' => 'inquiry',

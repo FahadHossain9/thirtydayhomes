@@ -4,7 +4,7 @@ Theme URI:    https://github.com/FahadHossain9/thirtydayhomes
 Author:       Instaquirk
 Author URI:   https://instaquirk.com
 Description:  Presentation layer for the ThirtyDayHomes marketplace. Owns global design tokens, header, footer, navigation, responsive framework and Elementor integration. Holds NO marketplace business rules — those live in the ThirtyDayHomes Core plugin, so replacing this theme never costs a listing, membership, inquiry or facility.
-Version:      0.28.0
+Version:      0.50.9
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 8.1
@@ -273,6 +273,38 @@ img, video { max-width: 100%; height: auto; }
 
 .site-nav .nav-cta > a:hover { color: var( --color-navy ); filter: var( --hover-dim ); }
 
+/* Tap targets (G1 design review): text links that stand alone — the menus,
+   "Clear all filters", "View all homes", "Back to homes", the search bar's
+   Clear — were 21–26px tall. Each gets a 2.25rem box, centred, with no
+   change to the text, so a thumb can find them on a phone. */
+.site-nav a,
+.site-footer nav a,
+.filter-actions > .filter-clear,
+.search-bar > .search-clear,
+.text-btn,
+.back,
+.about-rules-head > .about-rules-link,
+.hiw-track > .hiw-track-cta,
+.portal-signout,
+.portal-menu-toggle,
+.panel-title > a,
+.preview-bar-link,
+.portal-check,
+.portal-sms .sms-form > .sms-consent {
+	min-height: 2.25rem;
+}
+
+.site-nav a,
+.site-footer nav a,
+.filter-actions > .filter-clear,
+.about-rules-head > .about-rules-link,
+.hiw-track > .hiw-track-cta,
+.portal-signout,
+.preview-bar-link {
+	display: inline-flex;
+	align-items: center;
+}
+
 .nav-toggle {
 	display: none;
 	background: none;
@@ -365,7 +397,19 @@ img, video { max-width: 100%; height: auto; }
 	border-right: 1px solid var( --border-default );
 }
 
-.hero-search label > .tdh-icon { color: var( --text-accent ); flex: none; }
+/* Each field's icon sits in a round sand well, the site's icon style
+   elsewhere, so it reads as centred on the label and the value together
+   rather than floating between the two lines. */
+.hero-search label > .tdh-icon {
+	flex: none;
+	box-sizing: content-box;
+	width: 16px;
+	height: 16px;
+	padding: 10px;
+	border-radius: var( --radius-full );
+	background: var( --color-sand );
+	color: var( --color-gold-ink );
+}
 
 .hero-search label > span {
 	display: flex;
@@ -404,6 +448,31 @@ img, video { max-width: 100%; height: auto; }
 }
 
 .hero-search button:disabled { opacity: var( --disabled-opacity ); cursor: not-allowed; }
+
+/* The browser's own black calendar glyph clashed with the gold icon each
+   date field already has. It is made invisible and stretched over the whole
+   field instead, so clicking anywhere in "Start date" opens the calendar. */
+.hero-search input[type="date"] { position: relative; cursor: pointer; }
+.hero-search input[type="date"]::-webkit-calendar-picker-indicator {
+	position: absolute;
+	inset: 0;
+	width: auto;
+	height: auto;
+	opacity: 0;
+	cursor: pointer;
+}
+
+/* The inputs drop their own outline to sit flush in the card, so the whole
+   field shows where keyboard focus is (G1 keyboard check). */
+.hero-search > label:has( input:focus-visible ) {
+	outline: 2px solid var( --border-focus );
+	outline-offset: -2px;
+	border-radius: var( --radius-xs );
+}
+.hero-search > button:focus-visible {
+	outline: 2px solid var( --border-focus );
+	outline-offset: 2px;
+}
 
 .hero-hint {
 	margin: var( --space-3 ) 0 0;
@@ -670,7 +739,9 @@ img, video { max-width: 100%; height: auto; }
    never has to be maintained in the markup. aria-hidden keeps a screen
    reader from announcing a chevron between every step. */
 .breadcrumb li + li::before {
-	content: "›";
+	/* Escaped for the same reason as the tick below: this file is served
+	   without a charset, so a literal chevron can be misread. */
+	content: "\203A";
 	margin-right: var( --space-2 );
 	color: var( --text-subtle );
 }
@@ -697,10 +768,70 @@ img, video { max-width: 100%; height: auto; }
 .page-head h1 { font-size: var( --text-h1 ); margin: var( --space-2 ) 0; }
 .page-head > p:last-child { color: var( --text-muted ); margin: 0; }
 
-.prose { max-width: var( --container-text ); }
-.prose h2 { font-size: var( --text-h4 ); margin-top: var( --space-8 ); }
-.prose h3 { font-size: var( --text-h5 ); margin-top: var( --space-6 ); }
-.prose p  { line-height: var( --leading-loose ); color: var( --text-muted ); }
+/* --- Long-form pages ----------------------------------------------------
+   Terms, Privacy and Fair Housing: one column of editor-written prose
+   under a centred banner. Child combinators throughout, because this is
+   the one place the markup comes from the editor rather than from a
+   template — a descendant selector here would reach into any panel the
+   content contains and restyle it too.
+   ---------------------------------------------------------------------- */
+
+.prose {
+	max-width: var( --container-text );
+	/* Centred under a banner whose own title is centred. Left-aligned in
+	   a shell 320px wider than the text it holds, the column read as
+	   though the page had lost something off its right-hand side. */
+	margin-inline: auto;
+}
+
+.prose > h2 {
+	margin-top: var( --space-10 );
+	padding-top: var( --space-5 );
+	border-top: 1px solid var( --border-soft );
+	font-size: var( --text-h4 );
+	text-wrap: balance;
+}
+
+/* The first heading opens the page. A rule above it would be drawing a
+   line between it and the banner it belongs to. */
+.prose > h2:first-child {
+	margin-top: 0;
+	padding-top: 0;
+	border-top: 0;
+}
+
+.prose > h3 {
+	margin-top: var( --space-6 );
+	font-size: var( --text-h5 );
+	text-wrap: balance;
+}
+
+.prose > p {
+	color: var( --text-muted );
+	line-height: var( --leading-loose );
+}
+
+.prose > p:last-child { margin-bottom: 0; }
+
+/* An editor's note about what is still to come — NOT one of the terms.
+   Set apart so nobody reads "final wording is supplied by the owner's
+   attorney" as though it were the policy itself. */
+.prose > .page-note {
+	margin-top: var( --space-8 );
+	padding: var( --space-5 ) var( --space-6 );
+	border-left: 3px solid var( --color-gold );
+	border-radius: 0 var( --radius-md ) var( --radius-md ) 0;
+	background: var( --bg-surface-tint );
+}
+
+.page-note > p {
+	margin: 0 0 var( --space-3 );
+	color: var( --text-muted );
+	font-size: var( --text-sm );
+	line-height: var( --leading-relaxed );
+}
+
+.page-note > p:last-child { margin-bottom: 0; }
 
 /* =========================================================================
    PROPERTY CARDS
@@ -735,14 +866,20 @@ img, video { max-width: 100%; height: auto; }
 	overflow: hidden;
 }
 
-.property-img > img {
+/* The photo sits inside the card's link (listing-card.php), so both forms
+   are named. Aimed only at a direct child, it was never sized: a 640px
+   photo left a sand strip down the right of a wider card on live. */
+.property-img > img,
+.property-img > a > img {
+	display: block;
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
 	transition: transform var( --duration-slow ) var( --ease );
 }
 
-.property-card:hover .property-img > img { transform: scale( 1.035 ); }
+.property-card:hover .property-img > img,
+.property-card:hover .property-img > a > img { transform: scale( 1.035 ); }
 
 .property-img .placeholder {
 	position: absolute;
@@ -894,6 +1031,35 @@ img, video { max-width: 100%; height: auto; }
 
 .hospital b { font-weight: var( --weight-bold ); }
 
+/*
+ * How far this home is from the postcode or town the renter typed (R44).
+ * Quieter than the hospital band beneath it: that one is the marketplace's
+ * own answer, this one is a restatement of what the renter asked, so it
+ * reads as a label on the row rather than a second claim competing with it.
+ */
+.property-body > .from-area {
+	display: flex;
+	align-items: center;
+	gap: var( --space-2 );
+	margin: var( --space-3 ) 0 0;
+	font-size: var( --text-2xs );
+	color: var( --text-muted );
+}
+
+/* The hospital band below brings its own top margin; two full gaps in a
+   row would push the price off the fold on a phone. */
+.property-body > .from-area + .hospital { margin-top: var( --space-3 ); }
+
+.property-body > .from-area > .tdh-icon {
+	flex: none;
+	color: var( --text-accent );
+}
+
+.property-body > .from-area > b {
+	font-weight: var( --weight-bold );
+	color: var( --text-default );
+}
+
 .card-foot {
 	display: flex;
 	align-items: center;
@@ -940,6 +1106,602 @@ img, video { max-width: 100%; height: auto; }
 
 .card-go .tdh-icon { flex: none; }
 
+/* =========================================================================
+   SEARCH FILTERS (task C1)
+   The bar is one plain GET form. On a desktop it is a row of fields under
+   the search box; on a phone, once filters.js has run, it becomes a drawer
+   behind a "Filters" button. Without the script a phone shows the same
+   fields stacked — nothing depends on JavaScript to work.
+   ========================================================================= */
+
+.filters { position: relative; margin-top: var( --space-4 ); }
+
+/* The button exists only for the drawer, so it is hidden until a phone
+   width AND the script are both present. */
+.filters > .filter-toggle { display: none; }
+
+.filters > .filter-bar {
+	display: flex;
+	flex-direction: column;
+	gap: var( --space-4 );
+	padding: var( --space-4 ) var( --space-5 );
+	background: var( --bg-surface );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-sm );
+}
+
+/* The drawer's own title bar; a desktop row has no use for it. */
+.filters > .filter-bar > .filter-head { display: none; }
+
+.filters > .filter-bar > .filter-fields {
+	display: grid;
+	grid-template-columns: repeat( auto-fit, minmax( 9rem, 1fr ) );
+	gap: var( --space-3 ) var( --space-4 );
+}
+
+/* The controls sit at the BOTTOM of their cell, not the top. Grid makes
+   every cell in a row as tall as the tallest, so a label that wraps to
+   two lines would otherwise push its own control down and out of line
+   with the rest of the row. Anchoring at the bottom keeps the inputs on
+   one line whatever happens above them. */
+.filter-fields > .filter-field {
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
+	gap: var( --space-1 );
+	min-width: 0;
+}
+
+/* Two fields hold real names rather than numbers — a hospital, and the
+   sort that reads "Closest to the hospital" — and a 9rem track cuts both
+   off mid-word. They take two tracks instead, which on a phone is the
+   full width of the drawer. */
+.filter-fields > .filter-field.wide { grid-column: span 2; }
+
+.filter-fields > .filter-field > span:first-child {
+	color: var( --text-muted );
+	font-size: var( --text-2xs );
+	font-weight: var( --weight-semibold );
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+/* The reason a field is switched off, inside its label. It must not join
+   in the uppercase shouting: it is an aside, not a second heading. */
+.filter-fields > .filter-field > span:first-child > small {
+	font-weight: var( --weight-normal );
+	letter-spacing: 0;
+	text-transform: none;
+}
+
+/* A control that cannot be used yet looks it, as well as saying it. */
+.filter-fields > .filter-field > select:disabled {
+	background-color: var( --bg-surface-tint );
+	border-style: dashed;
+	color: var( --text-subtle );
+	cursor: not-allowed;
+}
+
+.filter-fields > .filter-field > select,
+.filter-fields > .filter-field > input[ type="date" ],
+.filter-fields > .filter-field > .filter-money > input {
+	width: 100%;
+	min-height: 2.75rem;
+	padding: var( --space-2 ) var( --space-3 );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-sm );
+	background-color: var( --bg-surface-tint );
+	color: var( --text-default );
+	font: inherit;
+	font-size: var( --text-sm );
+	transition: border-color var( --duration-fast ) var( --ease ), box-shadow var( --duration-fast ) var( --ease );
+}
+
+/* The same chevron every other <select> on the site draws (see .form-field
+   select): the browser's own arrow sits hard against the right border with
+   no breathing room, and the reviewer saw it here within a minute. Space
+   on the right so a long option never runs under the glyph. */
+.filter-fields > .filter-field > select {
+	appearance: none;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	padding-right: calc( var( --space-4 ) * 2 + var( --icon-sm ) );
+	background-image: url( "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23687384' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E" );
+	background-repeat: no-repeat;
+	background-position: right var( --space-4 ) center;
+	background-size: var( --icon-sm ) var( --icon-sm );
+}
+
+.filter-fields > .filter-field > select:hover,
+.filter-fields > .filter-field > input[ type="date" ]:hover,
+.filter-fields > .filter-field > .filter-money > input:hover { border-color: var( --border-strong ); }
+
+.filter-fields > .filter-field > select:focus-visible,
+.filter-fields > .filter-field > input[ type="date" ]:focus-visible,
+.filter-fields > .filter-field > .filter-money > input:focus-visible {
+	outline: none;
+	background-color: var( --bg-surface );
+	border-color: var( --color-gold );
+	box-shadow: 0 0 0 3px rgba( 215, 185, 103, 0.28 );
+}
+
+/* A dollar sign inside the field, so "1500" reads as money. */
+.filter-fields > .filter-field > .filter-money { position: relative; display: block; }
+.filter-fields > .filter-field > .filter-money > i {
+	position: absolute;
+	top: 50%;
+	left: var( --space-3 );
+	transform: translateY( -50% );
+	color: var( --text-subtle );
+	font-style: normal;
+	pointer-events: none;
+}
+.filter-fields > .filter-field > .filter-money > input { padding-left: calc( var( --space-3 ) + 1em ); }
+.filter-fields > .filter-field > .filter-money > input::-webkit-outer-spin-button,
+.filter-fields > .filter-field > .filter-money > input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.filter-fields > .filter-field > .filter-money > input { -moz-appearance: textfield; appearance: textfield; }
+
+.filters > .filter-bar > .filter-actions {
+	display: flex;
+	align-items: center;
+	gap: var( --space-4 );
+	flex-wrap: wrap;
+}
+
+.filter-actions > .filter-clear {
+	color: var( --text-muted );
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+	text-decoration: none;
+}
+
+.filter-actions > .filter-clear:hover { color: var( --text-default ); text-decoration: underline; }
+.filter-actions > .filter-clear:focus-visible { outline: 2px solid var( --border-focus ); outline-offset: 2px; }
+
+.filters > .filter-notice { margin: var( --space-3 ) 0 0; }
+
+/* ---------------------------------------------------------------------------
+   ELEMENTOR WIDGETS (task C5)
+
+   A heading a page builder may add above the results, and the line only the
+   person building the page sees. Both are scoped so nothing here can reach
+   the archive template's own bands.
+   --------------------------------------------------------------------------- */
+
+.page-shell > .results-intro { margin-bottom: var( --space-5 ); }
+.page-shell > .results-intro > h2 { margin: 0; }
+.page-shell > .results-intro > p { margin: var( --space-2 ) 0 0; color: var( --text-muted ); max-width: var( --measure ); }
+
+/* Never seen by a visitor: Render::editor_note() returns nothing outside
+   the Elementor editor. Deliberately plain — it is a note to a colleague,
+   not a part of the design. */
+.tdh-editor-note {
+	margin: 0;
+	padding: var( --space-4 ) var( --space-5 );
+	border: 1px dashed var( --border-strong );
+	border-radius: var( --radius-sm );
+	background-color: var( --bg-surface-tint );
+	color: var( --text-muted );
+	font-size: var( --text-sm );
+}
+
+/* ---------------------------------------------------------------------------
+   THE MAP (task C4)
+
+   A List / Map pair beside the count, and the map itself. Everything is
+   scoped under .result-top or .map-panel, so the property page's own
+   .map-box fallback and the rest of the site are untouched.
+   --------------------------------------------------------------------------- */
+
+.result-top > .view-toggle {
+	display: inline-flex;
+	padding: 2px;
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-pill );
+	background-color: var( --bg-surface-tint );
+}
+
+.view-toggle > .view-choice {
+	display: inline-flex;
+	align-items: center;
+	gap: var( --space-2 );
+	min-height: 2.25rem;
+	padding: 0 var( --space-4 );
+	border-radius: var( --radius-pill );
+	color: var( --text-muted );
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+	text-decoration: none;
+	transition: background-color var( --duration-fast ) var( --ease ), color var( --duration-fast ) var( --ease );
+}
+
+.view-toggle > .view-choice:hover { color: var( --text-default ); }
+.view-toggle > .view-choice:focus-visible { outline: 2px solid var( --border-focus ); outline-offset: 2px; }
+
+/* The current view is named by aria-current as well as coloured, so the
+   answer never depends on seeing which one is darker. */
+.view-toggle > .view-choice.is-current {
+	background-color: var( --bg-inverse );
+	color: var( --text-inverse );
+}
+
+.view-toggle > .view-choice > .tdh-icon { flex: none; }
+
+.map-panel { margin-top: var( --space-5 ); }
+
+.map-panel > .map-canvas {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	/* A height before the map arrives, so the page does not jump when it
+	   does — and so the failure line has somewhere to sit. */
+	height: clamp( 20rem, 55vh, 34rem );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-lg );
+	background-color: var( --bg-surface-tint );
+	overflow: hidden;
+}
+
+.map-panel.is-single > .map-canvas { height: clamp( 14rem, 34vh, 20rem ); }
+
+/* The failure state takes the same room the map would have, and stacks a
+   sentence over a way out, so the panel never reads as a dead grey box. */
+.map-canvas.is-failed { flex-direction: column; gap: var( --space-3 ); padding: var( --space-5 ); text-align: center; }
+
+.map-canvas > .map-status { margin: 0; color: var( --text-muted ); font-size: var( --text-sm ); }
+.map-canvas > .map-status.is-error { color: var( --color-danger ); }
+
+.map-canvas > .map-status-link {
+	color: var( --text-accent );
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+}
+
+.map-canvas > .map-status-link:focus-visible { outline: 2px solid var( --border-focus ); outline-offset: 2px; }
+
+.map-panel > .map-privacy,
+.map-panel > .map-note {
+	margin: var( --space-3 ) 0 0;
+	color: var( --text-muted );
+	font-size: var( --text-sm );
+}
+
+.map-panel > .map-privacy > b { display: block; color: var( --text-default ); }
+
+.map-panel > .map-note {
+	padding-left: var( --space-3 );
+	border-left: 3px solid var( --color-gold );
+}
+
+/* In map view the cards stay in the document for screen readers and for
+   anyone whose map never loads, but they are taken out of sight. */
+.property-grid.is-behind-map {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip-path: inset( 50% );
+	white-space: nowrap;
+}
+
+/* The price tag on a home's circle. It is our own HTML overlay, not a
+   Google marker, so it takes the site's type and colours — and so it can
+   never be the one thing this feature must not draw, a pin. */
+.map-pill {
+	position: absolute;
+	transform: translate( -50%, -50% );
+	min-height: 1.75rem;
+	padding: 0 var( --space-3 );
+	border: 1px solid var( --color-gold-deep );
+	border-radius: var( --radius-pill );
+	background-color: var( --color-navy );
+	box-shadow: var( --shadow-sm );
+	color: var( --color-gold-light );
+	font-family: var( --font-body );
+	font-size: var( --text-xs );
+	font-weight: var( --weight-semibold );
+	line-height: 1.7;
+	white-space: nowrap;
+	cursor: pointer;
+	transition: background-color var( --duration-fast ) var( --ease ), color var( --duration-fast ) var( --ease ), transform var( --duration-fast ) var( --ease );
+}
+
+.map-pill:hover,
+.map-pill:focus-visible {
+	background-color: var( --color-gold );
+	border-color: var( --color-gold-deep );
+	color: var( --color-navy );
+	transform: translate( -50%, -50% ) scale( 1.06 );
+}
+
+.map-pill:focus-visible { outline: 2px solid var( --color-navy ); outline-offset: 2px; }
+
+@media ( prefers-reduced-motion: reduce ) {
+	.map-pill { transition: none; }
+	.map-pill:hover,
+	.map-pill:focus-visible { transform: translate( -50%, -50% ); }
+}
+
+/* The card inside a circle's info window. Google owns the bubble; these
+   are our contents inside it. */
+.map-card {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+	min-width: 11rem;
+	padding: var( --space-1 ) var( --space-6 ) var( --space-2 ) var( --space-2 );
+	font-family: var( --font-body );
+}
+
+/* Ours, because Google's own close button goes away with its title bar. */
+.map-card > .map-card-close {
+	position: absolute;
+	top: 0;
+	right: 0;
+	width: 1.75rem;
+	height: 1.75rem;
+	padding: 0;
+	border: 0;
+	border-radius: var( --radius-full );
+	background: none;
+	color: var( --text-muted );
+	font-size: var( --text-lg );
+	line-height: 1;
+	cursor: pointer;
+}
+
+.map-card > .map-card-close:hover { background-color: var( --bg-surface-tint ); color: var( --text-default ); }
+.map-card > .map-card-close:focus-visible { outline: 2px solid var( --border-focus ); outline-offset: 1px; }
+
+.map-card > b { color: var( --text-default ); font-family: var( --font-heading ); font-size: var( --text-base ); }
+.map-card > span { color: var( --text-muted ); font-size: var( --text-xs ); }
+.map-card > .map-card-price { margin-top: var( --space-1 ); color: var( --text-default ); font-size: var( --text-sm ); font-weight: var( --weight-bold ); }
+.map-card > small { color: var( --text-subtle ); font-size: var( --text-2xs ); }
+
+.map-card > a {
+	display: inline-flex;
+	align-items: center;
+	align-self: flex-start;
+	min-height: 2.25rem;
+	margin-top: var( --space-2 );
+	padding: 0 var( --space-4 );
+	border-radius: var( --radius-pill );
+	background-color: var( --color-navy );
+	color: var( --color-gold-light );
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+	text-decoration: none;
+}
+
+.map-card > a:hover { background-color: var( --color-gold ); color: var( --color-navy ); }
+.map-card > a:focus-visible { outline: 2px solid var( --border-focus ); outline-offset: 2px; }
+
+/* ---------------------------------------------------------------------------
+   THE STAY (task C2)
+
+   Two date fields at the front of the filter bar, and the line that explains
+   a date the search could not use as typed. Everything is scoped under
+   .filters or the card, so nothing here reaches the wizard's own date fields.
+   --------------------------------------------------------------------------- */
+
+/* A date input is taller than a text input in Safari and shorter in Chrome
+   unless it is told; both are pinned to the row height the selects use, and
+   the picker glyph is pulled in off the border like the chevron beside it. */
+.filter-fields > .filter-field > input[ type="date" ] {
+	appearance: none;
+	-webkit-appearance: none;
+	padding-right: var( --space-3 );
+	line-height: 1.2;
+}
+
+.filter-fields > .filter-field > input[ type="date" ]::-webkit-calendar-picker-indicator {
+	margin-inline-start: var( --space-2 );
+	opacity: 0.55;
+	cursor: pointer;
+}
+
+.filter-fields > .filter-field > input[ type="date" ]:hover::-webkit-calendar-picker-indicator { opacity: 1; }
+
+/* On the narrowest phones two dates side by side clipped to "mm/dd/yyy";
+   there each takes the full row. */
+@media ( max-width: 24rem ) {
+	.filter-fields > .filter-field:has( > input[ type="date" ] ) { grid-column: 1 / -1; }
+}
+
+/* An empty date field shows the browser's own "dd/mm/yyyy" in full black,
+   which reads as a value that is already set. Quieten it to placeholder grey
+   while it is empty, and let it darken once a date is chosen. */
+.filter-fields > .filter-field > input[ type="date" ]:not( :focus ):invalid,
+.filter-fields > .filter-field > input[ type="date" ][ value="" ]:not( :focus ) { color: var( --text-subtle ); }
+
+/* The line sits inside the field grid, directly under the two dates it is
+   about, and spans every column so it reads as one sentence rather than a
+   stray cell. */
+.filter-fields > .date-notice {
+	grid-column: 1 / -1;
+	margin: calc( var( --space-2 ) * -1 ) 0 0;
+	padding-left: var( --space-3 );
+	border-left: 3px solid var( --color-gold );
+	color: var( --text-muted );
+	font-size: var( --text-sm );
+}
+
+/* On a card, the line that replaces "Available 11 Nov" when the renter
+   searched with dates. It is a statement about this home, so it carries the
+   same weight as the price line beside it, not a badge's shout. */
+.card-price > .free-for-dates { color: var( --color-success ); font-weight: var( --weight-semibold ); }
+
+/* The stay repeated above the property page's calendar, worded as well as
+   coloured so the answer never depends on the green or the red. */
+.avail-public > .avail-asked {
+	display: flex;
+	align-items: flex-start;
+	gap: var( --space-3 );
+	margin: 0 0 var( --space-4 );
+	padding: var( --space-3 ) var( --space-4 );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-sm );
+	background-color: var( --bg-surface-tint );
+}
+
+.avail-public > .avail-asked > svg { flex: none; margin-top: 0.15em; }
+.avail-public > .avail-asked > span { display: flex; flex-direction: column; gap: 0.15rem; }
+.avail-public > .avail-asked > span > small { color: var( --text-muted ); font-size: var( --text-sm ); }
+.avail-public > .avail-asked.is-free > svg { color: var( --color-success ); }
+.avail-public > .avail-asked.is-taken > svg { color: var( --color-danger ); }
+
+/* Chips: each active filter, removable on its own. Also printed inside the
+   empty state, where the same list is the way out. */
+.filter-chips {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var( --space-2 );
+	margin: var( --space-3 ) 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.filter-chips > li > a {
+	display: inline-flex;
+	align-items: center;
+	gap: var( --space-1 );
+	min-height: 2.25rem;
+	padding: 0 var( --space-2 ) 0 var( --space-3 );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-pill );
+	background: var( --bg-surface-accent );
+	color: var( --text-default );
+	font-size: var( --text-xs );
+	font-weight: var( --weight-semibold );
+	text-decoration: none;
+	transition: border-color var( --duration-fast ) var( --ease );
+}
+
+/* A keyword is capped at 100 characters, but 100 characters with no space
+   in them still pushed the chip — and the page — off the side of a phone.
+   Let the label break anywhere; the × stays on the last line. */
+.filter-chips > li { min-width: 0; max-width: 100%; }
+.filter-chips > li > a { max-width: 100%; overflow-wrap: anywhere; }
+
+.filter-chips > li > a > .tdh-icon { color: var( --text-muted ); }
+.filter-chips > li > a:hover { border-color: var( --color-gold ); }
+.filter-chips > li > a:hover > .tdh-icon { color: var( --color-danger ); }
+.filter-chips > li > a:focus-visible { outline: 2px solid var( --border-focus ); outline-offset: 2px; }
+
+.filter-chips > li.filter-chips-clear > a {
+	border-color: transparent;
+	background: none;
+	color: var( --text-muted );
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.filter-chips > li.filter-chips-clear > a:hover { color: var( --text-default ); }
+
+/* Inside the empty state the chips are centred with the words around them. */
+.empty > .filter-chips { justify-content: center; margin: var( --space-4 ) 0 var( --space-5 ); }
+
+/* The "Filters" button's count. */
+.filters > .filter-toggle > .filter-count {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 1.25rem;
+	height: 1.25rem;
+	padding: 0 var( --space-1 );
+	border-radius: var( --radius-pill );
+	background: var( --color-navy );
+	color: var( --text-inverse );
+	font-size: var( --text-3xs );
+	font-style: normal;
+	font-weight: var( --weight-bold );
+	line-height: 1;
+}
+
+@media ( max-width: 43.75rem ) {
+	/* With the script: a button, and the form as a drawer from the bottom.
+	   Without it (.has-js never set): the form stays put, stacked. */
+	.filters.has-js > .filter-toggle {
+		display: inline-flex;
+		align-items: center;
+		gap: var( --space-2 );
+		min-height: 2.75rem;
+	}
+
+	.filters.has-js > .filter-bar {
+		position: fixed;
+		inset: auto 0 0 0;
+		z-index: 90;
+		max-height: 88vh;
+		overflow-y: auto;
+		border-radius: var( --radius-md ) var( --radius-md ) 0 0;
+		border-bottom: 0;
+		transform: translateY( 100% );
+		visibility: hidden;
+		transition: transform var( --duration-base ) var( --ease ), visibility 0s linear var( --duration-base );
+	}
+
+	.filters.has-js > .filter-bar.open {
+		transform: none;
+		visibility: visible;
+		transition: transform var( --duration-base ) var( --ease );
+	}
+
+	.filters.has-js > .filter-bar > .filter-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.filter-head > b { font-size: var( --text-base ); }
+
+	.filter-head > .filter-close {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2.25rem;
+		height: 2.25rem;
+		border: 0;
+		border-radius: var( --radius-pill );
+		background: var( --bg-surface-tint );
+		color: var( --text-default );
+		cursor: pointer;
+	}
+
+	.filter-head > .filter-close:focus-visible { outline: 2px solid var( --border-focus ); outline-offset: 2px; }
+
+	.filters.has-js > .filter-bar > .filter-fields { grid-template-columns: 1fr 1fr; }
+
+	.filters.has-js > .filter-bar > .filter-actions > .primary { flex: 1; min-height: 2.75rem; justify-content: center; }
+
+	.filters > .filter-backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: 80;
+		background: rgba( 15, 23, 42, 0.45 );
+		opacity: 0;
+		visibility: hidden;
+		transition: opacity var( --duration-base ) var( --ease ), visibility 0s linear var( --duration-base );
+	}
+
+	.filters > .filter-backdrop.open { opacity: 1; visibility: visible; transition: opacity var( --duration-base ) var( --ease ); }
+
+	/* The page must not scroll under the open drawer. */
+	html.tdh-filters-open, html.tdh-filters-open body { overflow: hidden; }
+
+	/* Without the script the row simply stacks. */
+	.filters:not( .has-js ) > .filter-bar > .filter-fields { grid-template-columns: 1fr 1fr; }
+}
+
+@media ( prefers-reduced-motion: reduce ) {
+	.filters.has-js > .filter-bar,
+	.filters > .filter-backdrop { transition: none; }
+}
+
 .result-top {
 	display: flex;
 	justify-content: space-between;
@@ -948,6 +1710,9 @@ img, video { max-width: 100%; height: auto; }
 	flex-wrap: wrap;
 	margin: var( --space-7 ) 0 var( --space-5 );
 }
+
+/* "3 homes matching “…”" quotes the keyword; a long one wraps here too. */
+.result-top > b { min-width: 0; overflow-wrap: anywhere; }
 
 /* --- The archive's search bar ------------------------------------------- */
 
@@ -1374,13 +2139,167 @@ img, video { max-width: 100%; height: auto; }
 
 .detail-location .tdh-icon { flex: none; }
 
-.detail-media { margin: 0 0 var( --space-7 ); }
-.detail-media img {
+/* --- The photo gallery ---------------------------------------------------
+   The cover large on the left, up to four more on the right, all at the
+   height the single cover photo always had, so the page does not jump when
+   a landlord adds a second photo. The layout follows how many there are. */
+
+.detail-gallery {
+	position: relative;
+	display: grid;
+	gap: var( --space-2 );
+	height: var( --split-photo-height );
+	margin: 0 0 var( --space-7 );
+	overflow: hidden;
+	border-radius: var( --radius-md );
+}
+
+.detail-gallery[data-count="1"] { grid-template-columns: 1fr; }
+.detail-gallery[data-count="2"] { grid-template-columns: 2fr 1fr; }
+.detail-gallery[data-count="3"] { grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; }
+.detail-gallery[data-count="4"] { grid-template-columns: 2fr 1fr 1fr; grid-template-rows: 1fr 1fr; }
+.detail-gallery[data-count="5"] { grid-template-columns: 2fr 1fr 1fr; grid-template-rows: 1fr 1fr; }
+
+.detail-gallery[data-count="3"] > .detail-gallery-tile:first-child,
+.detail-gallery[data-count="4"] > .detail-gallery-tile:first-child,
+.detail-gallery[data-count="5"] > .detail-gallery-tile:first-child { grid-row: 1 / span 2; }
+
+/* Four photos: the second spans the top of the right side. */
+.detail-gallery[data-count="4"] > .detail-gallery-tile:nth-child( 2 ) { grid-column: 2 / span 2; }
+
+.detail-gallery-tile {
+	position: relative;
+	margin: 0;
+	min-height: 0;
+	background: var( --bg-surface-accent );
+}
+
+.detail-gallery-tile > img {
 	display: block;
 	width: 100%;
-	height: var( --split-photo-height );
+	height: 100%;
 	object-fit: cover;
-	border-radius: var( --radius-md );
+	transition: filter var( --duration-fast ) var( --ease );
+}
+
+/* Each tile's opener covers it; only present once the viewer can open. */
+.detail-gallery-open {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	cursor: zoom-in;
+}
+
+.detail-gallery-tile:has( > .detail-gallery-open:hover ) > img { filter: brightness( 0.9 ); }
+
+.detail-gallery-open:focus-visible {
+	outline: 3px solid var( --color-gold );
+	outline-offset: -3px;
+}
+
+.detail-gallery-all {
+	position: absolute;
+	right: var( --space-4 );
+	bottom: var( --space-4 );
+	display: inline-flex;
+	align-items: center;
+	gap: var( --space-2 );
+	padding: var( --btn-pad-y-sm ) var( --btn-pad-x-sm );
+	border: 1px solid var( --border-strong );
+	border-radius: var( --radius-sm );
+	background: var( --bg-surface );
+	color: var( --color-navy );
+	font: inherit;
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+	box-shadow: var( --shadow-sm );
+	cursor: pointer;
+}
+
+.detail-gallery-all:hover { background: var( --bg-surface-tint ); }
+.detail-gallery-all:focus-visible { outline: 2px solid var( --border-focus ); outline-offset: 2px; }
+
+/* The viewer: every photo, in order, over the page. */
+.gallery-dialog {
+	width: min( 64rem, 100vw );
+	max-width: 100vw;
+	height: 100dvh;
+	max-height: 100dvh;
+	margin: 0 auto;
+	padding: 0;
+	border: 0;
+	background: var( --bg-surface );
+	color: var( --text-default );
+}
+
+.gallery-dialog::backdrop { background: color-mix( in srgb, var( --color-navy ) 88%, transparent ); }
+
+.gallery-dialog-head {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var( --space-4 );
+	padding: var( --space-4 ) var( --space-5 );
+	border-bottom: 1px solid var( --border-soft );
+	background: var( --bg-surface );
+}
+
+.gallery-dialog-head > h2 {
+	margin: 0;
+	font-family: var( --font-body );
+	font-size: var( --text-base );
+	font-weight: var( --weight-semibold );
+}
+
+.gallery-dialog-close {
+	flex: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.75rem;
+	height: 2.75rem;
+	padding: 0;
+	border: 1px solid var( --border-strong );
+	border-radius: var( --radius-full );
+	background: var( --bg-surface );
+	color: var( --color-navy );
+	cursor: pointer;
+}
+
+.gallery-dialog-close:hover { background: var( --bg-surface-tint ); }
+.gallery-dialog-close:focus-visible { outline: 2px solid var( --border-focus ); outline-offset: 2px; }
+
+.gallery-dialog-list {
+	display: flex;
+	flex-direction: column;
+	gap: var( --space-5 );
+	margin: 0;
+	padding: var( --space-5 );
+	list-style: none;
+}
+
+/* Opened at a photo, that photo clears the sticky head instead of sliding under it. */
+.gallery-dialog-list > li { scroll-margin-top: calc( 2.75rem + 2 * var( --space-4 ) + var( --space-5 ) ); }
+
+.gallery-dialog-list > li > figure { margin: 0; }
+
+.gallery-dialog-list > li > figure > img {
+	display: block;
+	width: 100%;
+	height: auto;
+	border-radius: var( --radius-sm );
+}
+
+.gallery-dialog-list > li > figure > figcaption {
+	margin-top: var( --space-2 );
+	font-size: var( --text-sm );
+	color: var( --text-muted );
 }
 
 .detail-grid {
@@ -1390,29 +2309,87 @@ img, video { max-width: 100%; height: auto; }
 	align-items: start;
 }
 
+/* ─── The facts at the top of a home ────────────────────────────────────
+   Cards rather than cells divided by hairlines. Four numbers in a row of
+   plain text read as a table of data; the same four as cards read as the
+   headline facts about a home, which is what they are.
+
+   `auto-fill`, not `auto-fit`: a home that only knows its bedrooms and
+   bathrooms would otherwise stretch two cards across the whole width,
+   each mostly empty. auto-fill keeps the track size and simply leaves the
+   unused ones empty, so two facts look like two facts.
+
+   Scoped with child combinators: the old rules reached `b` and `small`
+   through descendant selectors, which is exactly what section 10 of the
+   rules forbids, and they would now also have caught the icon's markup. */
 .quick-facts {
 	display: grid;
-	grid-template-columns: repeat( 4, 1fr );
-	padding: var( --space-5 ) 0;
+	grid-template-columns: repeat( auto-fill, minmax( 9rem, 1fr ) );
+	gap: var( --space-4 );
+	padding: 0;
+	/* Small, because the first section's own top padding sits under it. */
 	margin: 0 0 var( --space-3 );
 	list-style: none;
-	border-block: 1px solid var( --border-default );
 }
 
-.quick-facts li {
+.quick-facts > li {
 	display: flex;
 	flex-direction: column;
-	align-items: center;
+	align-items: flex-start;
 	gap: var( --space-1 );
-	border-right: 1px solid var( --border-default );
+	padding: var( --space-5 );
+	border: 1px solid var( --border-soft );
+	border-radius: var( --radius-md );
+	background: var( --bg-surface );
+	box-shadow: var( --shadow-sm );
 }
 
-.quick-facts li:last-child { border-right: 0; }
-.quick-facts b { font-family: var( --font-heading ); font-size: var( --text-h5 ); }
-.quick-facts small { color: var( --text-muted ); }
+.quick-facts > li > .tdh-icon {
+	margin-bottom: var( --space-2 );
+	color: var( --text-accent );
+}
 
-.detail-section { padding: var( --space-7 ) 0; border-bottom: 1px solid var( --border-default ); }
-.detail-section h2 { font-size: var( --text-h4 ); }
+.quick-facts > li > b {
+	font-family: var( --font-heading );
+	font-size: var( --text-h5 );
+	line-height: var( --leading-tight );
+	font-variant-numeric: tabular-nums;
+}
+
+.quick-facts > li > small {
+	color: var( --text-muted );
+	font-size: var( --text-2xs );
+	font-weight: var( --weight-semibold );
+	letter-spacing: var( --tracking-wide );
+	text-transform: uppercase;
+}
+
+/* A softer rule than before: the divider's job is to separate, and at
+   --border-default it was drawing attention to itself instead.
+
+   The padding is deliberately NOT generous. It applies to both ends, so
+   whatever is set here lands twice between one section and the next —
+   at --space-8 the measured gaps were 81 to 97px, which read as the page
+   having failed to load something. --space-6 gives a 48px break, and the
+   hairline does the rest. */
+.detail-section { padding: var( --space-6 ) 0; border-bottom: 1px solid var( --border-soft ); }
+
+/* A divider separates one section from the next. The last one has nothing
+   after it but the footer, which ends the page by itself. */
+.detail-section:last-child { border-bottom: 0; }
+
+/* The last thing in a section carries its own bottom margin — a paragraph
+   from the editor brings one with it — and that margin is added to the
+   section's padding, which is where the extra 30px in the measurements
+   above came from. */
+.detail-section > :last-child { margin-bottom: 0; }
+
+.detail-section > h2 {
+	margin-bottom: var( --space-4 );
+	font-size: var( --text-h4 );
+	letter-spacing: var( --tracking-tight );
+}
+
 .detail-section p { color: var( --text-muted ); line-height: var( --leading-relaxed ); }
 
 .amenities {
@@ -1425,7 +2402,12 @@ img, video { max-width: 100%; height: auto; }
 }
 
 .amenities li { position: relative; padding-left: var( --space-6 ); }
-.amenities li::before { content: "✓"; position: absolute; left: 0; color: var( --text-accent ); }
+/* "\2713" is the tick, written as a CSS escape rather than as the
+   character itself. The server sends this file as `text/css` with no
+   charset, so the browser has to guess the encoding — and when it guesses
+   wrong a literal ✓ arrives on screen as "âœ". An escape is plain ASCII
+   and cannot be misread, whatever the guess. */
+.amenities li::before { content: "\2713"; position: absolute; left: 0; color: var( --text-accent ); }
 
 .map-box {
 	display: flex;
@@ -1446,6 +2428,83 @@ img, video { max-width: 100%; height: auto; }
 	line-height: var( --leading-body );
 }
 
+/* The nearest hospitals, under the map note (task B2). A plain ruled list:
+   the distance is the column a renter scans, so it keeps its own edge and
+   tabular figures, and the name wraps rather than pushing it out of line. */
+.facility-list { margin-top: var( --space-5 ); }
+
+.facility-list > .facility-lead {
+	margin: 0 0 var( --space-2 );
+	color: var( --text-muted );
+	font-size: var( --text-2xs );
+	font-weight: var( --weight-semibold );
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+/* Two cards across, not a ruled list. Three or five hospitals then read as
+   a set of places you could live near, which is the decision being made,
+   rather than as rows of a table. `auto-fit` keeps a single facility from
+   sitting in a half-width card with a hole beside it, and drops to one
+   column wherever there is not room for two. */
+.facility-list > ul {
+	display: grid;
+	grid-template-columns: repeat( auto-fit, minmax( 15rem, 1fr ) );
+	gap: var( --space-3 );
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.facility-list > ul > li {
+	display: flex;
+	align-items: center;
+	gap: var( --space-3 );
+	padding: var( --space-4 );
+	border: 1px solid var( --border-soft );
+	border-radius: var( --radius-md );
+	background: var( --bg-surface );
+}
+
+/* The icon sits in a tinted well, so it reads as a mark on the card
+   rather than as a stray glyph in front of the name. */
+.facility-list > ul > li > .tdh-icon {
+	flex: none;
+	box-sizing: content-box;
+	padding: var( --space-2 );
+	border-radius: var( --radius-full );
+	background: var( --bg-surface-accent );
+	color: var( --color-gold-deep );
+}
+
+.facility-list > ul > li > span {
+	display: flex;
+	flex-direction: column;
+	gap: var( --space-1 );
+	min-width: 0;
+}
+
+.facility-list > ul > li > span > b { font-size: var( --text-sm ); overflow-wrap: break-word; }
+.facility-list > ul > li > span > small { color: var( --text-muted ); font-size: var( --text-2xs ); }
+
+/* margin-left:auto, not justify-content: the distance is pushed to the
+   right edge while the icon and the name stay together on the left. */
+.facility-list > ul > li > .facility-miles {
+	flex: none;
+	margin-left: auto;
+	color: var( --text-accent );
+	font-size: var( --text-sm );
+	font-variant-numeric: tabular-nums;
+}
+
+/* Nothing in range is an answer, not an empty space. */
+.facility-none {
+	margin: var( --space-5 ) 0 0;
+	color: var( --text-muted );
+	font-size: var( --text-sm );
+	line-height: var( --leading-body );
+}
+
 .availability {
 	display: flex;
 	align-items: center;
@@ -1457,26 +2516,270 @@ img, video { max-width: 100%; height: auto; }
 .availability span { display: flex; flex-direction: column; gap: var( --space-1 ); }
 .availability small { color: var( --text-muted ); }
 
-.inquiry-box {
-	position: sticky;
-	top: var( --space-5 );
-	height: max-content;
-	padding: var( --space-6 );
-	border: 1px solid var( --border-default );
-	box-shadow: var( --shadow-md );
+/* ─── The right-hand column: two cards, not one ─────────────────────────
+   The price and the fees are something a renter READS. The inquiry form
+   is something they DO. Held in one container the form read as the last
+   row of the fee table, so they are two cards.
+
+   ─── WHY THE WHOLE COLUMN STICKS, NOT ONE CARD IN IT ────────────────────
+
+   The column stays with the reader for the whole of the left side, right
+   to the end. Two earlier attempts did not do that:
+
+   - One tall card with `position: sticky`. It reached 1178px, taller than
+     a laptop viewport, and `sticky` cannot pin something that does not
+     fit — so it never pinned at all and the price scrolled away.
+   - Splitting, then pinning only the price card. The price then pinned,
+     but the form beneath it slid up BEHIND the pinned card as the page
+     scrolled, hiding the fields the renter was trying to fill in. It also
+     released early, because the column was only as tall as its content.
+
+   So the whole column sticks, and carries its own scrollbar when it is
+   taller than the screen. The price stays in view the entire way down,
+   the form comes with it and can still be reached, and nothing is ever
+   covered by anything else. */
+
+.listing-side {
+	display: flex;
+	flex-direction: column;
+	gap: var( --space-5 );
+
+	/* ─── Nothing is pinned, and that is a decision ─────────────────────
+	   This column is ~1200px tall. No laptop viewport is, and an element
+	   taller than the screen cannot be pinned without paying for it
+	   somewhere. All three ways of paying were tried here:
+
+	   - Pin the top: the foot of the form sits below the fold and STAYS
+	     there, pinned out of reach. Send becomes unclickable.
+	   - Pin the top, cap the height, scroll inside: reachable, but the
+	     card is sliced off mid-field at the cap, and with the inner
+	     scrollbar hidden nothing says it continues — it reads as a
+	     rendering fault.
+	   - Pin the bottom: correct in principle, but Chrome does not engage
+	     bottom-sticky for a grid item taller than the scrollport, so it
+	     simply never pinned.
+
+	   Plain scrolling costs nothing: the renter scrolls to the form,
+	   fills it in and sends. To pin anything here, the column has to be
+	   made short enough to fit the screen first — see the note in
+	   MILESTONE-2-CHECKLIST.md under D1. */
+	align-self: start;
 }
 
-.inquiry-box > p:first-child { margin-bottom: var( --space-1 ); }
-.inquiry-box > p:first-child b { font-size: var( --text-xl ); }
-.inquiry-box > small { color: var( --text-muted ); }
-.inquiry-box hr { border: 0; border-top: 1px solid var( --border-default ); margin: var( --space-5 ) 0; }
-.inquiry-box dl { margin: 0; display: flex; flex-direction: column; gap: var( --space-4 ); }
-.inquiry-box dl > div { display: flex; justify-content: space-between; gap: var( --space-3 ); font-size: var( --text-sm ); }
-.inquiry-box dt { color: var( --text-muted ); margin: 0; }
-.inquiry-box dd { margin: 0; font-weight: var( --weight-semibold ); }
-.inquiry-box > button,
-.inquiry-box > a.primary,
-.inquiry-box > a.secondary { width: 100%; margin-top: var( --space-2 ); }
+.price-box {
+	padding: var( --space-6 );
+	border: 1px solid var( --border-soft );
+	border-radius: var( --radius-md );
+	box-shadow: var( --shadow-sm );
+	background: var( --bg-surface );
+
+	/* Shrink-proof: a flex child in a scrolling column is squashed by
+	   default, which folded the fee rows into each other. */
+	flex: none;
+}
+
+.enquiry-card { flex: none; }
+
+/* Quieter than the price card on purpose: one primary thing per screen,
+   and the price is it. A lighter border and no shadow keep this card
+   clearly secondary while still reading as its own piece of the page. */
+.enquiry-card {
+	padding: var( --space-6 );
+	border: 1px solid var( --border-soft );
+	background: var( --bg-surface );
+}
+
+/* The rent is the loudest thing in the column, and "/ month" beside it is
+   deliberately not: one price, read at a glance, with its unit attached
+   rather than competing. */
+.price-box > p:first-child {
+	display: flex;
+	align-items: baseline;
+	gap: var( --space-2 );
+	margin-bottom: var( --space-1 );
+	color: var( --text-muted );
+	font-size: var( --text-sm );
+}
+
+.price-box > p:first-child > b {
+	font-family: var( --font-heading );
+	font-size: var( --text-h4 );
+	line-height: var( --leading-none );
+	letter-spacing: var( --tracking-tight );
+	color: var( --text-default );
+	font-variant-numeric: tabular-nums;
+}
+
+.price-box > small { color: var( --text-muted ); font-size: var( --text-3xs ); }
+.price-box hr { border: 0; border-top: 1px solid var( --border-default ); margin: var( --space-5 ) 0; }
+.price-box dl { margin: 0; display: flex; flex-direction: column; gap: var( --space-4 ); }
+.price-box dl > div { display: flex; justify-content: space-between; gap: var( --space-3 ); font-size: var( --text-sm ); }
+.price-box dt { color: var( --text-muted ); margin: 0; }
+.price-box dd { margin: 0; font-weight: var( --weight-semibold ); }
+.price-box > button,
+.price-box > a.primary,
+.price-box > a.secondary { width: 100%; margin-top: var( --space-2 ); }
+
+/* --- The inquiry form (D1) --------------------------------------------
+   Scoped to the form and the panel that replaces it, with child
+   combinators throughout, so nothing here can reach the price box, the
+   facts list or any other form on the site. The fields themselves reuse
+   .form-field, which is where every input on this site is styled. */
+
+/* No rule above the heading any more: the card's own edge does that job
+   now, and a border inside a bordered box is a line doing nothing. */
+.enquiry-card > .inquiry-form > h3 {
+	margin: 0 0 var( --space-4 );
+	font-size: var( --text-lg );
+}
+
+/* ─── Density ───────────────────────────────────────────────────────────
+   This column is 340px wide. The site-wide field padding is built for a
+   full-width form, and at this width it produced 60px-tall boxes and a
+   970px form — a wall of empty rectangles that buried the Send button
+   below the fold. Tightened here and only here.
+
+   The font stays at 16px on purpose: iOS zooms the whole page in when a
+   focused input is smaller than that, and a form that jumps on tap is a
+   worse problem than a tall one. The padding does the work instead. */
+
+.enquiry-card > .inquiry-form > .form-field {
+	margin-bottom: var( --space-3 );
+	gap: var( --space-1 );
+}
+
+.enquiry-card > .inquiry-form > .form-field > input,
+.enquiry-card > .inquiry-form > .form-field > select,
+.enquiry-card > .inquiry-form > .form-field > textarea {
+	padding: var( --space-2 ) var( --space-3 );
+}
+
+.enquiry-card > .inquiry-form > .form-field > textarea {
+	min-height: 5.5rem;
+	resize: vertical;
+}
+
+.enquiry-card > .inquiry-form > .form-field > label {
+	font-size: var( --text-xs );
+	font-weight: var( --weight-semibold );
+}
+
+.enquiry-card > .inquiry-form > .form-field > label > small {
+	margin-left: var( --space-2 );
+	font-weight: var( --weight-normal );
+	color: var( --text-muted );
+}
+
+/* Helper text sits under the field it explains, never at the foot of the
+   form where it has stopped explaining anything. */
+.enquiry-card > .inquiry-form > .form-field > .field-help {
+	font-size: var( --text-3xs );
+	color: var( --text-muted );
+	line-height: var( --leading-body );
+}
+
+/* An error says what is wrong in words AND takes a colour, because colour
+   alone is unreadable to a good number of people. */
+.enquiry-card > .inquiry-form > .form-field > .field-error {
+	display: flex;
+	gap: var( --space-1 );
+	font-size: var( --text-3xs );
+	font-weight: var( --weight-semibold );
+	color: var( --color-danger );
+}
+
+.enquiry-card > .inquiry-form > .form-field > [aria-invalid="true"] {
+	border-color: var( --color-danger );
+	background-color: var( --bg-surface );
+}
+
+.enquiry-card > .inquiry-form > .inquiry-notice {
+	margin: 0 0 var( --space-4 );
+	padding: var( --space-3 ) var( --space-4 );
+	border-left: 3px solid var( --color-danger );
+	background: var( --bg-surface-tint );
+	font-size: var( --text-3xs );
+	line-height: var( --leading-body );
+}
+
+/* The consent row is a checkbox beside its sentence, not above it. */
+.enquiry-card > .inquiry-form > .consent > label {
+	display: flex;
+	align-items: flex-start;
+	gap: var( --space-3 );
+	font-size: var( --text-3xs );
+	font-weight: var( --weight-normal );
+	line-height: var( --leading-body );
+	cursor: pointer;
+}
+
+/* A touch target of its own, so the box is hittable with a thumb. */
+.enquiry-card > .inquiry-form > .consent > label > input {
+	flex: none;
+	width: 1.125rem;
+	height: 1.125rem;
+	margin-top: 0.125rem;
+}
+
+.enquiry-card > .inquiry-form > button {
+	width: 100%;
+	margin-top: var( --space-2 );
+}
+
+.enquiry-card > .inquiry-form > button[disabled] {
+	opacity: 0.65;
+	cursor: progress;
+}
+
+/* The rules reminder. Plain running text with a link inside it — NOT the
+   theme's .fine, which is a flex row for an icon beside a word and turned
+   this one sentence into three columns. */
+.enquiry-card > .inquiry-form > .inquiry-terms {
+	margin: var( --space-3 ) 0 0;
+	font-size: var( --text-3xs );
+	line-height: var( --leading-body );
+	color: var( --text-muted );
+	text-align: center;
+}
+
+.enquiry-card > .inquiry-form > .inquiry-terms > a { color: inherit; }
+
+/* --- Sent, and no longer available ------------------------------------ */
+
+/* No top margin: these replace the form inside the card, so the card's
+   own padding is already the space around them. */
+.enquiry-card > .inquiry-sent,
+.enquiry-card > .inquiry-gone {
+	padding: var( --space-5 );
+	border-radius: var( --radius-sm );
+	background: var( --bg-surface-tint );
+}
+
+.enquiry-card > .inquiry-sent {
+	border: 1px solid var( --color-success );
+	background: var( --color-success-bg );
+}
+
+.enquiry-card > .inquiry-sent > .sent-head {
+	display: flex;
+	align-items: center;
+	gap: var( --space-2 );
+	margin: 0 0 var( --space-2 );
+	font-weight: var( --weight-bold );
+	color: var( --color-success );
+}
+
+.enquiry-card > .inquiry-sent > .sent-head > .tdh-icon { flex: none; }
+
+.enquiry-card > .inquiry-sent > .sent-body,
+.enquiry-card > .inquiry-gone > p {
+	margin: 0 0 var( --space-4 );
+	font-size: var( --text-sm );
+	line-height: var( --leading-body );
+}
+
+.enquiry-card > .inquiry-sent > a.primary,
+.enquiry-card > .inquiry-gone > a.primary { width: 100%; }
 
 .fine {
 	display: flex;
@@ -1485,6 +2788,184 @@ img, video { max-width: 100%; height: auto; }
 	font-size: var( --text-3xs );
 	color: var( --text-muted );
 	line-height: var( --leading-body );
+}
+
+/* =========================================================================
+   LISTING PREVIEW BAR
+   Across the top of a listing page renters cannot see yet, shown only to
+   its landlord and to staff. Sand, not navy: it must read as a note about
+   the page, never as part of the site's own header above it.
+   ========================================================================= */
+
+.preview-bar {
+	padding: var( --space-5 ) var( --gutter );
+	background: var( --bg-surface-accent );
+	border-bottom: 1px solid var( --border-default );
+}
+
+.preview-bar-inner {
+	display: flex;
+	align-items: center;
+	gap: var( --space-5 );
+}
+
+.preview-bar-icon {
+	flex: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var( --icon-well );
+	height: var( --icon-well );
+	border-radius: var( --radius-full );
+	background: var( --bg-surface );
+	color: var( --text-accent );
+}
+
+.preview-bar-copy { flex: 1; min-width: 0; }
+
+.preview-bar-eyebrow {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var( --space-2 );
+	margin: 0;
+	font-size: var( --text-2xs );
+	font-weight: var( --weight-bold );
+	letter-spacing: var( --tracking-wider );
+	text-transform: uppercase;
+	color: var( --text-accent );
+}
+
+/* The pill keeps its own casing inside the uppercase eyebrow. */
+.preview-bar-eyebrow > .status { letter-spacing: normal; text-transform: none; }
+
+.preview-bar-title {
+	margin: var( --space-1 ) 0 0;
+	font-family: var( --font-body );
+	font-size: var( --text-base );
+	font-weight: var( --weight-semibold );
+	line-height: var( --leading-snug );
+	color: var( --text-default );
+}
+
+.preview-bar-text {
+	margin: var( --space-1 ) 0 0;
+	max-width: var( --measure );
+	font-size: var( --text-sm );
+	line-height: var( --leading-body );
+	color: var( --text-muted );
+}
+
+.preview-bar-actions {
+	flex: none;
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var( --space-3 );
+}
+
+.preview-bar-actions > form { margin: 0; }
+
+.preview-bar-actions > form > button,
+.preview-bar-actions > a.primary,
+.preview-bar-actions > a.secondary {
+	padding: var( --btn-pad-y-sm ) var( --btn-pad-x-sm );
+	font-size: var( --text-sm );
+	cursor: pointer;
+}
+
+.preview-bar-link {
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+	color: var( --color-navy );
+	text-decoration: underline;
+	text-underline-offset: 0.2em;
+}
+
+.preview-bar-actions > form > button:focus-visible,
+.preview-bar-actions > a:focus-visible {
+	outline: 2px solid var( --border-focus );
+	outline-offset: 2px;
+}
+
+/* A waiting home that cannot be approved yet says why, before its buttons. */
+.preview-bar-actions > .preview-bar-hold {
+	flex-basis: 100%;
+	margin: 0;
+	color: var( --color-danger );
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+}
+
+@media ( max-width: 62rem ) {
+	.preview-bar-inner { flex-wrap: wrap; align-items: flex-start; }
+	.preview-bar-actions { flex-basis: 100%; padding-left: calc( var( --icon-well ) + var( --space-5 ) ); }
+}
+
+@media ( max-width: 43.75rem ) {
+	.preview-bar-icon { display: none; }
+	.preview-bar-actions { padding-left: 0; }
+
+	/* The two decisions share the row as equals, one line each; the quiet
+	   link drops beneath them instead of squeezing "Request changes" onto
+	   two lines beside a one-line Approve. */
+	.preview-bar-actions > form { flex: 1; }
+	.preview-bar-actions > form > button { width: 100%; white-space: nowrap; }
+	.preview-bar-actions > .preview-bar-link { flex-basis: 100%; }
+}
+
+/* =========================================================================
+   NOT FOUND
+   ========================================================================= */
+
+.not-found { padding: var( --section-gap ) var( --gutter ); }
+
+.not-found-inner {
+	max-width: var( --container-text );
+	margin-inline: auto;
+	text-align: center;
+}
+
+.not-found-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var( --icon-well-lg );
+	height: var( --icon-well-lg );
+	margin-bottom: var( --space-5 );
+	border-radius: var( --radius-full );
+	background: var( --bg-surface-accent );
+	color: var( --text-accent );
+}
+
+.not-found-inner > .overline { margin: 0; }
+
+.not-found-inner > h1 {
+	margin: var( --space-3 ) 0 var( --space-4 );
+	font-size: var( --text-h2 );
+	line-height: var( --leading-tight );
+	text-wrap: balance;
+}
+
+.not-found-inner > p:not( .overline ) {
+	max-width: var( --measure );
+	margin: 0 auto var( --space-7 );
+	color: var( --text-muted );
+	line-height: var( --leading-body );
+}
+
+.not-found-actions {
+	display: flex;
+	justify-content: center;
+	flex-wrap: wrap;
+	gap: var( --space-3 );
+}
+
+.not-found-search {
+	margin-top: var( --space-9 );
+	padding-top: var( --space-7 );
+	border-top: 1px solid var( --border-default );
+	text-align: left;
 }
 
 /* =========================================================================
@@ -1503,6 +2984,10 @@ img, video { max-width: 100%; height: auto; }
 	color: var( --text-default );
 	margin: 0 0 var( --space-2 );
 }
+
+/* "No homes matching “…”" quotes the keyword; a long one must wrap, not
+   widen the page. */
+.empty > h3 { overflow-wrap: anywhere; }
 
 .notice {
 	padding: var( --space-4 ) var( --space-5 );
@@ -1929,6 +3414,366 @@ img, video { max-width: 100%; height: auto; }
 	width: 1px;
 	height: 1px;
 	overflow: hidden;
+}
+
+/* ─── The landlord's inbox (D2) ─────────────────────────────────────────
+   Scoped with child combinators throughout, so nothing here reaches the
+   listings panel or any other portal screen. */
+
+.inbox-tabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var( --space-2 );
+	margin-bottom: var( --space-5 );
+	border-bottom: 1px solid var( --border-soft );
+}
+
+.inbox-tabs > .inbox-tab {
+	display: inline-flex;
+	align-items: center;
+	gap: var( --space-2 );
+	padding: var( --space-3 ) var( --space-4 );
+	margin-bottom: -1px;
+	border-bottom: 2px solid transparent;
+	color: var( --text-muted );
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+	text-decoration: none;
+}
+
+.inbox-tabs > .inbox-tab:hover { color: var( --text-default ); }
+
+/* The open tab is marked by weight and a rule, not by colour alone. */
+.inbox-tabs > .inbox-tab.is-on {
+	border-bottom-color: var( --color-gold );
+	color: var( --text-default );
+}
+
+/* The unread count rides on its own tab, where it is the thing counted. */
+.inbox-tabs > .inbox-tab > em {
+	padding: 0 var( --space-2 );
+	border-radius: var( --radius-pill );
+	background: var( --color-navy );
+	color: var( --text-inverse );
+	font-size: var( --text-3xs );
+	font-style: normal;
+	font-variant-numeric: tabular-nums;
+}
+
+.inbox-count {
+	margin: 0 0 var( --space-3 );
+	color: var( --text-muted );
+	font-size: var( --text-3xs );
+	font-weight: var( --weight-semibold );
+	letter-spacing: var( --tracking-wide );
+	text-transform: uppercase;
+}
+
+.inbox-rows { margin: 0; padding: 0; list-style: none; }
+
+.inbox-rows > .inbox-row + .inbox-row { border-top: 1px solid var( --border-soft ); }
+
+.inbox-rows > .inbox-row > .inbox-open {
+	display: grid;
+	grid-template-columns: minmax( 0, 12rem ) minmax( 0, 1fr ) auto;
+	grid-template-areas:
+		"who about when"
+		"who excerpt when";
+	align-items: center;
+	gap: var( --space-1 ) var( --space-4 );
+	padding: var( --space-4 ) var( --space-2 );
+	color: inherit;
+	text-decoration: none;
+}
+
+.inbox-rows > .inbox-row > .inbox-open:hover { background: var( --bg-surface-tint ); }
+
+.inbox-rows > .inbox-row > .inbox-open:focus-visible {
+	outline: 2px solid var( --border-focus );
+	outline-offset: -2px;
+}
+
+.inbox-open > .inbox-who {
+	grid-area: who;
+	display: flex;
+	align-items: center;
+	gap: var( --space-2 );
+	min-width: 0;
+}
+
+.inbox-open > .inbox-who > b {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: var( --text-sm );
+}
+
+/* Unread says so in a WORD as well as in weight — never colour alone. */
+.inbox-open > .inbox-who > .inbox-new {
+	flex: none;
+	padding: 0 var( --space-2 );
+	border-radius: var( --radius-pill );
+	background: var( --color-gold );
+	color: var( --color-navy );
+	font-size: var( --text-3xs );
+	font-style: normal;
+	font-weight: var( --weight-bold );
+	letter-spacing: var( --tracking-wide );
+	text-transform: uppercase;
+}
+
+.inbox-rows > .inbox-row.is-unread > .inbox-open > .inbox-who > b { font-weight: var( --weight-bold ); }
+
+.inbox-open > .inbox-about {
+	grid-area: about;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var( --text-default );
+	font-size: var( --text-2xs );
+	font-weight: var( --weight-semibold );
+}
+
+/* A home that has been deleted says so quietly rather than looking like
+   a live listing the landlord could still open. */
+.inbox-open > .inbox-about.is-gone {
+	color: var( --text-subtle );
+	font-style: italic;
+	font-weight: var( --weight-normal );
+}
+
+.inbox-open > .inbox-excerpt {
+	grid-area: excerpt;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var( --text-muted );
+	font-size: var( --text-2xs );
+}
+
+.inbox-open > .inbox-when {
+	grid-area: when;
+	flex: none;
+	color: var( --text-subtle );
+	font-size: var( --text-3xs );
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.inbox-pages {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var( --space-2 );
+	margin-top: var( --space-5 );
+	padding-top: var( --space-4 );
+	border-top: 1px solid var( --border-soft );
+}
+
+.inbox-pages > .inbox-page {
+	min-width: 2.25rem;
+	padding: var( --space-2 );
+	border: 1px solid var( --border-soft );
+	border-radius: var( --radius-sm );
+	color: var( --text-muted );
+	font-size: var( --text-2xs );
+	font-variant-numeric: tabular-nums;
+	text-align: center;
+	text-decoration: none;
+}
+
+.inbox-pages > .inbox-page.is-on {
+	border-color: var( --color-navy );
+	background: var( --color-navy );
+	color: var( --text-inverse );
+}
+
+/* --- One message ------------------------------------------------------- */
+
+.inbox-back {
+	display: inline-block;
+	margin-bottom: var( --space-2 );
+	color: var( --text-muted );
+	font-size: var( --text-2xs );
+	font-weight: var( --weight-semibold );
+	text-decoration: none;
+}
+
+.inbox-back:hover { color: var( --text-default ); }
+
+.inquiry-detail > .inquiry-from {
+	margin-bottom: var( --space-5 );
+	padding-bottom: var( --space-4 );
+	border-bottom: 1px solid var( --border-soft );
+}
+
+.inquiry-detail > .inquiry-from > h2 {
+	margin: 0 0 var( --space-1 );
+	font-size: var( --text-h5 );
+}
+
+.inquiry-detail > .inquiry-from > p {
+	margin: 0;
+	color: var( --text-muted );
+	font-size: var( --text-2xs );
+}
+
+.inquiry-detail > .inquiry-facts {
+	display: grid;
+	grid-template-columns: repeat( auto-fit, minmax( 12rem, 1fr ) );
+	gap: var( --space-4 );
+	margin: 0 0 var( --space-6 );
+	padding-bottom: var( --space-5 );
+	border-bottom: 1px solid var( --border-soft );
+}
+
+.inquiry-facts > div { display: flex; flex-direction: column; gap: var( --space-1 ); min-width: 0; }
+
+.inquiry-facts > div > dt {
+	margin: 0;
+	color: var( --text-muted );
+	font-size: var( --text-3xs );
+	font-weight: var( --weight-semibold );
+	letter-spacing: var( --tracking-wide );
+	text-transform: uppercase;
+}
+
+.inquiry-facts > div > dd {
+	margin: 0;
+	font-size: var( --text-sm );
+	overflow-wrap: break-word;
+}
+
+.inquiry-detail > .inquiry-message { margin-bottom: var( --space-6 ); }
+
+.inquiry-detail > .inquiry-message > h3 {
+	margin: 0 0 var( --space-3 );
+	font-size: var( --text-base );
+}
+
+.inquiry-detail > .inquiry-message > p {
+	margin: 0;
+	color: var( --text-default );
+	font-size: var( --text-sm );
+	line-height: var( --leading-relaxed );
+	overflow-wrap: break-word;
+}
+
+.inquiry-detail > .inquiry-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var( --space-3 );
+}
+
+.inquiry-detail > .inquiry-actions > form { margin: 0; }
+
+.portal-notice {
+	margin: 0 0 var( --space-5 );
+	padding: var( --space-3 ) var( --space-4 );
+	border-left: 3px solid var( --color-success );
+	background: var( --color-success-bg );
+	font-size: var( --text-sm );
+}
+
+/* Something did not work. Its own colour AND its own words — the sentence
+   inside already says what happened, so the tint is a second signal
+   rather than the only one. */
+.portal-notice.is-warn {
+	border-left-color: var( --color-warning );
+	background: var( --color-warning-bg );
+}
+
+/* --- Delivery ----------------------------------------------------------
+   Staff only: did the landlord's email get out, and what to do when it
+   did not. Every state is a word, never a colour on its own — "Emailed"
+   and "Email failed" have to be tellable apart by somebody who cannot
+   see the difference between the two tints.
+   ---------------------------------------------------------------------- */
+
+.inquiry-detail > .inquiry-delivery {
+	padding-top: var( --space-5 );
+	border-top: 1px solid var( --border-soft );
+}
+
+.inquiry-detail > .inquiry-delivery > h3 {
+	margin: 0 0 var( --space-3 );
+	font-size: var( --text-base );
+}
+
+.inquiry-delivery > .delivery-state {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var( --space-2 );
+	margin: 0 0 var( --space-2 );
+}
+
+.delivery-state > .delivery-to {
+	font-size: var( --text-sm );
+	color: var( --text-muted );
+	overflow-wrap: anywhere;
+}
+
+.inquiry-delivery > .delivery-detail {
+	margin: 0 0 var( --space-4 );
+	font-size: var( --text-sm );
+	color: var( --text-muted );
+	overflow-wrap: anywhere;
+}
+
+.inquiry-delivery > .delivery-resend {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var( --space-3 );
+	margin: 0;
+}
+
+.delivery-resend > .delivery-hint {
+	flex: 1 1 14rem;
+	font-size: var( --text-xs );
+	color: var( --text-muted );
+}
+
+.delivery-pill {
+	display: inline-flex;
+	padding: var( --space-1 ) var( --space-3 );
+	border-radius: var( --radius-pill );
+	background: var( --color-neutral-bg );
+	color: var( --color-neutral );
+	font-size: var( --text-3xs );
+	font-weight: var( --weight-bold );
+}
+
+.delivery-pill.is-sent   { background: var( --color-success-bg ); color: var( --color-success ); }
+.delivery-pill.is-queued { background: var( --color-neutral-bg ); color: var( --color-neutral ); }
+.delivery-pill.is-failed { background: var( --color-warning-bg ); color: var( --color-warning ); }
+.delivery-pill.is-gone   { background: var( --color-danger-bg );  color: var( --color-danger ); }
+
+/* --- Narrow ------------------------------------------------------------ */
+
+@media ( max-width: 43.75rem ) {
+	/* The row becomes a stack: who, which home, the message, the date. A
+	   three-column grid at phone width put the date on top of the name. */
+	.inbox-rows > .inbox-row > .inbox-open {
+		grid-template-columns: minmax( 0, 1fr );
+		grid-template-areas:
+			"who"
+			"about"
+			"excerpt"
+			"when";
+		gap: var( --space-2 );
+	}
+
+	.inquiry-detail > .inquiry-actions > .primary,
+	.inquiry-detail > .inquiry-actions > form,
+	.inquiry-detail > .inquiry-actions > form > button { width: 100%; }
+
+	/* The hint drops under the button rather than squeezing beside it. */
+	.inquiry-delivery > .delivery-resend > button { width: 100%; }
+	.delivery-resend > .delivery-hint { flex-basis: 100%; }
 }
 
 /* --- Notices ---------------------------------------------------------- */
@@ -2618,31 +4463,8 @@ img, video { max-width: 100%; height: auto; }
 
 .panel-title h3 { margin: 0; font-size: var( --text-h5 ); }
 
-.mini-listing {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var( --space-4 );
-	padding: var( --space-4 ) 0;
-	border-bottom: 1px solid var( --border-soft );
-}
-
-.mini-listing:last-child { border-bottom: 0; }
-.mini-listing span { display: flex; flex-direction: column; gap: var( --space-1 ); min-width: 0; }
-.mini-listing small { color: var( --text-muted ); font-size: var( --text-xs ); }
-.mini-listing .status { flex: none; }
-
-/* Drafts and pending listings reopen in the wizard. Plain-text link, not a
-   button: the row is the object, the edit is the quiet secondary action. */
-.mini-listing > .mini-listing-edit {
-	flex: none;
-	font-size: var( --text-xs );
-	font-weight: var( --weight-semibold );
-	color: var( --text-accent );
-	text-decoration: none;
-}
-
-.mini-listing > .mini-listing-edit:hover { text-decoration: underline; }
+/* .mini-listing was removed with task A3: the landlord's list is now
+   .manage-list (LANDLORD LISTINGS, below), with a state line and actions. */
 
 /* --- Header sign-in --------------------------------------------------- */
 
@@ -2689,6 +4511,7 @@ img, video { max-width: 100%; height: auto; }
 	flex-wrap: wrap;
 	justify-content: center;
 	gap: var( --space-6 );
+	row-gap: var( --space-1 ); /* the 2.25rem link boxes already space the rows */
 	margin: var( --space-7 ) 0;
 	padding: 0;
 	list-style: none;
@@ -2722,10 +4545,27 @@ img, video { max-width: 100%; height: auto; }
 	.split { grid-template-columns: 1fr; gap: var( --space-8 ); }
 	.verified { right: var( --space-2 ); }
 	.property-grid { grid-template-columns: 1fr 1fr; }
-	.hero-search { grid-template-columns: 1fr 1fr; }
-	.hero-search button { height: var( --space-12 ); }
+	/* The date variant too: its two-class selector otherwise keeps four
+	   columns on tablets and phones, squeezing the dates off the card. */
+	.hero-search,
+	.hero-search.date-search { grid-template-columns: 1fr 1fr; }
+	/* Tablet: "Where" on its own row, the two dates side by side, and the
+	   button full width underneath — not a tall button beside one date. */
+	.hero-search > label:first-child {
+		grid-column: 1 / -1;
+		border-right: 0;
+		border-bottom: 1px solid var( --border-default );
+	}
+	.hero-search > label:last-of-type { border-right: 0; }
+	.hero-search > button {
+		grid-column: 1 / -1;
+		height: var( --space-9 );
+		margin-top: var( --space-2 );
+	}
 	.detail-grid { grid-template-columns: 1fr; gap: var( --space-7 ); }
-	.inquiry-box { position: static; }
+	/* Stacked into one column there is nothing to stay beside, and a
+	   pinned column with its own scrollbar would fight the page's. */
+	.listing-side { position: static; }
 	.owner-cta { flex-direction: column; align-items: flex-start; gap: var( --space-7 ); }
 }
 
@@ -2950,7 +4790,13 @@ img, video { max-width: 100%; height: auto; }
 
 @media ( max-width: 700px ) {
 	.hero { min-height: var( --hero-min-height-sm ); }
-	.hero-search { grid-template-columns: 1fr; }
+	.hero-search,
+	.hero-search.date-search { grid-template-columns: 1fr; }
+	/* A smaller well on phones, so "Neighborhood, ZIP, or hospital" fits at 320. */
+	.hero-search label > .tdh-icon { padding: 7px; }
+	.hero-search label { gap: var( --space-2 ); }
+	/* One column: the button no longer has to match a two-field row. */
+	.hero-search button { height: var( --space-9 ); }
 	.hero-search label {
 		border-right: 0;
 		border-bottom: 1px solid var( --border-default );
@@ -2964,7 +4810,13 @@ img, video { max-width: 100%; height: auto; }
 	.audience-head { grid-template-columns: 1fr; gap: var( --space-5 ); }
 	.audience-grid { grid-template-columns: 1fr; }
 	.audience-grid article { padding: var( --space-6 ); }
-	.detail-media img { height: var( --split-photo-height-sm ); }
+
+	/* A phone shows the cover alone; "Show all photos" opens the rest. */
+	.detail-gallery { height: var( --split-photo-height-sm ); }
+	.detail-gallery[data-count] { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+	.detail-gallery > .detail-gallery-tile:not( :first-child ) { display: none; }
+	.detail-gallery > .detail-gallery-tile:first-child { grid-row: auto; }
+	.detail-gallery-all { right: var( --space-3 ); bottom: var( --space-3 ); }
 
 	/* 64px of vertical padding is a lot of dead space on a phone. */
 	.owner-cta { padding: var( --space-9 ) var( --band-gutter-sm ); }
@@ -4247,15 +6099,41 @@ body.tdh-portal-page .site-footer { display: none; }
 
 .portal-alert small { color: var( --text-muted ); }
 
-.portal-alert > a {
+.portal-alert > a,
+.portal-alert > form > button {
 	flex: none;
 	padding: var( --btn-pad-y-sm ) var( --btn-pad-x-sm );
+	border: 0;
 	border-radius: var( --radius-sm );
 	background: var( --color-navy );
 	color: var( --text-inverse );
+	font: inherit;
 	font-size: var( --text-sm );
 	font-weight: var( --weight-bold );
 	text-decoration: none;
+	cursor: pointer;
+}
+
+/* The band's "Update your card" when it opens Stripe directly. */
+.portal-alert > form { flex: none; margin: 0; }
+
+/* F1: the real next step is the email in their inbox, so "Send a new link"
+   is the secondary action — outlined, never a second navy button beside
+   the plan's. */
+.portal-alert--verify > form > button {
+	border: 1px solid var( --color-navy );
+	background: transparent;
+	color: var( --color-navy );
+}
+
+/* More homes than the plan covers (R40): what to do, under the panel title. */
+.panel > .portal-over-plan {
+	margin: 0 0 var( --space-4 );
+	padding: var( --space-3 ) var( --space-4 );
+	border-radius: var( --radius-sm );
+	background: var( --color-warning-bg );
+	color: var( --text-default );
+	font-size: var( --text-sm );
 }
 
 .portal-renews {
@@ -4294,6 +6172,164 @@ body.tdh-portal-page .site-footer { display: none; }
 .portal-profile .panel-title p { margin: var( --space-1 ) 0 0; color: var( --text-muted ); }
 .portal-profile hr { margin: var( --space-7 ) 0; border: 0; border-top: 1px solid var( --border-default ); }
 .portal-profile-actions { display: flex; justify-content: flex-end; margin-top: var( --space-6 ); }
+
+/* --- Text message alerts (D4) -------------------------------------------
+   One card, one state at a time, one primary button. The pill carries the
+   state in words; the tint is a second signal, never the only one.
+   ---------------------------------------------------------------------- */
+
+.portal-sms { margin-top: var( --space-6 ); }
+
+.portal-sms > .panel-title { align-items: flex-start; }
+
+.portal-sms > .panel-title > .sms-pill {
+	flex: none;
+	display: inline-flex;
+	padding: var( --space-1 ) var( --space-3 );
+	border-radius: var( --radius-pill );
+	background: var( --color-neutral-bg );
+	color: var( --color-neutral );
+	font-size: var( --text-3xs );
+	font-weight: var( --weight-bold );
+	white-space: nowrap;
+}
+
+.portal-sms > .panel-title > .sms-pill.is-on       { background: var( --color-success-bg ); color: var( --color-success ); }
+.portal-sms > .panel-title > .sms-pill.is-verified { background: var( --color-neutral-bg ); color: var( --color-neutral ); }
+.portal-sms > .panel-title > .sms-pill.is-pending  { background: var( --color-warning-bg ); color: var( --color-warning ); }
+.portal-sms > .panel-title > .sms-pill.is-paused   { background: var( --color-warning-bg ); color: var( --color-warning ); }
+.portal-sms > .panel-title > .sms-pill.is-off      { background: var( --color-neutral-bg ); color: var( --color-neutral ); }
+
+.portal-sms > .portal-notice { margin-bottom: var( --space-5 ); }
+
+.portal-sms > .sms-unavailable,
+.portal-sms > .sms-hint {
+	margin: 0 0 var( --space-5 );
+	color: var( --text-muted );
+	font-size: var( --text-sm );
+	line-height: var( --leading-relaxed );
+}
+
+.portal-sms > .sms-facts { margin: 0 0 var( --space-4 ); }
+.portal-sms > .sms-facts > div { display: flex; flex-direction: column; gap: var( --space-1 ); }
+
+.portal-sms > .sms-facts > div > dt {
+	font-size: var( --text-3xs );
+	font-weight: var( --weight-bold );
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var( --text-muted );
+}
+
+.portal-sms > .sms-facts > div > dd { margin: 0; font-size: var( --text-base ); }
+.portal-sms > .sms-facts > div > dd > .sms-verified-mark { color: var( --color-success ); font-size: var( --text-sm ); }
+
+/* The consent sentence is the legal one; it sits beside its box, wraps as
+   a paragraph, and the whole line is the click target. */
+.portal-sms .sms-form > .sms-consent {
+	display: flex;
+	align-items: flex-start;
+	gap: var( --space-3 );
+	margin-top: var( --space-4 );
+	font-size: var( --text-sm );
+	line-height: var( --leading-relaxed );
+	color: var( --text-default );
+	cursor: pointer;
+}
+
+.portal-sms .sms-form > .sms-consent > input {
+	flex: none;
+	width: 1.25rem;
+	height: 1.25rem;
+	margin-top: 0.15rem;
+}
+
+/* The code box and its button sit on one line: six digits, big enough to
+   read back, and Verify right beside them rather than alone at the far
+   edge of the card with nothing between. */
+.portal-sms > .sms-verify {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: var( --space-4 );
+}
+
+.portal-sms > .sms-verify > .form-field { flex: 0 1 14rem; margin: 0; }
+.portal-sms > .sms-verify > .portal-profile-actions { margin-top: 1.55rem; }
+
+.portal-sms .sms-verify > .form-field > input {
+	font-size: var( --text-h5 );
+	letter-spacing: 0.3em;
+	text-align: center;
+}
+
+/* Secondary actions under the primary one: resend, change number, turn off. */
+.portal-sms > .sms-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var( --space-3 ) var( --space-5 );
+	margin-top: var( --space-5 );
+	padding-top: var( --space-5 );
+	border-top: 1px solid var( --border-soft );
+}
+
+.portal-sms > .sms-actions > form { margin: 0; }
+
+/* One line at desktop: the field shrinks before the button is allowed to
+   drop underneath it. The phone query below lets it wrap again. */
+.portal-sms > .sms-actions > .sms-change {
+	display: flex;
+	flex-wrap: nowrap;
+	align-items: center;
+	gap: var( --space-2 );
+}
+
+.portal-sms > .sms-actions > .sms-change > button { flex: none; }
+
+/* Sized to a phone number, not to the row: left to grow it took the whole
+   line and pushed its own button underneath. It is a .form-field so it
+   takes the same fill, border and focus ring as every other input. */
+.portal-sms > .sms-actions > .sms-change > .form-field { flex: 0 1 16rem; min-width: 0; margin: 0; }
+
+.portal-sms > .sms-actions > form > .link-button {
+	padding: 0;
+	border: 0;
+	background: none;
+	color: var( --text-accent );
+	font: inherit;
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+/* While the gateway is being asked: the button goes quiet and says so. */
+.portal-sms > .sms-form > .portal-profile-actions > button[disabled],
+.portal-sms > .sms-actions > form > button[disabled] {
+	opacity: var( --disabled-opacity );
+	cursor: progress;
+}
+
+/* The staff Delivery block: the text's line sits under the email's. */
+.inquiry-delivery > .delivery-state--sms { margin-top: var( --space-3 ); }
+
+@media ( max-width: 43.75rem ) {
+	.portal-sms > .panel-title { flex-direction: column; }
+	/* Every action full width on a phone, so the row reads as a stack of
+	   equal choices rather than one short button beside two long ones. */
+	.portal-sms > .sms-actions > form,
+	.portal-sms > .sms-actions > form > button { width: 100%; }
+	.portal-sms > .sms-actions > form > .link-button { width: auto; }
+	.portal-sms > .sms-actions > .sms-change { flex-wrap: wrap; }
+	.portal-sms > .sms-actions > .sms-change,
+	.portal-sms > .sms-actions > .sms-change > .form-field,
+	.portal-sms > .sms-actions > .sms-change > button { width: 100%; }
+	.portal-sms > .sms-actions > .sms-change > .form-field { flex-basis: 100%; }
+	.portal-sms > .sms-verify > .form-field { flex-basis: 100%; }
+	.portal-sms > .sms-verify > .portal-profile-actions { margin-top: 0; width: 100%; }
+	.portal-sms > .sms-verify > .portal-profile-actions > button { width: 100%; }
+}
 
 .portal-billing-actions {
 	display: flex;
@@ -4415,6 +6451,47 @@ body.tdh-portal-page .site-footer { display: none; }
 	height: 0.5rem;
 	border-radius: var( --radius-full );
 	background: var( --color-gold );
+}
+
+/* The delivery badge sits beside the content column and is a span too, so
+   `.portal-inquiry > span` above catches it as well. Left alone it becomes
+   a second full-width column and the renter's name loses half the row. */
+.portal-inquiry > span.delivery-pill {
+	display: inline-flex;
+	flex: none;
+	flex-direction: row;
+}
+
+@media ( max-width: 30rem ) {
+	/* At phone width the badge and the name were competing for one line:
+	   "Email failed — trying again" is long enough to wrap the renter's
+	   name in two and cut the message to three words, so the one row that
+	   needs attention became the hardest row to read. It takes its own
+	   line underneath instead, indented past the avatar.
+
+	   Grid rather than flex-wrap: a wrapped flex item takes the whole
+	   line, and the pill's background would stretch the width of the
+	   screen with it. row-gap is zero and the spacing hangs off the badge,
+	   so a row WITHOUT one keeps exactly the height it had. */
+	.portal-inquiry {
+		display: grid;
+		grid-template-columns: auto minmax( 0, 1fr ) auto;
+		grid-template-areas:
+			"avatar body dot"
+			".      badge .";
+		column-gap: var( --space-3 );
+		row-gap: 0;
+	}
+
+	.portal-inquiry > .portal-avatar { grid-area: avatar; }
+	.portal-inquiry > span:not( .delivery-pill ) { grid-area: body; }
+	.portal-inquiry > em { grid-area: dot; }
+
+	.portal-inquiry > span.delivery-pill {
+		grid-area: badge;
+		justify-self: start;
+		margin-top: var( --space-2 );
+	}
 }
 
 /* --- The marketplace portal (staff) --------------------------------------- */
@@ -4662,6 +6739,535 @@ body.tdh-portal-page .site-footer { display: none; }
 	font-size: var( --text-xs );
 }
 
+/* The queue row whose "what to change" note is open, and the note itself. */
+.portal-approval.is-requesting { border-bottom: 0; }
+
+.portal-reason {
+	display: flex;
+	flex-direction: column;
+	gap: var( --space-4 );
+	margin: 0 0 var( --space-3 );
+	padding: var( --space-4 );
+	background: var( --bg-surface-tint );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-sm );
+}
+
+.portal-reason > .form-field { margin: 0; }
+
+.portal-reason-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var( --space-2 );
+}
+
+/* --- Map locations (B1) ---------------------------------------------------
+   A home's place on the map, said only when it needs attention: a chip in
+   words, the reason, and "Set location". The form under the row takes the
+   coordinates as Google Maps copies them. */
+
+.portal-body > .portal-service-notice { margin-bottom: var( --space-5 ); }
+.portal-service-notice > p { margin: 0; }
+
+.portal-approval > span > .portal-location,
+.portal-approval > span > .portal-owner-hold {
+	display: block;
+	color: var( --text-default );
+	font-size: var( --text-xs );
+	line-height: var( --leading-body );
+	white-space: normal;
+}
+
+/* The landlord is unpaid (E1): the second reason Approve can wait, said the
+   same way as the first. */
+.portal-approval > span > .portal-owner-hold { margin-top: var( --space-1 ); }
+
+.portal-location > .status,
+.portal-owner-hold > .status {
+	display: inline-flex;
+	margin-right: var( --space-1 );
+	font-style: normal;
+	white-space: nowrap;
+	vertical-align: baseline;
+}
+
+.portal-location > a {
+	margin-left: var( --space-1 );
+	white-space: nowrap;
+	color: var( --text-accent );
+	font-weight: var( --weight-semibold );
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.portal-location > a:focus-visible { outline: 2px solid var( --border-focus ); outline-offset: 2px; }
+
+/* Approve waits while the address is not found: plainly unavailable, and the
+   reason is the location line beside it. */
+.portal-row-actions > form > .primary:disabled { opacity: var( --disabled-opacity ); cursor: not-allowed; }
+
+.portal-locate {
+	margin: 0 0 var( --space-3 );
+	padding: var( --space-4 );
+	background: var( --bg-surface-tint );
+	border: 1px solid var( --color-gold );
+	border-radius: var( --radius-sm );
+}
+
+.portal-locate > .portal-locate-form {
+	display: flex;
+	flex-direction: column;
+	gap: var( --space-3 );
+}
+
+.portal-locate-form > .form-field { margin: 0; }
+.portal-locate-form > .form-field > input { font-variant-numeric: tabular-nums; }
+
+.portal-locate-form > .portal-locate-address {
+	margin: 0;
+	color: var( --text-muted );
+	font-size: var( --text-xs );
+	overflow-wrap: anywhere;
+}
+
+.portal-locate-address > a { color: var( --text-accent ); font-weight: var( --weight-semibold ); }
+
+/* Facilities: why a facility has no point yet, and the coordinate note. */
+.portal-member-edit > .portal-facility-location {
+	margin: 0;
+	padding: var( --space-3 ) var( --space-4 );
+	border-left: 3px solid var( --color-warning );
+	background: var( --color-warning-bg );
+	border-radius: var( --radius-xs );
+	font-size: var( --text-sm );
+}
+
+.portal-member-edit > .portal-facility-location.is-failed {
+	border-left-color: var( --color-danger );
+	background: var( --color-danger-bg );
+}
+
+.portal-admin-form > .portal-form-note {
+	margin: calc( var( --space-3 ) * -1 ) 0 var( --space-5 );
+	color: var( --text-muted );
+	font-size: var( --text-xs );
+}
+
+/* Facility delete, asked in the page. */
+.portal-member-actions > .portal-delete-link {
+	display: inline-flex;
+	align-items: center;
+	min-height: 2.25rem;
+	color: var( --color-danger );
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+	text-decoration: none;
+}
+
+.portal-member-actions > .portal-delete-link:hover { text-decoration: underline; }
+.portal-member-actions > .portal-delete-link:focus-visible { outline: 2px solid var( --border-focus ); outline-offset: 2px; }
+
+/* While a delete is being asked, the question has the row to itself: the
+   other buttons step aside, and the panel reads as a warning — the same
+   pink as a landlord's delete question, with a red edge. */
+.portal-member-actions:has( > .portal-confirm ) { flex-direction: column; align-items: stretch; }
+.portal-member-actions:has( > .portal-confirm ) > form { display: none; }
+
+.portal-member-actions > .portal-confirm {
+	flex: 1;
+	padding: var( --space-5 ) var( --space-6 );
+	background: var( --color-danger-bg );
+	border: 1px solid var( --color-danger-bg );
+	border-left: 4px solid var( --color-danger );
+	border-radius: var( --radius-md );
+}
+
+.portal-confirm > h5 { margin: 0 0 var( --space-2 ); color: var( --color-danger ); font-size: var( --text-lg ); overflow-wrap: anywhere; }
+.portal-confirm > h5:focus-visible { outline: 2px solid var( --border-focus ); outline-offset: 2px; }
+.portal-confirm > p { margin: 0 0 var( --space-4 ); color: var( --text-default ); font-size: var( --text-sm ); }
+
+.portal-confirm > .portal-confirm-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var( --space-2 );
+}
+
+.portal-confirm-actions > form { margin: 0; }
+
+@media ( max-width: 43.75rem ) {
+	/* A portal row on a phone keeps its shape — photo, name, chip, chevron —
+	   and gives the name the room instead: the address wraps rather than
+	   being cut off mid-word, the chip stays small, and the gaps tighten. */
+	.portal-approval { gap: var( --space-2 ); }
+	.portal-approval > span > small { white-space: normal; overflow: visible; overflow-wrap: break-word; }
+
+	/* A name longer than its column breaks instead of running under the chip
+	   beside it. */
+	.portal-approval > span > b { overflow-wrap: break-word; }
+
+	/* A two-word status ("Hidden — Membership") on one nowrap line took half a
+	   320px row and left the name three letters wide, so on a phone the chip
+	   wraps instead. */
+	.portal-approval > .status {
+		align-self: flex-start;
+		padding: var( --space-1 ) var( --space-2 );
+		font-size: var( --text-3xs );
+		white-space: normal;
+		text-align: center;
+	}
+
+	/* A facility's chip sits beside its name, which is one or two lines. */
+	.portal-member > summary.portal-approval > .status { align-self: center; }
+	.portal-member > summary.portal-approval > .tdh-icon { margin-left: 0; }
+
+	/* Every listing row on a phone is the same small grid, so a list of them
+	   reads as one column and not as rows of different shapes: the photo, the
+	   name with its status beside it, the home's line under the name, and
+	   anything long — a location sentence, the Approve buttons — across the
+	   full width underneath. In a flex row the status took its whole nowrap
+	   width first and left the name three letters wide and the sentence eight.
+	   (display: contents lets the name block's parts join the row's grid; the
+	   block is a plain span with nothing to announce.) Facilities and members
+	   keep their summary rows, which have a chevron and no sentence. */
+	.portal-approval:not( summary ) {
+		display: grid;
+		grid-template-columns: 3rem minmax( 0, 1fr ) fit-content( 7rem );
+		align-items: start;
+		column-gap: var( --space-2 );
+		row-gap: var( --space-1 );
+	}
+
+	.portal-approval:not( summary ) > img,
+	.portal-approval:not( summary ) > i { grid-area: 1 / 1 / span 2 / span 1; }
+
+	.portal-approval:not( summary ) > span:not( .status ):not( .portal-row-actions ) { display: contents; }
+
+	.portal-approval:not( summary ) > span > b { grid-area: 1 / 2; }
+	/* The home's line runs under the name AND the chip, which sits on the top
+	   line only — otherwise "$2,100/mo · Landlord: testuser1" breaks into
+	   three. */
+	.portal-approval:not( summary ) > span > small { grid-area: 2 / 2 / auto / -1; }
+	.portal-approval:not( summary ) > span > .portal-location { grid-area: 3 / 1 / auto / -1; }
+	.portal-approval:not( summary ) > span > .portal-owner-hold { grid-area: 4 / 1 / auto / -1; }
+	.portal-approval:not( summary ) > .status { grid-area: 1 / 3; }
+	.portal-approval:not( summary ) > .portal-row-actions { grid-column: 1 / -1; }
+
+	/* The location note is one block attached to the row — the state, then
+	   what to do, then the action on its own line as a thumb target — instead
+	   of a chip and two sentences running together across three ragged
+	   lines. */
+	.portal-approval:not( summary ) > span > .portal-location {
+		display: grid;
+		justify-items: start;
+		gap: var( --space-1 );
+		margin-top: var( --space-1 );
+		padding: var( --space-2 ) var( --space-3 );
+		background: var( --bg-surface-tint );
+		border-radius: var( --radius-sm );
+	}
+
+	.portal-location > .status { margin-right: 0; }
+	.portal-location > a { display: inline-block; padding-block: var( --space-1 ); }
+
+	/* Six status pills do not fit a phone in one line. They wrap, so none of
+	   them hides behind a scrollbar the thumb has to find. */
+	.portal-status-filters { flex-wrap: wrap; overflow-x: visible; }
+
+	/* On a phone the location form's buttons and the delete question's
+	   buttons stack full width, danger or primary first. */
+	.portal-locate-form > .portal-reason-actions { flex-direction: column; align-items: stretch; }
+	.portal-locate-form > .portal-reason-actions > .primary,
+	.portal-locate-form > .portal-reason-actions > .secondary { width: 100%; min-height: 2.75rem; justify-content: center; text-align: center; }
+
+	.portal-confirm > .portal-confirm-actions { flex-direction: column; align-items: stretch; }
+	.portal-confirm-actions > form > .danger,
+	.portal-confirm-actions > .secondary { width: 100%; min-height: 2.75rem; justify-content: center; text-align: center; }
+}
+
+/* Previous · Page 1 of 3 · Next, under a long list. */
+.portal-pagination {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var( --space-3 );
+	padding-top: var( --space-4 );
+	border-top: 1px solid var( --border-soft );
+}
+
+.portal-pagination > .secondary {
+	padding: var( --space-2 ) var( --space-3 );
+	font-size: var( --text-xs );
+}
+
+.portal-pagination > .secondary.is-disabled { opacity: var( --disabled-opacity ); pointer-events: none; }
+
+.portal-pagination-count {
+	color: var( --text-muted );
+	font-size: var( --text-xs );
+	font-variant-numeric: tabular-nums;
+}
+
+/* =========================================================================
+   LANDLORD LISTINGS
+
+   One row per home: photo, name and status chip, rent and place, a line in
+   words saying what the state means, then the one main action and the quiet
+   ones beside it. Changes requested adds the team's note; Delete opens a
+   confirmation panel in place of the actions.
+   ========================================================================= */
+
+.manage-list {
+	display: flex;
+	flex-direction: column;
+	gap: var( --space-4 );
+	margin: var( --space-4 ) 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+/* Each home is its own card: a real photo, the name in the display face,
+   the rent as the figure it is, and the actions under a quiet rule. */
+.manage-item {
+	display: grid;
+	grid-template-columns: 8.5rem minmax( 0, 1fr );
+	align-items: start;
+	gap: var( --space-5 );
+	padding: var( --space-5 );
+	background: var( --bg-surface );
+	border: 1px solid var( --border-soft );
+	border-radius: var( --radius-lg );
+	scroll-margin-top: var( --space-6 );
+	transition: box-shadow var( --duration-fast ) var( --ease ), border-color var( --duration-fast ) var( --ease );
+}
+
+.manage-item:hover { border-color: var( --border-default ); box-shadow: var( --shadow-sm ); }
+
+.manage-media > img,
+.manage-media > i {
+	display: grid;
+	place-items: center;
+	width: 8.5rem;
+	height: 6.5rem;
+	border-radius: var( --radius-md );
+	object-fit: cover;
+	background: var( --bg-surface-accent );
+	color: var( --color-gold-ink );
+}
+
+.manage-body {
+	display: flex;
+	flex-direction: column;
+	gap: var( --space-1 );
+	min-width: 0;
+}
+
+.manage-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var( --space-2 ) var( --space-3 );
+}
+
+.manage-head > h4 {
+	margin: 0;
+	min-width: 0;
+	font-family: var( --font-heading );
+	font-size: var( --text-h5 );
+	line-height: 1.25;
+	overflow-wrap: anywhere;
+}
+
+.manage-head > .status { flex: none; }
+
+.manage-body > .manage-meta {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var( --space-1 ) var( --space-4 );
+	margin: var( --space-1 ) 0 0;
+	color: var( --text-muted );
+	font-size: var( --text-sm );
+}
+
+.manage-meta > .manage-rent {
+	color: var( --text-default );
+	font-size: var( --text-lg );
+	font-weight: var( --weight-bold );
+	font-variant-numeric: tabular-nums;
+}
+
+.manage-rent > small { margin-left: 1px; color: var( --text-muted ); font-size: var( --text-xs ); font-weight: var( --weight-medium ); }
+
+.manage-meta > .manage-place { display: inline-flex; align-items: center; gap: var( --space-1 ); }
+.manage-place > .tdh-icon { flex: none; color: var( --text-accent ); }
+
+.manage-body > .manage-line {
+	margin: var( --space-1 ) 0 0;
+	color: var( --text-muted );
+	font-size: var( --text-sm );
+}
+
+/* The team's note, quoted — it is the thing to fix. */
+.manage-reason {
+	margin-top: var( --space-2 );
+	padding: var( --space-3 ) var( --space-4 );
+	background: var( --color-danger-bg );
+	border-left: 3px solid var( --color-danger );
+	border-radius: var( --radius-xs );
+}
+
+.manage-reason > b {
+	display: block;
+	margin-bottom: var( --space-1 );
+	color: var( --color-danger );
+	font-size: var( --text-xs );
+}
+
+.manage-reason > p {
+	margin: 0;
+	font-size: var( --text-sm );
+	overflow-wrap: anywhere;
+}
+
+.manage-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var( --space-2 ) var( --space-4 );
+	margin-top: var( --space-3 );
+	padding-top: var( --space-4 );
+	border-top: 1px solid var( --border-soft );
+}
+
+.manage-form { margin: 0; }
+
+.manage-actions .primary {
+	padding: var( --space-2 ) var( --space-4 );
+	font-size: var( --text-sm );
+}
+
+/* The quiet actions: text buttons at a hittable height. */
+.manage-actions .manage-link,
+.manage-actions > .manage-delete {
+	display: inline-flex;
+	align-items: center;
+	min-height: 2.25rem;
+	padding: 0;
+	background: none;
+	border: 0;
+	color: var( --text-accent );
+	font: inherit;
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.manage-actions > .manage-delete { margin-left: auto; color: var( --color-danger ); }
+
+.manage-actions .manage-link:hover,
+.manage-actions > .manage-delete:hover { text-decoration: underline; }
+
+.manage-actions .manage-link:focus-visible,
+.manage-actions > .manage-delete:focus-visible {
+	outline: 2px solid var( --border-focus );
+	outline-offset: 2px;
+}
+
+.manage-more {
+	display: inline-flex;
+	align-items: center;
+	gap: var( --space-1 );
+	margin-top: var( --space-3 );
+	color: var( --text-accent );
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+	text-decoration: none;
+}
+
+.manage-more:hover { text-decoration: underline; }
+
+/* Delete, asked in the page. */
+.manage-item.is-confirming { background: var( --color-danger-bg ); border-color: var( --color-danger ); }
+
+.manage-confirm {
+	margin-top: var( --space-3 );
+	padding: var( --space-4 );
+	background: var( --bg-surface );
+	border: 1px solid var( --color-danger );
+	border-radius: var( --radius-sm );
+}
+
+.manage-confirm > h5 {
+	margin: 0 0 var( --space-2 );
+	font-size: var( --text-base );
+	overflow-wrap: anywhere;
+}
+
+.manage-confirm > h5:focus-visible { outline: 2px solid var( --border-focus ); outline-offset: 2px; }
+
+.manage-confirm > p {
+	margin: 0 0 var( --space-4 );
+	color: var( --text-muted );
+	font-size: var( --text-sm );
+}
+
+.manage-confirm-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var( --space-2 );
+}
+
+/* The listing form, for a home sent back: the note on every step. */
+.lform-changes > div > p > b { color: var( --text-default ); }
+
+/* The listing form, when Google could not place the address. */
+.lform-location > div > p { margin: 0; }
+.lform-location > div > p + p { margin-top: var( --space-1 ); }
+.lform-location > div > p > b { color: var( --text-default ); }
+.lform-location > div > p > a { color: var( --text-accent ); font-weight: var( --weight-semibold ); }
+
+/* Editing a home that is already live or paused: what shows at once and
+   what goes back to review, said on every step. */
+.lform-live-note > div > p { margin: 0; }
+.lform-live-note > div > p + p { margin-top: var( --space-1 ); }
+.lform-live-note > div > p > b { color: var( --text-default ); }
+
+/* The photo step's permission for a live home; the controls wait for it. */
+.lform-live-tick > span > b { display: block; margin-bottom: var( --space-1 ); color: var( --text-default ); }
+.lform-card.is-locked .lform-drop { opacity: var( --disabled-opacity ); cursor: not-allowed; }
+.lform-card.is-locked .lform-photo-remove { cursor: not-allowed; opacity: var( --disabled-opacity ); }
+
+/* Asked before a big change is saved: the home, the fields, the two ways out. */
+.lform-confirm { text-align: center; }
+
+.lform-confirm > i {
+	display: inline-flex;
+	margin-bottom: var( --space-2 );
+	color: var( --color-warning );
+}
+
+.lform-confirm > h2 {
+	margin: 0 0 var( --space-3 );
+	font-size: var( --text-h4 );
+}
+
+.lform-confirm > p {
+	max-width: 56ch;
+	margin: 0 auto var( --space-3 );
+	color: var( --text-muted );
+	font-size: var( --text-sm );
+	line-height: var( --leading-body );
+}
+
+.lform-confirm > .lform-confirm-what { color: var( --text-default ); font-size: var( --text-base ); }
+.lform-confirm > .lform-confirm-what > b { color: var( --text-default ); }
+
+.lform-confirm > form > .lform-confirm-actions { justify-content: center; }
+
 /* --- Narrow -------------------------------------------------------------- */
 
 @media ( max-width: 62rem ) {
@@ -4712,6 +7318,10 @@ body.tdh-portal-page .site-footer { display: none; }
 	.portal-heading { flex-direction: column; align-items: flex-start; }
 
 	.portal-alert { flex-wrap: wrap; }
+	/* The band's one action drops under the sentence instead of squeezing it. */
+	.portal-alert > a,
+	.portal-alert > form,
+	.portal-alert > form > button { width: 100%; text-align: center; }
 	.portal-metrics { grid-template-columns: 1fr; }
 
 	/* Queue rows fold: the action buttons drop under the text. */
@@ -4721,6 +7331,74 @@ body.tdh-portal-page .site-footer { display: none; }
 	.portal-member-actions { align-items: stretch; flex-direction: column; }
 	.portal-member-actions button { width: 100%; }
 	.portal-setup-grid { grid-template-columns: 1fr; }
+
+	/* A phone. The photo sits beside the name and status; everything else
+	   takes the full width underneath, instead of a narrow column indented
+	   under the photo. (display: contents lets the body's parts join the
+	   row's grid; the body is a plain div with nothing to announce.) */
+	.portal-heading > .primary { width: 100%; }
+
+	.manage-item {
+		grid-template-columns: 5rem minmax( 0, 1fr );
+		column-gap: var( --space-3 );
+		row-gap: var( --space-2 );
+		padding: var( --space-4 );
+	}
+
+	.manage-head > h4 { font-size: var( --text-lg ); }
+
+	.manage-item > .manage-body { display: contents; }
+	.manage-item > .manage-media { grid-column: 1; grid-row: 1; }
+	.manage-body > .manage-head { grid-column: 2; grid-row: 1; align-self: center; gap: var( --space-1 ) var( --space-2 ); }
+
+	.manage-body > .manage-meta,
+	.manage-body > .manage-line,
+	.manage-body > .manage-reason,
+	.manage-body > .manage-actions,
+	.manage-body > .manage-confirm { grid-column: 1 / -1; }
+
+	.manage-media > img,
+	.manage-media > i { width: 5rem; height: 4rem; }
+
+	.manage-body > .manage-reason,
+	.manage-body > .manage-confirm { margin-top: 0; }
+
+	/* The main action on its own full-width line; the quieter ones share the
+	   line below as equal, outlined buttons a thumb can hit. */
+	.manage-actions { gap: var( --space-2 ); margin-top: var( --space-1 ); }
+
+	.manage-actions > .primary,
+	.manage-actions > .manage-form:first-child { flex: 1 1 100%; }
+
+	.manage-actions > .primary,
+	.manage-actions > .manage-form:first-child > .primary { width: 100%; min-height: 2.75rem; }
+
+	/* Two to a row, so four quiet actions never squeeze into one line. */
+	.manage-actions > .manage-link,
+	.manage-actions > .manage-delete,
+	.manage-actions > .manage-form:not( :first-child ) { flex: 1 1 calc( 50% - var( --space-2 ) ); }
+
+	.manage-actions .manage-link,
+	.manage-actions > .manage-delete {
+		justify-content: center;
+		width: 100%;
+		min-height: 2.75rem;
+		margin-left: 0;
+		border: 1px solid var( --border-default );
+		border-radius: var( --radius-sm );
+		background: var( --bg-surface );
+	}
+
+	.manage-actions > .manage-delete { border-color: var( --color-danger-bg ); }
+
+	.manage-actions .manage-link:hover,
+	.manage-actions > .manage-delete:hover { text-decoration: none; background: var( --bg-surface-tint ); }
+
+	/* Delete, asked on a phone: the buttons stack, danger first. */
+	.manage-confirm { padding: var( --space-4 ); }
+	.manage-confirm-actions { flex-direction: column; align-items: stretch; }
+	.manage-confirm-actions > .manage-form > .danger,
+	.manage-confirm-actions > .secondary { width: 100%; min-height: 2.75rem; }
 }
 
 /* =========================================================================
@@ -4768,6 +7446,16 @@ body.tdh-portal-page .site-footer { display: none; }
 }
 
 .lform-back:hover { border-color: var( --color-gold ); background: var( --bg-surface-tint ); }
+
+/* On steps 2 and 3 the arrow is a submit button (it saves before going
+   back), so it needs the button defaults cleared to match the link. */
+.lform-head > button.lform-back { padding: 0; font: inherit; cursor: pointer; }
+.lform-head > button.lform-back:disabled { opacity: var( --disabled-opacity ); cursor: wait; }
+
+.lform-head > .lform-back:focus-visible {
+	outline: 2px solid var( --border-focus );
+	outline-offset: 2px;
+}
 
 .lform-head > div { flex: 1; min-width: 0; }
 
@@ -4822,13 +7510,20 @@ body.tdh-portal-page .site-footer { display: none; }
 	font-size: var( --text-h5 );
 }
 
-.lform-card > .lform-h:first-of-type { margin-top: 0; }
+/* No top margin on the heading that opens a step. It sits straight after the
+   form's hidden fields; a later heading such as "Rent & fees" follows a grid
+   and keeps its margin. (This was :first-of-type, which also stripped the
+   margin from step 1's first heading even with a grid above it.) */
+.lform-card > input[ type="hidden" ] + .lform-h { margin-top: 0; }
 
 .lform-sub {
 	margin: 0 0 var( --space-5 );
 	color: var( --text-muted );
 	font-size: var( --text-sm );
 }
+
+/* A heading's own one-line explanation sits closer to it than to the fields. */
+.lform-h + .lform-sub { margin-top: calc( var( --space-2 ) * -1 ); }
 
 /* --- Step 1: fields ------------------------------------------------------- */
 
@@ -4946,6 +7641,27 @@ body.tdh-portal-page .site-footer { display: none; }
 	box-shadow: 0 0 0 3px rgba( 215, 185, 103, 0.28 );
 }
 
+/* --- Step 2: utilities, pets, home details -------------------------------- */
+
+/* A detail field that belongs to the question above it. */
+.lform-options + .lform-grid { margin-top: var( --space-4 ); }
+
+/* Three answers stay one row of three at every width. Left to auto-fit they
+   wrapped two-and-one on a phone, leaving "Not allowed" alone on a line as
+   if it were a different kind of answer. Labels wrap inside their card
+   instead, and the cards stretch to match. */
+.lform-options--three { grid-template-columns: repeat( 3, minmax( 0, 1fr ) ); }
+
+.lform-grid--single { grid-template-columns: 1fr; }
+
+/* A pet fee next to "Not allowed" would be a contradiction, so the field
+   goes while that answer is chosen. The server clears the fee as well, so a
+   browser without :has() shows the field but can never save the pair. */
+.lform-pets:has( > .lform-options > .lform-option > input[ value="no" ]:checked ) > .lform-petfee {
+	/* Also covers the pet fee grid's own margin, so no gap is left behind. */
+	display: none;
+}
+
 /* --- Step 2: amenities ---------------------------------------------------- */
 
 .lform-amenity-head { margin-top: var( --space-7 ); }
@@ -5042,47 +7758,171 @@ body.tdh-portal-page .site-footer { display: none; }
 
 /* --- Step 3: photos & description ---------------------------------------- */
 
+/* The stored photos, in the order renters see them. Each tile carries its
+   own controls — arrows, Make cover, a description and Remove — so nothing
+   depends on dragging, which a keyboard or screen reader cannot do. */
+.lform-photos-head > .lform-h { margin-top: 0; }
+
 .lform-photos {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var( --space-3 );
-	margin-bottom: var( --space-5 );
+	display: grid;
+	grid-template-columns: repeat( auto-fill, minmax( 12.5rem, 1fr ) );
+	gap: var( --space-4 );
+	margin: 0 0 var( --space-6 );
+	padding: 0;
+	list-style: none;
 }
 
 .lform-photo {
-	position: relative;
 	display: flex;
 	flex-direction: column;
-	gap: var( --space-1 );
+	gap: var( --space-3 );
+	padding: var( --space-3 );
+	border: 1px solid var( --border-soft );
+	border-radius: var( --radius-sm );
+	background: var( --bg-surface );
+	transition: border-color var( --duration-fast ) var( --ease ),
+	            background-color var( --duration-fast ) var( --ease );
+}
+
+.lform-photo:first-child { border-color: var( --color-gold ); }
+
+.lform-photo-media {
+	position: relative;
+	aspect-ratio: 4 / 3;
+	overflow: hidden;
+	border-radius: var( --radius-xs );
+	background: var( --bg-surface-accent );
+}
+
+.lform-photo-media > img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	transition: opacity var( --duration-fast ) var( --ease );
+}
+
+.lform-photo-media > .lform-photo-badge,
+.lform-photo-media > .lform-photo-number {
+	position: absolute;
+	top: var( --space-2 );
+	left: var( --space-2 );
+	padding: var( --space-1 ) var( --space-2 );
+	border-radius: var( --radius-pill );
+	font-size: var( --text-2xs );
+	font-weight: var( --weight-bold );
+	line-height: var( --leading-none );
+}
+
+.lform-photo-media > .lform-photo-badge { background: var( --color-gold ); color: var( --color-navy ); }
+.lform-photo-media > .lform-photo-number { background: var( --bg-surface ); color: var( --text-default ); }
+
+.lform-photo-alt { display: flex; flex-direction: column; gap: var( --space-1 ); }
+
+.lform-photo-alt > label {
+	font-size: var( --text-xs );
+	font-weight: var( --weight-semibold );
+	color: var( --text-default );
+}
+
+.lform-photo-alt > input {
+	width: 100%;
+	padding: var( --space-2 ) var( --space-3 );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-xs );
+	background-color: var( --bg-surface-tint );
+	color: var( --text-default );
+	font: inherit;
+	font-size: var( --text-sm );
+}
+
+.lform-photo-alt > input::placeholder { color: var( --text-subtle ); }
+
+.lform-photo-alt > input:focus-visible {
+	outline: none;
+	border-color: var( --color-gold );
+	background-color: var( --bg-surface );
+	box-shadow: 0 0 0 3px rgba( 215, 185, 103, 0.28 );
+}
+
+/* Arrows and Remove on one row, Make cover (or the cover's note) filling the
+   row below; pushed to the tile's foot so tiles in a row line up. */
+.lform-photo-tools {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var( --space-2 );
+	margin-top: auto;
+}
+
+.lform-photo-tools > button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 2.25rem;
+	border: 1px solid var( --border-strong );
+	border-radius: var( --radius-xs );
+	background: var( --bg-surface );
+	color: var( --color-navy );
+	font: inherit;
+	font-size: var( --text-xs );
+	font-weight: var( --weight-semibold );
 	cursor: pointer;
 }
 
-.lform-photo > img {
-	display: block;
-	width: 6.5rem;
-	height: 6.5rem;
-	object-fit: cover;
-	border-radius: var( --radius-sm );
-	border: 2px solid transparent;
-	transition: border-color var( --duration-fast ) var( --ease ),
-	            opacity var( --duration-fast ) var( --ease );
+.lform-photo-tools > .lform-photo-move { width: 2.25rem; padding: 0; }
+.lform-photo-tools > .lform-photo-cover { flex: 1 0 100%; padding: 0 var( --space-3 ); }
+
+.lform-photo-tools > .lform-photo-cover-note {
+	display: flex;
+	flex: 1 0 100%;
+	align-items: center;
+	justify-content: center;
+	min-height: 2.25rem;
+	border-radius: var( --radius-xs );
+	background: var( --bg-surface-accent );
+	color: var( --text-muted );
+	font-size: var( --text-xs );
+	font-weight: var( --weight-semibold );
 }
 
-.lform-photo > input { position: absolute; opacity: 0; }
+.lform-photo-tools > button:hover:not( :disabled ) { border-color: var( --color-gold ); background: var( --bg-surface-tint ); }
+.lform-photo-tools > button:disabled { opacity: var( --disabled-opacity ); cursor: not-allowed; }
 
-.lform-photo > span {
-	text-align: center;
+.lform-photo-tools > button:focus-visible,
+.lform-photo-remove > input:focus-visible + span {
+	outline: 2px solid var( --border-focus );
+	outline-offset: 2px;
+}
+
+/* Remove is a tick that takes effect when the step is saved, so it can be
+   undone until then — and the tile shows the pending removal plainly. */
+.lform-photo-remove {
+	position: relative;
+	margin-left: auto;
+	cursor: pointer;
+}
+
+.lform-photo-remove > input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+
+.lform-photo-remove > span {
+	display: inline-flex;
+	align-items: center;
+	min-height: 2.25rem;
+	padding: 0 var( --space-2 );
 	font-size: var( --text-xs );
 	font-weight: var( --weight-semibold );
 	color: var( --text-muted );
+	text-decoration: underline;
+	text-underline-offset: 0.2em;
 }
 
-/* Ticking Remove marks the photo for deletion on Continue: dimmed, struck
-   through, outlined in the danger colour, so the pending removal is visible
-   before it happens. */
-.lform-photo > input:checked ~ span { color: var( --color-danger ); text-decoration: line-through; }
-.lform-photo:has( > input:checked ) > img { opacity: 0.45; border-color: var( --color-danger ); }
-.lform-photo > input:focus-visible ~ span { text-decoration: underline; }
+.lform-photo-remove > input:checked + span { color: var( --color-danger ); text-decoration: line-through; }
+.lform-photo:has( .lform-photo-remove > input:checked ) { border-color: var( --color-danger ); background: var( --color-danger-bg ); }
+.lform-photo:has( .lform-photo-remove > input:checked ) .lform-photo-media > img { opacity: 0.45; }
+
+/* All ten photos stored: the dropzone becomes a plain note. */
+.lform-drop.lform-drop--full { cursor: default; border-style: solid; background: var( --bg-surface-tint ); }
 
 .lform-drop {
 	position: relative;
@@ -5220,12 +8060,90 @@ body.tdh-portal-page .site-footer { display: none; }
 .lform-ready > h3 { margin: 0 0 var( --space-2 ); font-size: var( --text-h5 ); }
 .lform-ready > p { margin: 0; color: var( --text-muted ); font-size: var( --text-sm ); }
 
+/* What is still missing: named, each a link to the step that fills it. */
+.lform-missing {
+	margin-bottom: var( --space-6 );
+	padding: var( --space-5 );
+	border: 1px solid var( --color-warning );
+	border-radius: var( --radius-sm );
+	background: var( --color-warning-bg );
+}
+
+.lform-missing > h3 { margin: 0 0 var( --space-1 ); font-size: var( --text-h5 ); }
+.lform-missing > p { margin: 0 0 var( --space-4 ); color: var( --text-muted ); font-size: var( --text-sm ); }
+
+.lform-missing > ul {
+	display: flex;
+	flex-direction: column;
+	gap: var( --space-2 );
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.lform-missing > ul > li {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: var( --space-3 );
+	font-size: var( --text-sm );
+}
+
+.lform-missing > ul > li > a {
+	font-weight: var( --weight-semibold );
+	color: var( --text-default );
+	text-decoration: underline;
+	text-underline-offset: 0.2em;
+}
+
+.lform-missing > ul > li > small { flex: none; color: var( --text-muted ); font-size: var( --text-xs ); }
+
+/* Answers grouped by the step they came from, each with its way back. */
+.lform-review-block + .lform-review-block { margin-top: var( --space-5 ); }
+
+.lform-review-head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: var( --space-3 );
+}
+
+.lform-review-head > h3 {
+	margin: 0;
+	font-size: var( --text-xs );
+	font-weight: var( --weight-bold );
+	letter-spacing: var( --tracking-wider );
+	text-transform: uppercase;
+	color: var( --text-muted );
+}
+
+.lform-review-head > a {
+	display: inline-flex;
+	align-items: center;
+	min-height: 2.75rem;
+	padding-inline: var( --space-2 );
+	margin-right: calc( var( --space-2 ) * -1 );
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+	color: var( --color-gold-deep );
+}
+
+.lform-review-head > a:hover { text-decoration: underline; text-underline-offset: 0.2em; }
+
+.lform-review-head > a:focus-visible {
+	outline: 2px solid var( --border-focus );
+	outline-offset: 2px;
+	border-radius: var( --radius-xs );
+}
+
 .lform-review {
-	margin: var( --space-4 ) 0 var( --space-6 );
+	margin: var( --space-2 ) 0 0;
 	padding: 0 var( --space-5 );
 	border: 1px solid var( --border-soft );
 	border-radius: var( --radius-sm );
 }
+
+.lform-review-block:last-of-type { margin-bottom: var( --space-6 ); }
 
 .lform-review > div {
 	display: flex;
@@ -5272,6 +8190,13 @@ body.tdh-portal-page .site-footer { display: none; }
 	border-top: 1px solid var( --border-soft );
 }
 
+/* Pending (after a press) and not-yet-possible (review with gaps) both read
+   as unavailable, never as a button that ignores the click. */
+.lform-actions > button:disabled {
+	opacity: var( --disabled-opacity );
+	cursor: not-allowed;
+}
+
 .lform-gate {
 	text-align: center;
 	padding: var( --space-8 ) var( --space-6 );
@@ -5292,5 +8217,467 @@ body.tdh-portal-page .site-footer { display: none; }
 	.lform-card { padding: var( --space-5 ) var( --space-4 ); }
 	.lform-grid { grid-template-columns: 1fr; }
 
+	.lform-options--three { gap: var( --space-2 ); }
+	.lform-options--three > .lform-option > span { padding: var( --space-3 ) var( --space-2 ); }
+
 	.lform-actions { flex-wrap: wrap; }
+}
+
+/* =========================================================================
+   AVAILABILITY
+
+   One idea in three places. The editor (.avail-*) is the same in the
+   listing form's step 2 and in the quick edit on My listings (.manage-avail);
+   the property page draws the result as words and a calendar (.avail-cal).
+
+   An unavailable day is struck through AND hatched, and the legend says so
+   in words — never colour alone. Every value from the tokens; every
+   element reached through a child combinator.
+   ====================================================================== */
+
+/* --- The editor ----------------------------------------------------------- */
+
+.avail-from { margin-bottom: var( --space-5 ); }
+.avail-from > .avail-field { max-width: 20rem; }
+
+.avail-field {
+	display: flex;
+	flex-direction: column;
+	gap: var( --space-2 );
+	min-width: 0;
+}
+
+.avail-field > span {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: var( --space-2 );
+}
+
+.avail-field > span > b { font-size: var( --text-sm ); font-weight: var( --weight-semibold ); }
+.avail-field > span > small { color: var( --text-subtle ); font-size: var( --text-xs ); }
+
+/* The wizard's field look, restated under this scope (see .lform-field). */
+.avail-field > input {
+	width: 100%;
+	min-height: 2.75rem;
+	padding: var( --space-3 ) var( --space-4 );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-sm );
+	background-color: var( --bg-surface-tint );
+	color: var( --text-default );
+	font: inherit;
+	transition: border-color var( --duration-fast ) var( --ease ),
+	            background-color var( --duration-fast ) var( --ease ),
+	            box-shadow var( --duration-fast ) var( --ease );
+}
+
+.avail-field > input:hover { border-color: var( --border-strong ); }
+
+.avail-field > input:focus-visible {
+	outline: none;
+	background-color: var( --bg-surface );
+	border-color: var( --color-gold );
+	box-shadow: 0 0 0 3px rgba( 215, 185, 103, 0.28 );
+}
+
+.avail-field > input:user-invalid,
+.avail-field > input[ aria-invalid="true" ] { border-color: var( --color-danger ); }
+
+.avail-field > input[ type="date" ]::-webkit-calendar-picker-indicator {
+	margin-left: var( --space-2 );
+	opacity: 0.6;
+	cursor: pointer;
+}
+
+.avail-field > input[ type="date" ]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+
+.avail-periods {
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+.avail-periods > legend {
+	padding: 0;
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+}
+
+.avail-periods > .avail-help {
+	margin: var( --space-1 ) 0 var( --space-3 );
+	color: var( --text-muted );
+	font-size: var( --text-xs );
+	line-height: var( --leading-body );
+}
+
+.avail-periods > .avail-rows {
+	display: flex;
+	flex-direction: column;
+	gap: var( --space-3 );
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.avail-rows > .avail-row {
+	display: grid;
+	grid-template-columns: minmax( 0, 1fr ) minmax( 0, 1fr ) auto;
+	align-items: end;
+	gap: var( --space-2 ) var( --space-3 );
+	padding: var( --space-3 );
+	border: 1px solid var( --border-soft );
+	border-radius: var( --radius-sm );
+	background: var( --bg-surface );
+}
+
+/* History: kept for the landlord, never shown to renters. */
+.avail-rows > .avail-row.is-past { background: var( --bg-surface-tint ); }
+.avail-rows > .avail-row.is-past > .avail-field > input { color: var( --text-muted ); }
+
+.avail-rows > .avail-row.is-invalid { border-color: var( --color-danger ); background: var( --color-danger-bg ); }
+
+.avail-row > .avail-remove {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: var( --space-1 );
+	min-height: 2.75rem;
+	padding: 0 var( --space-3 );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-sm );
+	background: var( --bg-surface );
+	color: var( --text-muted );
+	font: inherit;
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+	cursor: pointer;
+	transition: color var( --duration-fast ) var( --ease ),
+	            border-color var( --duration-fast ) var( --ease );
+}
+
+.avail-row > .avail-remove[ hidden ] { display: none; }
+.avail-row > .avail-remove:hover { color: var( --color-danger ); border-color: var( --color-danger ); }
+.avail-row > .avail-remove:focus-visible { outline: 2px solid var( --border-focus ); outline-offset: 2px; }
+
+.avail-row > .avail-row-note,
+.avail-row > .avail-row-error {
+	grid-column: 1 / -1;
+	margin: 0;
+	font-size: var( --text-xs );
+	line-height: var( --leading-body );
+}
+
+.avail-row > .avail-row-note { color: var( --text-muted ); }
+.avail-row > .avail-row-error { color: var( --color-danger ); font-weight: var( --weight-semibold ); }
+
+.avail-periods > .avail-foot {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var( --space-2 ) var( --space-4 );
+	margin-top: var( --space-3 );
+}
+
+.avail-foot > .avail-add {
+	display: inline-flex;
+	align-items: center;
+	gap: var( --space-2 );
+	min-height: 2.5rem;
+	padding: 0 var( --space-4 );
+	border: 1px dashed var( --border-strong );
+	border-radius: var( --radius-sm );
+	background: var( --bg-surface );
+	color: var( --text-accent );
+	font: inherit;
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+	cursor: pointer;
+	transition: border-color var( --duration-fast ) var( --ease ),
+	            background-color var( --duration-fast ) var( --ease );
+}
+
+.avail-foot > .avail-add[ hidden ] { display: none; }
+.avail-foot > .avail-add:hover:not( :disabled ) { border-color: var( --color-gold ); background-color: var( --bg-surface-tint ); }
+.avail-foot > .avail-add:focus-visible { outline: 2px solid var( --border-focus ); outline-offset: 2px; }
+.avail-foot > .avail-add:disabled { opacity: var( --disabled-opacity ); cursor: not-allowed; }
+
+.avail-foot > .avail-count {
+	margin: 0;
+	color: var( --text-muted );
+	font-size: var( --text-xs );
+	font-variant-numeric: tabular-nums;
+}
+
+.avail-periods > .avail-nojs {
+	margin: var( --space-2 ) 0 0;
+	color: var( --text-muted );
+	font-size: var( --text-xs );
+}
+
+.avail-periods > .avail-nojs[ hidden ] { display: none; }
+
+/* --- On My listings: the quick edit --------------------------------------- */
+
+.manage-item.is-editing {
+	background: var( --bg-surface-tint );
+	border-color: var( --border-default );
+}
+
+.manage-body > .manage-avail {
+	margin-top: var( --space-3 );
+	padding: var( --space-5 );
+	background: var( --bg-surface );
+	border: 1px solid var( --color-gold );
+	border-radius: var( --radius-sm );
+}
+
+.manage-avail > h5 {
+	margin: 0 0 var( --space-1 );
+	font-size: var( --text-base );
+	overflow-wrap: anywhere;
+}
+
+.manage-avail > h5:focus-visible { outline: 2px solid var( --border-focus ); outline-offset: 2px; }
+
+.manage-avail > .manage-avail-status {
+	margin: 0 0 var( --space-5 );
+	color: var( --text-muted );
+	font-size: var( --text-sm );
+}
+
+.manage-avail > .manage-avail-status > b { color: var( --text-default ); }
+
+.manage-avail > .manage-avail-errors {
+	margin: 0 0 var( --space-4 );
+	padding: var( --space-3 ) var( --space-4 );
+	background: var( --color-danger-bg );
+	border-left: 3px solid var( --color-danger );
+	border-radius: var( --radius-xs );
+}
+
+.manage-avail-errors > p { margin: 0; color: var( --color-danger ); font-size: var( --text-sm ); }
+.manage-avail-errors > p + p { margin-top: var( --space-1 ); }
+
+.manage-avail-form > .manage-avail-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var( --space-2 );
+	margin-top: var( --space-5 );
+	padding-top: var( --space-4 );
+	border-top: 1px solid var( --border-soft );
+}
+
+.manage-avail-actions > .primary,
+.manage-avail-actions > .secondary {
+	min-height: 2.5rem;
+	padding: var( --space-2 ) var( --space-4 );
+	font-size: var( --text-sm );
+}
+
+.manage-avail-actions > .primary:disabled { opacity: var( --disabled-opacity ); cursor: wait; }
+
+/* --- The property page ---------------------------------------------------- */
+
+.avail-public > .availability > svg { flex: none; color: var( --color-gold-deep ); }
+
+.avail-public > .avail-public-taken {
+	margin: var( --space-4 ) 0 0;
+	color: var( --text-default );
+	font-size: var( --text-sm );
+	line-height: var( --leading-body );
+}
+
+/* A period never breaks in the middle: "20 Dec 2026 – 3 Jan 2027" wraps whole. */
+.avail-public-taken > span { white-space: nowrap; }
+
+/* contain: inline-size — the calendar takes its width from the page, never
+   from its twelve months. Without it the phone layout's single 1fr column
+   (minmax(auto, 1fr)) grew to fit every month side by side and pushed the
+   whole page wider than the screen. */
+/* A card of its own, so the months read as one object instead of floating
+   loose under the "Available from" band. The padding also gives the day
+   cells room to breathe, which a grid of 60 small numbers badly needs. */
+.avail-public > .avail-cal {
+	margin-top: var( --space-5 );
+	contain: inline-size;
+	padding: var( --space-5 );
+	border: 1px solid var( --border-soft );
+	border-radius: var( --radius-md );
+	background: var( --bg-surface );
+}
+
+/* The head sits on its own line above the months, divided from them. */
+.avail-public > .avail-cal > .avail-cal-head {
+	padding-bottom: var( --space-4 );
+	margin-bottom: var( --space-4 );
+	border-bottom: 1px solid var( --border-soft );
+}
+
+.avail-cal > .avail-cal-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var( --space-3 );
+	margin-bottom: var( --space-3 );
+}
+
+.avail-cal-head > .avail-cal-legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var( --space-2 ) var( --space-4 );
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	color: var( --text-muted );
+	font-size: var( --text-xs );
+}
+
+.avail-cal-legend > li { display: inline-flex; align-items: center; gap: var( --space-2 ); }
+
+/* The swatch has to be the very colour the day cells use, or the legend
+   describes a calendar that is not on screen. */
+.avail-cal-legend > li > i {
+	display: block;
+	width: var( --space-4 );
+	height: var( --space-4 );
+	border: 1px solid var( --border-soft );
+	border-radius: var( --radius-xs );
+	background: var( --bg-surface-accent );
+}
+
+.avail-cal-legend > li.is-off > i {
+	background: repeating-linear-gradient( 135deg, var( --bg-surface-tint ) 0 var( --space-1 ), var( --border-default ) var( --space-1 ) calc( var( --space-1 ) + 1px ) );
+}
+
+.avail-cal-head > .avail-cal-nav { display: flex; gap: var( --space-2 ); margin-left: auto; }
+.avail-cal-head > .avail-cal-nav[ hidden ] { display: none; }
+
+.avail-cal-nav > button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.5rem;
+	height: 2.5rem;
+	padding: 0;
+	border: 1px solid var( --border-strong );
+	border-radius: var( --radius-full );
+	background: var( --bg-surface );
+	color: var( --color-navy );
+	cursor: pointer;
+	transition: border-color var( --duration-fast ) var( --ease ),
+	            background-color var( --duration-fast ) var( --ease );
+}
+
+.avail-cal-nav > button:hover:not( :disabled ) { border-color: var( --color-gold ); background-color: var( --bg-surface-tint ); }
+.avail-cal-nav > button:focus-visible { outline: 2px solid var( --border-focus ); outline-offset: 2px; }
+.avail-cal-nav > button:disabled { opacity: var( --disabled-opacity ); cursor: default; }
+
+/* Twelve months in a row: two in view on a wide screen, one on a phone. */
+.avail-cal > .avail-cal-track {
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-columns: calc( ( 100% - var( --space-6 ) ) / 2 );
+	column-gap: var( --space-6 );
+	overflow-x: auto;
+	overscroll-behavior-x: contain;
+	scroll-snap-type: x mandatory;
+	padding-bottom: var( --space-2 );
+	/* The ‹ › buttons move the months, and a swipe or the arrow keys still
+	   scroll it; a bare scrollbar under the calendar read as unfinished. */
+	scrollbar-width: none;
+}
+
+.avail-cal > .avail-cal-track::-webkit-scrollbar { display: none; }
+
+.avail-cal > .avail-cal-track:focus-visible { outline: 2px solid var( --border-focus ); outline-offset: var( --space-1 ); }
+
+@media ( prefers-reduced-motion: no-preference ) {
+	.avail-cal > .avail-cal-track { scroll-behavior: smooth; }
+}
+
+.avail-cal-track > .avail-cal-month {
+	width: 100%;
+	border-collapse: collapse;
+	table-layout: fixed;
+	scroll-snap-align: start;
+}
+
+.avail-cal-month > caption {
+	padding-bottom: var( --space-2 );
+	caption-side: top;
+	color: var( --text-default );
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+	text-align: left;
+}
+
+.avail-cal-month > thead > tr > th {
+	padding: var( --space-1 ) 0;
+	color: var( --text-subtle );
+	font-size: var( --text-2xs );
+	font-weight: var( --weight-semibold );
+	text-align: center;
+}
+
+.avail-cal-month > tbody > tr > td { padding: 0; text-align: center; }
+
+.avail-cal-month > tbody > tr > td > span:first-child {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 2.25rem;
+	margin: 1px;
+	border: 1px solid transparent;
+	border-radius: var( --radius-sm );
+	color: var( --text-default );
+	font-size: var( --text-xs );
+	font-variant-numeric: tabular-nums;
+}
+
+/* A free day is a sand tile rather than a white square with a hairline.
+   Sand, not the success green: green is a STATUS colour in this theme and
+   appears nowhere else on a property page, so sixty green cells made it
+   the loudest thing on the page and put a colour on screen that is not in
+   the brand at all. Sand is already the fill of the "Available from" band
+   directly above this calendar — the same colour now carries the same
+   meaning twice on one screen, which is what a palette is for. */
+.avail-cal-month > tbody > tr > td.is-free > span:first-child {
+	background: var( --bg-surface-accent );
+	font-weight: var( --weight-semibold );
+}
+
+.avail-cal-month > tbody > tr > td.is-unavailable > span:first-child {
+	background: repeating-linear-gradient( 135deg, var( --bg-surface-tint ) 0 var( --space-1 ), var( --border-default ) var( --space-1 ) calc( var( --space-1 ) + 1px ) );
+	color: var( --text-muted );
+	text-decoration: line-through;
+}
+
+.avail-cal-month > tbody > tr > td.is-past > span:first-child { color: var( --text-subtle ); }
+
+.avail-cal-month > tbody > tr > td.is-today > span:first-child {
+	box-shadow: inset 0 0 0 2px var( --color-navy );
+	font-weight: var( --weight-bold );
+}
+
+/* --- Narrow --------------------------------------------------------------- */
+
+@media ( max-width: 43.75rem ) {
+	/* Each period stacks: first day, last day, Remove — full width, so the
+	   date pickers never squeeze below what a phone needs. */
+	.avail-rows > .avail-row { grid-template-columns: minmax( 0, 1fr ); }
+	.avail-from > .avail-field { max-width: none; }
+	.avail-periods > .avail-foot { flex-direction: column; align-items: stretch; }
+	.avail-foot > .avail-add { justify-content: center; min-height: 2.75rem; }
+
+	.manage-body > .manage-avail { grid-column: 1 / -1; margin-top: 0; padding: var( --space-4 ); }
+	.manage-avail-form > .manage-avail-actions { flex-direction: column; align-items: stretch; }
+	.manage-avail-actions > .primary,
+	.manage-avail-actions > .secondary { width: 100%; min-height: 2.75rem; justify-content: center; text-align: center; }
+
+	.avail-cal > .avail-cal-track { grid-auto-columns: 100%; }
 }
