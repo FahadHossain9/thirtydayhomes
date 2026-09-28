@@ -46,46 +46,11 @@ if ( '' === $badge && $is_new ) {
 // Empty on every real listing until a review system exists. The block is
 // skipped entirely rather than printing a zero.
 $rating = get_post_meta( $listing_id, '_tdh_rating', true );
-
-/*
- * The stay, when the renter searched with dates (task C2).
- *
- * Every card on the page is a home that is free for those dates, so the
- * card says so instead of repeating the first free day, which would read
- * as a different date from the one just asked for. The dates travel on the
- * link too: the property page can then show the stay against its calendar,
- * and the Back button returns to the same search.
- */
-$tdh_stay = [];
-
-if ( class_exists( '\TDH\Search' ) ) {
-	$tdh_stay = array_intersect_key(
-		\TDH\Search::args(),
-		array_flip(
-			[
-				\TDH\Search::START,
-				\TDH\Search::END,
-				// The chosen hospital travels too (C3), so the property
-				// page can keep measuring to the same one. Price and
-				// bedroom filters do not: they change nothing there.
-				\TDH\Search::FACILITY,
-				\TDH\Search::WITHIN,
-			]
-		)
-	);
-}
-
-$tdh_dated = isset( $tdh_stay[ \TDH\Search::START ] );
-$tdh_link  = (string) get_permalink();
-
-if ( $tdh_stay ) {
-	$tdh_link = add_query_arg( array_map( 'rawurlencode', $tdh_stay ), $tdh_link );
-}
 ?>
 <article class="property-card">
 
 	<div class="property-img">
-		<a href="<?php echo esc_url( $tdh_link ); ?>" tabindex="-1" aria-hidden="true">
+		<a href="<?php the_permalink(); ?>" tabindex="-1" aria-hidden="true">
 			<?php if ( has_post_thumbnail() ) : ?>
 				<?php the_post_thumbnail( 'tdh-card', [ 'alt' => '' ] ); ?>
 			<?php else : ?>
@@ -145,7 +110,7 @@ if ( $tdh_stay ) {
 			</p>
 		<?php endif; ?>
 
-		<h3><a href="<?php echo esc_url( $tdh_link ); ?>"><?php the_title(); ?></a></h3>
+		<h3><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h3>
 
 		<ul class="facts">
 			<?php if ( $beds ) : ?>
@@ -196,13 +161,7 @@ if ( $tdh_stay ) {
 					<b><?php echo esc_html( '$' . number_format_i18n( $price ) ); ?></b>
 					<?php esc_html_e( '/ month', 'thirtydayhomes' ); ?>
 				</p>
-				<?php if ( $tdh_dated ) : ?>
-					<?php // This home is in these results because it is free then. ?>
-					<p class="free-for-dates"><?php esc_html_e( 'Free for your dates', 'thirtydayhomes' ); ?></p>
-				<?php elseif ( class_exists( '\TDH\Availability' ) ) : ?>
-					<?php // The first day a renter could move in: "Available now", "Available 11 Nov". ?>
-					<p><?php echo esc_html( \TDH\Availability::summary( (int) $listing_id )['short'] ); ?></p>
-				<?php elseif ( $available ) : ?>
+				<?php if ( $available ) : ?>
 					<p>
 						<?php
 						printf(
@@ -225,7 +184,7 @@ if ( $tdh_stay ) {
 			 * nothing about which home they are on.
 			 */
 			?>
-			<a class="card-go" href="<?php echo esc_url( $tdh_link ); ?>">
+			<a class="card-go" href="<?php the_permalink(); ?>">
 				<span class="screen-reader-text">
 					<?php
 					printf(

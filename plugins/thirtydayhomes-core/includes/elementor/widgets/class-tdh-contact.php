@@ -59,7 +59,7 @@ final class Contact extends Widget_Base {
 
 	/** @return string[] */
 	public function get_keywords(): array {
-		return [ 'contact', 'form', 'message', 'inquiry' ];
+		return [ 'contact', 'form', 'message', 'enquiry' ];
 	}
 
 	/**

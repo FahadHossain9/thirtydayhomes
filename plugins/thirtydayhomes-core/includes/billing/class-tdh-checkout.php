@@ -115,11 +115,6 @@ final class Checkout {
 			$this->bounce( self::pricing_url(), 'not_a_landlord' );
 		}
 
-		// F1: a plan is bought by a proven address, never a mistyped one.
-		if ( ! \TDH\Email_Verification::is_verified( $user_id ) ) {
-			$this->bounce( self::pricing_url(), 'verify_email' );
-		}
-
 		// Already paying. A second subscription would bill them twice for one
 		// account, and Stripe will happily create it if asked.
 		if ( in_array( Membership::status( $user_id ), [ Membership::ACTIVE, Membership::PAST_DUE ], true ) ) {
@@ -283,7 +278,6 @@ final class Checkout {
 			'expired'            => __( 'That form expired. Please choose your plan again.', 'thirtydayhomes' ),
 			'not_a_landlord'     => __( 'Only landlord accounts can hold a membership.', 'thirtydayhomes' ),
 			'already_subscribed' => __( 'You already have a membership. There is nothing more to buy.', 'thirtydayhomes' ),
-			'verify_email'       => __( 'Confirm your email address first — click the link we emailed you. Your dashboard can send a new one.', 'thirtydayhomes' ),
 			'unknown_plan'       => __( 'That plan is not one we offer.', 'thirtydayhomes' ),
 			'not_configured'     => __( 'Payments are not switched on yet. Please try again shortly.', 'thirtydayhomes' ),
 			'stripe_error'       => __( 'We could not reach the payment provider. Nothing has been charged — please try again.', 'thirtydayhomes' ),

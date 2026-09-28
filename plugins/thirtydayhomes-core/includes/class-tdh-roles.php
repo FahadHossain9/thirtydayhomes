@@ -121,7 +121,7 @@ final class Roles {
 	 * ownership relationship runs through _tdh_listing_id and core cannot
 	 * see it. Without this, read_post on a published inquiry maps to plain
 	 * `read`, which every signed-in user holds — any landlord could read
-	 * any other landlord's inquiries.
+	 * any other landlord's enquiries.
 	 *
 	 * NOTE ON THE CAP NAME. WordPress rewrites a custom post type's meta
 	 * capability to its generic form *before* applying this filter:

@@ -100,7 +100,7 @@ final class Demo_Mode {
 			'renter'   => [
 				'label' => __( 'Renter', 'thirtydayhomes' ),
 				'role'  => '',
-				'note'  => __( 'Signed out. Browses and inquires.', 'thirtydayhomes' ),
+				'note'  => __( 'Signed out. Browses and enquires.', 'thirtydayhomes' ),
 			],
 			'new'      => [
 				'label' => __( 'New landlord', 'thirtydayhomes' ),
@@ -115,7 +115,7 @@ final class Demo_Mode {
 			'failed'   => [
 				'label' => __( 'Failed payment', 'thirtydayhomes' ),
 				'role'  => Roles::LANDLORD,
-				'note'  => __( 'A payment failed. Homes stay visible for 7 days, then hide until it is paid.', 'thirtydayhomes' ),
+				'note'  => __( 'Billing states are inert until the subscription layer lands.', 'thirtydayhomes' ),
 			],
 			'admin'    => [
 				'label' => __( 'Administrator', 'thirtydayhomes' ),
@@ -230,7 +230,6 @@ final class Demo_Mode {
 		$user = get_user_by( 'login', $login );
 
 		if ( $user instanceof \WP_User ) {
-			self::ensure_membership( (int) $user->ID, $persona );
 			return $user;
 		}
 
@@ -249,38 +248,8 @@ final class Demo_Mode {
 		}
 
 		update_user_meta( $user_id, self::USER_FLAG, $persona );
-		self::ensure_membership( (int) $user_id, $persona );
 
 		return get_user_by( 'id', $user_id );
-	}
-
-	/**
-	 * "Active landlord" must actually be one.
-	 *
-	 * The persona was created with no plan at all, which nothing noticed
-	 * until homes could be paused: a reviewer paused its home and found no
-	 * Resume — correctly, for a landlord without a plan, but not for one
-	 * labelled active. Only a persona that never had a plan is given one,
-	 * so a reviewer who deliberately changes its membership keeps the change.
-	 * "Failed payment" is likewise given the past-due plan its label promises.
-	 */
-	public static function ensure_membership( int $user_id, string $persona ): void {
-
-		if ( ! in_array( $persona, [ 'landlord', 'failed' ], true ) || \TDH\Membership::NONE !== \TDH\Membership::status( $user_id ) ) {
-			return;
-		}
-
-		// "Failed payment" is past due, through apply() so the grace clock
-		// starts the way a real failed charge starts it (E1).
-		if ( 'failed' === $persona ) {
-			\TDH\Membership::apply( $user_id, [ 'status' => \TDH\Membership::PAST_DUE, 'plan' => 'three-home', 'quota' => 3, 'expires' => strtotime( '+1 month' ) ] );
-			return;
-		}
-
-		update_user_meta( $user_id, \TDH\Membership::META_STATUS, \TDH\Membership::ACTIVE );
-		update_user_meta( $user_id, \TDH\Membership::META_PLAN, 'three-home' );
-		update_user_meta( $user_id, \TDH\Membership::META_QUOTA, 3 );
-		update_user_meta( $user_id, \TDH\Membership::META_EXPIRES, strtotime( '+1 year' ) );
 	}
 
 	/**

@@ -77,15 +77,6 @@ final class Registrar {
 		$manager->register( new Widgets\Split_Feature() );
 		$manager->register( new Widgets\Owner_CTA() );
 
-		/*
-		 * The two search bands (task C5, acceptance criterion 9). Both read
-		 * live marketplace data — the homes the current search found, and
-		 * distances measured from a home's own location — and both render
-		 * only on the page their data belongs to.
-		 */
-		$manager->register( new Widgets\Search_Results() );
-		$manager->register( new Widgets\Nearby_Facilities() );
-
 		// Whole-page widgets. These exist because the pages they cover
 		// shipped as bare shortcodes with every string as a PHP default,
 		// which made them uneditable by the person who owns the site —

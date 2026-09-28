@@ -83,32 +83,6 @@ final class Core {
 			// runs on template_redirect before any output.
 			'contact'    => new Contact(),
 
-			// Front end: a renter's inquiry about one home. Posts to the
-			// property page and runs on template_redirect, before output,
-			// so the success screen is a redirect and Back cannot re-send.
-			'inquiry'    => new Inquiry(),
-
-			// Tells the landlord an inquiry arrived, and writes down every
-			// attempt. Listens to tdh_inquiry_received, so it runs only
-			// AFTER the inquiry is stored — a mail server that hangs can
-			// never cost a renter their message.
-			'notifications' => new Notifications(),
-
-			// Texts the landlord too, once they have verified a phone and
-			// said yes (D4). Registers nothing at all unless TDH_SMS_ENABLED
-			// is set, except the reset that runs when a verified number is
-			// edited — that one must never depend on a switch.
-			'sms'           => new Sms(),
-
-			// Grace, hide, restore (E1). Listens to tdh_membership_changed,
-			// runs a daily catch-up, and tells Visibility which landlords'
-			// homes must not be seen.
-			'enforcement'   => new Enforcement(),
-
-			// New landlords confirm their email before they pay or submit
-			// (F1): the link, "Send a new link", and the checks below read it.
-			'email_verification' => new Email_Verification(),
-
 			// Keeps the host's page cache off the account pages. NOT
 			// optional and not admin-only: a cached /register/ swallows
 			// every validation error, and a cached /account/ serves one
@@ -124,12 +98,6 @@ final class Core {
 			// end: it posts from the add-listing page, never from wp-admin.
 			'listing_form' => new Listing_Form(),
 
-			// The event and failure log. Listens to the actions the other
-			// modules fire and writes the sentence; staff read it on the
-			// portal's Logs screen. Registered before the modules it listens
-			// to only for reading order — hooks are bound before any fires.
-			'log'          => new Log(),
-
 			// Approve / request changes from the marketplace portal — the
 			// owner's daily loop, actionable without wp-admin.
 			'moderation'   => new Moderation(),
@@ -142,31 +110,7 @@ final class Core {
 			// Keyword search on the listing archive. Front end: it reads a
 			// public query variable and narrows the public archive.
 			'search'       => new Search(),
-
-			// The bar on a not-yet-public listing page seen by its landlord
-			// or staff. Front end: previews are front-end pages.
-			'listing_preview' => new Listing_Preview(),
-
-			// Pause, resume and delete from the landlord's dashboard, and the
-			// staff email when a home is submitted. Front end: the dashboard
-			// and the preview bar post to it.
-			'listing_actions' => new Listing_Actions(),
-
-			// Availability saved from the panel on My listings. Front end: the
-			// dashboard posts to it.
-			'availability'    => new Availability(),
-
-			// Addresses become coordinates wherever they are saved — the
-			// listing form, the Facilities screen, wp-admin, an import — and
-			// staff set a location by hand from the Listings screen.
-			'geocoder'        => new Geocoder(),
 		];
-
-		// `wp tdh geocode --missing`: look up every home and facility still
-		// waiting for a location (after the maps key is first added, say).
-		if ( defined( 'WP_CLI' ) && WP_CLI && class_exists( '\WP_CLI' ) ) {
-			\WP_CLI::add_command( 'tdh geocode', Geocode_Command::class );
-		}
 
 		// Admin-only modules. Loading the editing UI on every front-end
 		// request would be pure overhead on the pages renters actually hit.
@@ -188,11 +132,6 @@ final class Core {
 			// one instruction is "run this again after any change", which
 			// was useless while it needed SSH.
 			$this->modules['security'] = new Admin\Security_Screen();
-
-			// The event and failure log, read. Beside Email delivery and
-			// Payments and not in the client's portal: it is ours, not
-			// theirs.
-			$this->modules['log_screen'] = new Admin\Log_Screen();
 
 			// Says "this page is built with Elementor" to anyone who opened
 			// the block editor on one of our layout pages and found a lone

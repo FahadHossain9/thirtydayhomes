@@ -66,24 +66,6 @@ function tdh_breadcrumb_trail(): array {
 		return $trail;
 	}
 
-	// A city, property type, neighborhood or amenity archive is the search
-	// page narrowed to that term, so the trail says so: Home › Find a home ›
-	// Pittsburgh. The fallback below would print the document title, which
-	// carries the site name — "Pittsburgh – ThirtyDayHomes" — into the trail.
-	if ( is_tax( [ 'tdh_city', 'tdh_property_type', 'tdh_neighborhood', 'tdh_amenity' ] ) ) {
-
-		$archive = get_post_type_archive_link( 'tdh_listing' );
-		$term    = get_queried_object();
-
-		if ( $archive ) {
-			$trail[] = [ 'label' => __( 'Find a home', 'thirtydayhomes' ), 'url' => (string) $archive ];
-		}
-
-		$trail[] = [ 'label' => $term instanceof WP_Term ? $term->name : single_term_title( '', false ), 'url' => '' ];
-
-		return $trail;
-	}
-
 	if ( is_page() ) {
 
 		// Walk up through any parent pages, so a nested page shows its

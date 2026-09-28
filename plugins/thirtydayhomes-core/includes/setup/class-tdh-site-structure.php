@@ -303,16 +303,7 @@ final class Site_Structure {
 	 */
 	private function pages(): array {
 
-		/*
-		 * The three legal pages all carry a note saying what is not final
-		 * yet. They share one treatment — a bordered panel, .page-note —
-		 * so a reader can tell our editorial aside from the policy itself
-		 * at a glance, and so the pages look like a set rather than three
-		 * different stages of unfinished.
-		 */
-		$draft = '<div class="page-note"><p>'
-			. esc_html__( 'Draft copy, to be reviewed and approved before launch.', 'thirtydayhomes' )
-			. '</p></div>';
+		$draft = '<p><em>' . esc_html__( 'Draft copy, to be reviewed and approved before launch.', 'thirtydayhomes' ) . '</em></p>';
 
 		return [
 			'home' => [
@@ -378,71 +369,14 @@ final class Site_Structure {
 				'content'  => '[tdh_contact]',
 				'wide'     => true,
 			],
-			/*
-			 * "Terms of Service", not "Terms of Use": the carriers' campaign
-			 * form accepts a page titled Terms & Conditions or Terms of
-			 * Service and asks for an SMS Terms section naming the brand,
-			 * "message and data rates may apply", and how to stop (24 Sep
-			 * 2026). The SMS section is real; the rest still waits for the
-			 * attorney, said in a note BELOW it for the same reason as the
-			 * privacy page.
-			 */
 			'terms' => [
-				'title'   => __( 'Terms of Service', 'thirtydayhomes' ),
-				'content' => '<h2>SMS terms</h2>'
-					. '<p>ThirtyDayHomes (Thirty Day Homes LLC) offers landlords a text-message alert: one text each time a renter sends an inquiry about your property. You choose to receive these texts on your account page by entering your mobile number, ticking the consent box and confirming the number with a one-time code. Consent is not a condition of listing a property or of using the site.</p>'
-					. '<p>Message frequency varies with the number of inquiries you receive. Message and data rates may apply. Reply STOP to any text to stop receiving them. Reply HELP for help, or contact us at ' . esc_url( home_url( '/contact/' ) ) . '. Carriers are not liable for delayed or undelivered messages. Our Privacy Policy explains how we handle your number: ' . esc_url( home_url( '/privacy/' ) ) . '</p>'
-					. '<h2>The rest of these terms</h2>'
-					. '<div class="page-note">'
-					. '<p><strong>Still to come.</strong> The remaining terms are supplied by the owner’s attorney before launch.</p>'
-					. '</div>',
+				'title'   => __( 'Terms of Use', 'thirtydayhomes' ),
+				'content' => '<p><strong>Placeholder.</strong> Final wording is supplied by the owner’s attorney before launch. This page exists so the structure, navigation and footer links are complete and testable.</p>',
 			],
-			/*
-			 * The text-message section is REAL POLICY, not placeholder.
-			 *
-			 * Rob approved these exact words on 22 Sep 2026, having been
-			 * offered his attorney first and declined, and they are the
-			 * clause a carrier looks for before approving the A2P 10DLC
-			 * campaign (R46, which blocks R45, which blocks D4). A page
-			 * headed "Placeholder" with no mobile-number clause is the
-			 * normal reason such a campaign is rejected.
-			 *
-			 * The wording is his and is not edited here — not tidied, not
-			 * made British, not expanded. What it does NOT yet state is
-			 * message frequency or data retention, which carriers usually
-			 * also want; adding those needs another yes from him and is
-			 * recorded against R46.
-			 *
-			 * The rest of the page stays marked as placeholder, because it
-			 * is: only the texting paragraph has been approved.
-			 */
 			'privacy' => [
 				'title'   => __( 'Privacy Policy', 'thirtydayhomes' ),
-				'content' => '<h2>Text messages</h2>'
-					// The owner's own approved sentence, 22 Sep 2026, used
-					// exactly as he wrote it.
-					. '<p>We only send text messages about inquiries on your property. We never sell or share phone numbers. Reply STOP to any text and we will stop sending them.</p>'
-					// What the carriers' campaign form demands of the privacy
-					// page, word for word (24 Sep 2026): the registered brand
-					// name, what is collected and how it is used, and the
-					// exact no-selling statement. Every clause is true of the
-					// code: Sms stores the number, the consent time and the
-					// STOP/START state, and nothing else reads them.
-					. '<p>These texts come from ThirtyDayHomes (Thirty Day Homes LLC). You choose to receive them on your account page by entering your mobile number, ticking the consent box and confirming the number with a one-time code we text you. We keep the number, the time you consented and any STOP or START reply, and we use them only to send these texts and to stop them when you ask. We do not sell or share your SMS opt-in data or personal information with third parties for marketing purposes.</p>'
-					// Frequency, HELP and rates: the three things a carrier
-					// looks for that his sentence does not cover. Every claim
-					// here is a statement about what the software does, so
-					// each one has a check in verify.php holding it true.
-					. '<p>You will only get a text when someone sends an inquiry about your property. There is no marketing and nothing on a schedule, so how often you hear from us depends on how many inquiries you receive. Reply HELP to any text for help. Message and data rates may apply.</p>'
-					// Retention, worded to what the site actually does. A
-					// deleted listing deliberately KEEPS its messages, so
-					// "deleted with the listing" would have been untrue.
-					. '<p>We keep a phone number for as long as the account or the message it came with is on the site. Ask us to remove yours and we will.</p>'
-					. '<h2>The rest of this policy</h2>'
-					. '<div class="page-note">'
-					. '<p><strong>Still to come.</strong> The remaining sections are supplied by the owner’s attorney before launch.</p>'
-					. '<p>They cover what the site collects beyond the above, and how inquiry data reaches landlords.</p>'
-					. '</div>',
+				'content' => '<p><strong>Placeholder.</strong> Final wording is supplied by the owner’s attorney before launch.</p>'
+					. '<p>It must cover what the site collects, how enquiry data reaches landlords, and — once the site sends text messages — SMS consent, message frequency, opt-out and data retention.</p>',
 			],
 			'fair-housing' => [
 				'title'   => __( 'Fair Housing', 'thirtydayhomes' ),

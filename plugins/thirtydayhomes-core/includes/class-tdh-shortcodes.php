@@ -38,21 +38,6 @@ final class Shortcodes {
 		add_shortcode( 'tdh_owner_cta', [ $this, 'owner_cta' ] );
 		add_shortcode( 'tdh_pricing', [ $this, 'pricing' ] );
 
-		/*
-		 * The two search bands (task C5). Both render only where their data
-		 * is: the results list on a listing archive, the hospitals on a
-		 * property page. Anywhere else they are nothing, which is why they
-		 * have no "which homes" attribute — that decision belongs to the
-		 * plugin's own query and must not be frozen into page content.
-		 */
-		add_shortcode( 'tdh_search_results', [ $this, 'search_results' ] );
-		add_shortcode( 'tdh_nearby_facilities', [ $this, 'nearby_facilities' ] );
-
-		// A page holding the results band needs the full width, not the
-		// theme's reading column. Nobody building a page should have to
-		// know that a hidden field decides it.
-		add_filter( 'tdh_wide_body_page', [ $this, 'wide_for_results' ], 10, 2 );
-
 		// No attributes. Every string in the About body is a default in
 		// Render::about(), which is one place to edit when the client signs
 		// the copy off; an attribute list long enough to express four bands
@@ -300,76 +285,6 @@ final class Shortcodes {
 				'subheading'   => sanitize_text_field( $a['subheading'] ),
 				'show_link'    => in_array( strtolower( $a['show_link'] ), [ 'yes', 'true', '1' ], true ),
 				'link_text'    => sanitize_text_field( $a['link_text'] ),
-			]
-		);
-	}
-
-	/**
-	 * A page holding the results band needs the full width.
-	 *
-	 * @param bool $wide    Whether the page is already marked wide.
-	 * @param int  $page_id The page being rendered.
-	 */
-	public function wide_for_results( bool $wide, int $page_id ): bool {
-		return $wide || Search::page_holds_results( $page_id );
-	}
-
-	/**
-	 * The search results band.
-	 *
-	 * @param array<string,string>|string $atts
-	 */
-	public function search_results( $atts ): string {
-
-		$a = shortcode_atts(
-			[
-				'heading'          => '',
-				'intro'            => '',
-				'show_search'      => 'yes',
-				'show_filters'     => 'yes',
-				'show_view_toggle' => 'yes',
-				'per_page'         => '',
-			],
-			(array) $atts,
-			'tdh_search_results'
-		);
-
-		$on = static fn( string $value ): bool => in_array( strtolower( $value ), [ 'yes', 'true', '1' ], true );
-
-		return Render::search_results(
-			[
-				'heading'          => sanitize_text_field( $a['heading'] ),
-				'intro'            => sanitize_text_field( $a['intro'] ),
-				'show_search'      => $on( $a['show_search'] ),
-				'show_filters'     => $on( $a['show_filters'] ),
-				'show_view_toggle' => $on( $a['show_view_toggle'] ),
-				'per_page'         => (int) $a['per_page'],
-			]
-		);
-	}
-
-	/**
-	 * The nearest hospitals for the home being viewed.
-	 *
-	 * @param array<string,string>|string $atts
-	 */
-	public function nearby_facilities( $atts ): string {
-
-		$a = shortcode_atts(
-			[
-				'heading' => '',
-				'count'   => '',
-				'listing' => '',
-			],
-			(array) $atts,
-			'tdh_nearby_facilities'
-		);
-
-		return Render::nearby_facilities(
-			[
-				'heading'    => sanitize_text_field( $a['heading'] ),
-				'count'      => (int) $a['count'],
-				'listing_id' => (int) $a['listing'],
 			]
 		);
 	}

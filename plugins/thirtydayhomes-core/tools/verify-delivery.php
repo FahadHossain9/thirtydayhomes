@@ -376,10 +376,8 @@ if ( Mail::capturing() ) {
 		'a green tick here would send somebody to production believing mail works'
 	);
 } else {
-	// A branch this environment cannot exercise is said, not failed — the
-	// same way the live-send branch is skipped below when mail IS captured.
-	// Recording a skip as FAIL made a clean CI runner look broken.
-	echo "  ..    capturing branches skipped: this environment does not capture mail\n";
+	ok( 'in a capturing environment it reports that nothing was sent', false, 'not a capturing environment; skipped' );
+	ok( '...rather than claiming success', false, 'not a capturing environment; skipped' );
 }
 
 /* Drive the send path with capture disabled but wp_mail intercepted, so the

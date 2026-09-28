@@ -37,9 +37,8 @@ final class Activator {
 	}
 
 	public static function deactivate(): void {
-		// Only clear rewrite rules and our scheduled job. Never touch data.
+		// Only clear rewrite rules. Never touch data.
 		flush_rewrite_rules();
-		wp_clear_scheduled_hook( Log::CRON );
 	}
 
 	/**
@@ -89,32 +88,6 @@ final class Activator {
 			PRIMARY KEY  (id),
 			KEY inquiry_channel (inquiry_id, channel),
 			KEY status_created (status, created_at)
-		) {$charset};";
-		dbDelta( $sql );
-
-		// The event and failure log (R42b). Its own table: it is written on
-		// every important action and read by feature, level and time, which
-		// post meta cannot index and options cannot page.
-		$log = $wpdb->prefix . 'tdh_log';
-		$sql = "CREATE TABLE {$log} (
-			id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-			created_at  DATETIME        NOT NULL,
-			level       VARCHAR(10)     NOT NULL,
-			feature     VARCHAR(40)     NOT NULL,
-			event       VARCHAR(60)     NOT NULL,
-			message     VARCHAR(255)    NOT NULL,
-			context     LONGTEXT        DEFAULT NULL,
-			user_id     BIGINT UNSIGNED NOT NULL DEFAULT 0,
-			object_type VARCHAR(20)     NOT NULL DEFAULT '',
-			object_id   BIGINT UNSIGNED NOT NULL DEFAULT 0,
-			source      VARCHAR(120)    NOT NULL DEFAULT '',
-			request_id  VARCHAR(16)     NOT NULL DEFAULT '',
-			PRIMARY KEY  (id),
-			KEY feature_created (feature, created_at),
-			KEY level_created (level, created_at),
-			KEY object (object_type, object_id),
-			KEY user_created (user_id, created_at),
-			KEY created (created_at)
 		) {$charset};";
 		dbDelta( $sql );
 	}
