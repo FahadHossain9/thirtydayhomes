@@ -53,9 +53,27 @@ if ( ! tdh_elementor_location( 'single' ) ) :
 			the_content();
 			continue;
 		}
+
+		/*
+		 * A legal page says when it last changed (G3b), from the page's
+		 * own modified date, so an edit in wp-admin moves it by itself.
+		 * The plugin's Legal_Pages decides the rest of how these print.
+		 */
+		$tdh_legal = in_array( (string) get_post_meta( $page_id, '_tdh_seed_key', true ), [ 'terms', 'privacy', 'fair-housing' ], true );
 		?>
 
 		<div class="page-shell narrow">
+			<?php if ( $tdh_legal ) : ?>
+				<p class="page-updated">
+					<?php
+					printf(
+						/* translators: %s: a date */
+						esc_html__( 'Last updated %s', 'thirtydayhomes' ),
+						'<time datetime="' . esc_attr( (string) get_the_modified_date( 'c' ) ) . '">' . esc_html( (string) get_the_modified_date() ) . '</time>'
+					);
+					?>
+				</p>
+			<?php endif; ?>
 			<div class="prose">
 				<?php the_content(); ?>
 			</div>

@@ -65,6 +65,15 @@ final class Importer {
 				'label'       => __( 'Editable page layouts', 'thirtydayhomes' ),
 				'description' => __( 'Builds the Home and About pages as Elementor sections, so their headings, copy and calls to action can be edited without a developer. A page already edited in Elementor is left alone. Skipped when Elementor is not active; the shortcode versions still render.', 'thirtydayhomes' ),
 			],
+			'addresses' => [
+				'label'       => __( 'Homes from your address list', 'thirtydayhomes' ),
+				'description' => sprintf(
+					/* translators: %s: file name */
+					__( 'One live home for each address in %s, uploaded next to wp-config.php, owned by the landlord the file names. Rent, rooms and photos are samples, and each home says so; the owner replaces them. Run again safely: a home already added is left as it is.', 'thirtydayhomes' ),
+					Address_Homes::FILE
+				),
+				'checked'     => false,
+			],
 		];
 	}
 
@@ -81,7 +90,7 @@ final class Importer {
 		$this->failed = false;
 
 		if ( ! $steps ) {
-			$steps = array_keys( self::steps() );
+			$steps = array_keys( array_filter( self::steps(), static fn( array $s ): bool => $s['checked'] ?? true ) );
 		}
 
 		// Long-running on a slow host: four image imports each generate
@@ -96,6 +105,7 @@ final class Importer {
 					'structure' => ( new Site_Structure( $this ) )->run(),
 					'content'   => ( new Sample_Content( $this ) )->run(),
 					'homepage'  => ( new Page_Layouts( $this ) )->run(),
+					'addresses' => ( new Address_Homes( $this ) )->run(),
 					default     => $this->warn( "unknown step: {$step}" ),
 				};
 			} catch ( \Throwable $e ) {

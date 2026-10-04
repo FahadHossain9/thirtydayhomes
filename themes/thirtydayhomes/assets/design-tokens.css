@@ -44,9 +44,12 @@
 
 	--color-gold:        #d7b967;  /* accent   — buttons, active states    */
 	--color-gold-light:  #f0dc9a;  /* accent on dark grounds               */
-	--color-gold-deep:   #a68631;  /* accent as TEXT on light grounds —
-	                                  the only gold that passes contrast   */
-	--color-gold-ink:    #8a7433;  /* icon glyphs on sand                  */
+	--color-gold-deep:   #7a6222;  /* accent as TEXT on light grounds:
+	                                  5.8:1 on white, 5.5:1 on cream,
+	                                  4.9:1 on sand. The previous #a68631
+	                                  measured 3.5:1 (G2 design review)    */
+	--color-gold-ink:    #775f1f;  /* icon glyphs and initials on sand,
+	                                  5.1:1 there                          */
 
 	/* --- Neutral ----------------------------------------------------- */
 	--color-white:       #ffffff;
@@ -54,11 +57,16 @@
 	--color-bone:        #f7f5ef;  /* second tint, one step warmer         */
 	--color-sand:        #f2ead5;  /* gold-tinted fill for icon wells      */
 	--color-sand-soft:   #f1ebdc;
-	--color-ink:         #0c192b;  /* body text — same value as navy,
-	                                  named separately because its ROLE is
-	                                  text, and roles change independently */
-	--color-ink-muted:   #687384;
-	--color-ink-subtle:  #74808b;
+	--color-ink:         #0c192b;  /* headings, figures, input text — same
+	                                  value as navy, named separately
+	                                  because its ROLE is text            */
+	--color-ink-body:    #3e4956;  /* running text: one step lighter than
+	                                  the headings, so hierarchy reads in
+	                                  colour as well as size (9.2:1)      */
+	--color-ink-muted:   #5b6774;  /* helper text, meta, timestamps: 5.8:1
+	                                  on white, 4.8:1 on sand             */
+	--color-ink-subtle:  #66717e;  /* placeholders and quiet icons: 5.0:1
+	                                  on white — never for content text   */
 	--color-line:        #e4e5e6;
 	--color-line-soft:   #eeeeee;
 
@@ -96,6 +104,7 @@
 	--bg-inverse:         var( --color-navy );
 
 	--text-default:       var( --color-ink );
+	--text-body:          var( --color-ink-body );
 	--text-muted:         var( --color-ink-muted );
 	--text-subtle:        var( --color-ink-subtle );
 	--text-inverse:       var( --color-on-dark );
@@ -123,17 +132,21 @@
 	--text-display: clamp( 2.75rem,   6vw,   4.375rem  );  /*  44 → 70 */
 	--text-h1:      clamp( 2rem,      4.5vw, 2.9375rem );  /*  32 → 47 */
 	--text-h2:      clamp( 2rem,      4vw,   2.6875rem );  /*  32 → 43 */
-	--text-h3:      clamp( 1.3125rem, 2.2vw, 2rem      );  /*  21 → 32 */
-	--text-h4:      1.625rem;                              /*  26      */
-	--text-h5:      1.3125rem;                             /*  21      */
+	--text-h3:      clamp( 1.25rem,   2.2vw, 2rem      );  /*  20 → 32 */
+	--text-h4:      1.75rem;                               /*  28      */
+	--text-h5:      1.25rem;                               /*  20      */
 
-	--text-xl:      1.5625rem;   /* 25 — price figures                    */
-	--text-lg:      1.0625rem;   /* 17 — lead paragraphs                  */
+	/* The fixed steps are the 12-step scale of the master design prompt:
+	   12 · 14 · 16 · 18 · 20 · 24 · 28 · 32 · 40 · 48. Nothing under 12px
+	   is rendered anywhere (G2 design review — the 10 and 11px steps
+	   below now resolve to 12, and 13 → 14, 17 → 18, 25 → 24, 26 → 28). */
+	--text-xl:      1.5rem;      /* 24 — price figures                    */
+	--text-lg:      1.125rem;    /* 18 — lead paragraphs                  */
 	--text-base:    1rem;        /* 16 — body                             */
-	--text-sm:      0.8125rem;   /* 13 — dense UI, captions               */
+	--text-sm:      0.875rem;    /* 14 — dense UI, captions, helper text  */
 	--text-xs:      0.75rem;     /* 12 — meta                             */
-	--text-2xs:     0.6875rem;   /* 11 — card facts                       */
-	--text-3xs:     0.625rem;    /* 10 — pills, overlines, field labels   */
+	--text-2xs:     0.75rem;     /* 12 — pills, overlines (floor)         */
+	--text-3xs:     0.75rem;     /* 12 — pills, overlines (floor)         */
 
 	/* --- Line height -------------------------------------------------- */
 	--leading-none:    1;
@@ -275,10 +288,15 @@
 	--radius-pill: 30px;
 	--radius-full: 50%;
 
-	/* --- Elevation ------------------------------------------------------ */
-	--shadow-sm: 0 2px 8px rgba( 12, 25, 43, 0.06 );
-	--shadow-md: 0 18px 50px rgba( 12, 25, 43, 0.09 );
-	--shadow-lg: 0 24px 70px rgba( 0, 0, 0, 0.44 );
+	/* --- Elevation ------------------------------------------------------
+	   Three levels, all soft: a positive Y offset, a large blur, and a tint
+	   of the navy surface colour rather than black (G2 design review).
+	   sm — cards at rest, pills, small controls
+	   md — cards on hover, the hero search, lifted panels
+	   lg — layers that float over the page: the mobile nav, popovers     */
+	--shadow-sm: 0 4px 16px rgba( 12, 25, 43, 0.06 );
+	--shadow-md: 0 12px 48px rgba( 12, 25, 43, 0.08 );
+	--shadow-lg: 0 16px 56px rgba( 12, 25, 43, 0.16 );
 
 	/* --- Motion ---------------------------------------------------------
 	   Durations are honoured only when the visitor has not asked for

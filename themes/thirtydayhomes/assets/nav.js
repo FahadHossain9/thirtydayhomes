@@ -138,18 +138,71 @@
 	}
 
 	/* ---------------------------------------------------------------
-	 * Hero search date gate
+	 * Marketplace portal sidebar
+	 * ------------------------------------------------------------ */
+
+	var portal       = document.querySelector( '.portal' );
+	var portalSide   = document.getElementById( 'portal-sidebar' );
+	var portalToggle = document.querySelector( '.portal-menu-toggle' );
+
+	if ( portal && portalSide && portalToggle ) {
+		var portalKey = 'tdh_portal_sidebar_collapsed';
+		var compact   = window.matchMedia( '(max-width: 62rem)' );
+		var stored    = null;
+
+		try {
+			stored = window.localStorage.getItem( portalKey );
+		} catch ( e ) {
+			stored = null;
+		}
+
+		var setPortalCollapsed = function ( collapsed, remember ) {
+			portal.classList.toggle( 'is-sidebar-collapsed', collapsed );
+			portalToggle.setAttribute( 'aria-expanded', collapsed ? 'false' : 'true' );
+			portalToggle.setAttribute( 'aria-label', collapsed ? 'Expand dashboard sidebar' : 'Collapse dashboard sidebar' );
+
+			/* On desktop, collapsed means an accessible icon rail. On compact
+			 * screens it becomes a true hidden drawer to preserve content width. */
+			portalSide.setAttribute( 'aria-hidden', collapsed && compact.matches ? 'true' : 'false' );
+			portalSide.inert = collapsed && compact.matches;
+
+			if ( remember ) {
+				try {
+					window.localStorage.setItem( portalKey, collapsed ? '1' : '0' );
+				} catch ( e ) {
+					// The control still works when storage is unavailable.
+				}
+			}
+		};
+
+		setPortalCollapsed( null === stored ? compact.matches : '1' === stored, false );
+
+		portalToggle.addEventListener( 'click', function () {
+			setPortalCollapsed( ! portal.classList.contains( 'is-sidebar-collapsed' ), true );
+		} );
+
+		portalSide.addEventListener( 'click', function ( event ) {
+			if ( compact.matches && event.target.closest( 'a' ) ) {
+				setPortalCollapsed( true, false );
+			}
+		} );
+
+		document.addEventListener( 'keydown', function ( event ) {
+			if ( 'Escape' === event.key && ! portal.classList.contains( 'is-sidebar-collapsed' ) && compact.matches ) {
+				setPortalCollapsed( true, false );
+				portalToggle.focus();
+			}
+		} );
+	}
+
+	/* ---------------------------------------------------------------
+	 * Hero search dates
 	 *
-	 * The approved design keeps "Search homes" dimmed until both dates
-	 * are set. Two things make that safe rather than merely decorative:
-	 *
-	 *   - the end date's `min` tracks the start date, so a stay that
-	 *     ends before it begins cannot be expressed in the first place;
-	 *   - the hint carries role="status", so the button becoming usable
-	 *     is announced rather than silently changing.
-	 *
-	 * The inputs are also marked `required`, so if this script never
-	 * runs the browser's own validation still blocks an empty search.
+	 * The end date's `min` tracks the start date, so a stay that ends
+	 * before it begins cannot be expressed in the first place. The
+	 * button itself is always usable (G2 design review): dates narrow
+	 * the search, they are not a condition of it, and the results page
+	 * handles a search with no dates.
 	 * ------------------------------------------------------------ */
 
 	var form = document.querySelector( '[data-tdh-hero-search]' );
@@ -158,18 +211,12 @@
 		return;
 	}
 
-	var start  = form.querySelector( '[data-tdh-start]' );
-	var end    = form.querySelector( '[data-tdh-end]' );
-	var submit = form.querySelector( '[data-tdh-submit]' );
-	var hint   = document.getElementById( 'tdh-search-hint' );
+	var start = form.querySelector( '[data-tdh-start]' );
+	var end   = form.querySelector( '[data-tdh-end]' );
 
-	if ( ! start || ! end || ! submit ) {
+	if ( ! start || ! end ) {
 		return;
 	}
-
-	var readyText = 'Ready to search.';
-	var waitText  = hint ? hint.textContent.trim() : '';
-	var wasReady  = false;
 
 	function sync() {
 		// An end date before the start date is not a stay.
@@ -177,15 +224,6 @@
 
 		if ( start.value && end.value && end.value < start.value ) {
 			end.value = '';
-		}
-
-		var ready = Boolean( start.value && end.value );
-
-		submit.disabled = ! ready;
-
-		if ( hint && ready !== wasReady ) {
-			hint.textContent = ready ? readyText : waitText;
-			wasReady = ready;
 		}
 	}
 

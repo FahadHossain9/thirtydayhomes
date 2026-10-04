@@ -83,6 +83,120 @@ function tdh_enqueue_assets(): void {
 		TDH_THEME_VERSION,
 		true
 	);
+
+	// The filter drawer, only where the search results are: the listing
+	// archive and the city, type, neighborhood and amenity archives.
+	/*
+	 * The results bar is on the archives — and on any page somebody built
+	 * with the search widget or its shortcode. Without this that page gets
+	 * the markup and none of the behaviour: a Filters button that does
+	 * nothing on a phone, and a map panel that says "Loading the map" for
+	 * ever. Offering a control that cannot work is worse than not offering
+	 * it, so the scripts follow the block rather than the template.
+	 */
+	$tdh_is_results = is_post_type_archive( 'tdh_listing' )
+		|| is_tax( [ 'tdh_property_type', 'tdh_neighborhood', 'tdh_city', 'tdh_amenity' ] )
+		|| ( is_page() && class_exists( '\TDH\Search' ) && \TDH\Search::page_holds_results() );
+
+	if ( $tdh_is_results ) {
+		wp_enqueue_script(
+			'tdh-filters',
+			get_template_directory_uri() . '/assets/filters.js',
+			[],
+			TDH_THEME_VERSION,
+			true
+		);
+	}
+
+	// The photo viewer and the availability calendar exist only on a
+	// property page.
+	if ( is_singular( 'tdh_listing' ) ) {
+		wp_enqueue_script(
+			'tdh-gallery',
+			get_template_directory_uri() . '/assets/gallery.js',
+			[],
+			TDH_THEME_VERSION,
+			true
+		);
+
+		wp_enqueue_script(
+			'tdh-availability',
+			get_template_directory_uri() . '/assets/availability.js',
+			[],
+			TDH_THEME_VERSION,
+			true
+		);
+
+		// The inquiry form's sending state. Nothing depends on it: without
+		// the script the form still sends, it just does not say "Sending…".
+		wp_enqueue_script(
+			'tdh-inquiry',
+			get_template_directory_uri() . '/assets/inquiry.js',
+			[],
+			TDH_THEME_VERSION,
+			true
+		);
+
+		// "Ask the owner" steps aside once the form is on screen (G3a).
+		// Without it the button is a plain link to the form.
+		wp_enqueue_script(
+			'tdh-detail',
+			get_template_directory_uri() . '/assets/detail.js',
+			[],
+			TDH_THEME_VERSION,
+			true
+		);
+	}
+
+	// Show / Hide on the password fields of the sign-in, sign-up and reset
+	// pages (G3b), and the portal's helpers — Send code, the phone More
+	// menus (G4a). Matched on the seed key, like the page classes.
+	if ( is_page() && in_array( (string) get_post_meta( get_queried_object_id(), '_tdh_seed_key', true ), [ 'login', 'register', 'reset-password', 'account' ], true ) ) {
+		wp_enqueue_script(
+			'tdh-auth',
+			get_template_directory_uri() . '/assets/auth.js',
+			[],
+			TDH_THEME_VERSION,
+			true
+		);
+	}
+
+	/*
+	 * The map (task C4). Loaded on a results page that is actually in map
+	 * view, and on a property page — never anywhere else, because Google
+	 * bills by the map load and a script on a page with no map is a charge
+	 * for nothing.
+	 *
+	 * Our own file goes first so that window.tdhMapsReady exists before
+	 * Google's loader calls it. The loader is async: it can take its time
+	 * without holding the page up, and if it never arrives map.js says so.
+	 */
+	$tdh_wants_map = class_exists( '\TDH\Maps' ) && \TDH\Maps::configured()
+		&& (
+			is_singular( 'tdh_listing' )
+			|| ( $tdh_is_results && class_exists( '\TDH\Search' ) && \TDH\Search::VIEW_MAP === \TDH\Search::view() )
+		);
+
+	if ( $tdh_wants_map ) {
+
+		wp_enqueue_script(
+			'tdh-map',
+			get_template_directory_uri() . '/assets/map.js',
+			[],
+			TDH_THEME_VERSION,
+			true
+		);
+
+		wp_enqueue_script(
+			'tdh-google-maps',
+			\TDH\Maps::script_url(),
+			[ 'tdh-map' ],
+			null, // Google versions its own library; a query string of ours would only confuse its caching.
+			true
+		);
+
+		wp_script_add_data( 'tdh-google-maps', 'strategy', 'async' );
+	}
 }
 // Priority 20, not the default 10: Elementor registers its frontend styles
 // on this hook too, and the dependency check above only works once they

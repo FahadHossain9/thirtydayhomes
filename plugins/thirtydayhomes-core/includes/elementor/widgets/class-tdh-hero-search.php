@@ -126,16 +126,9 @@ final class Hero_Search extends Widget_Base {
 			]
 		);
 
-		$this->add_control(
-			'require_dates',
-			[
-				'label'        => __( 'Require both dates', 'thirtydayhomes' ),
-				'description'  => __( 'Keeps the button dimmed until a start and end date are chosen.', 'thirtydayhomes' ),
-				'type'         => Controls_Manager::SWITCHER,
-				'default'      => 'yes',
-				'return_value' => 'yes',
-			]
-		);
+		// The "Require both dates" switch is gone (G2 design review): the
+		// button is always usable, and dates narrow the search rather than
+		// gate it. A saved value is simply ignored.
 
 		$this->end_controls_section();
 
@@ -192,7 +185,6 @@ final class Hero_Search extends Widget_Base {
 				'image'         => (string) ( $s['image']['url'] ?? '' ),
 				'button_text'   => (string) ( $s['button_text'] ?? '' ),
 				'placeholder'   => (string) ( $s['where_placeholder'] ?? '' ),
-				'require_dates' => 'yes' === ( $s['require_dates'] ?? 'yes' ),
 				'trust'         => $trust,
 				// Unique per instance, so two heroes on one page do not
 				// collide on the aria-describedby id.

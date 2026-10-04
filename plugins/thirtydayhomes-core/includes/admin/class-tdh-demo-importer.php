@@ -157,7 +157,7 @@ final class Demo_Importer {
 											id="tdh-step-<?php echo esc_attr( $key ); ?>"
 											name="steps[]"
 											value="<?php echo esc_attr( $key ); ?>"
-											checked
+											<?php checked( $step['checked'] ?? true ); ?>
 										>
 										<?php echo esc_html( $step['label'] ); ?>
 									</label>

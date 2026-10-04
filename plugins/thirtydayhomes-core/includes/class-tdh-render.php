@@ -45,6 +45,19 @@ defined( 'ABSPATH' ) || exit;
 final class Render {
 
 	/**
+	 * A section heading that may carry <br> for the desktop line break.
+	 *
+	 * Phones hide the <br> (style.css) and let the heading wrap by itself,
+	 * so a break with no space beside it glued two words together —
+	 * "worksas hard". A space always sits before the break, whether the
+	 * text came from our defaults or from someone editing it in Elementor.
+	 */
+	public static function heading_with_breaks( string $heading ): string {
+		$safe = wp_kses( $heading, [ 'br' => [] ] );
+		return (string) preg_replace( '/\s*<br\s*\/?>\s*/i', ' <br>', $safe );
+	}
+
+	/**
 	 * A grid of listings.
 	 *
 	 * @param array<string,mixed> $args
@@ -194,15 +207,20 @@ final class Render {
 	 * renter who searched from the homepage can refine without learning a
 	 * second control — and so TDH\Search has one input to satisfy.
 	 *
-	 * No date fields here, deliberately. The hero asks for them because the
-	 * approved design does, but availability filtering is Milestone 2 work;
-	 * repeating the question on the results page would promise a second
-	 * time and deliver nothing.
+	 * No date fields here, deliberately. The stay is asked for once on this
+	 * page, in the filter bar just below, where it sits beside the other
+	 * things a renter narrows by. Two sets of date fields a few pixels
+	 * apart would only raise the question of which one wins.
+	 *
+	 * The bar does carry the dates through: whatever stay is on the URL
+	 * travels with a new keyword instead of being dropped by searching
+	 * again.
 	 *
 	 * @param array<string,mixed> $args
 	 */
 	public static function search_bar( array $args = [] ): string {
 
+		$args = wp_parse_args(
 			$args,
 			[
 				'placeholder' => __( 'Neighborhood, city, or ZIP', 'thirtydayhomes' ),
@@ -229,6 +247,17 @@ final class Render {
 					placeholder="<?php echo esc_attr( (string) $args['placeholder'] ); ?>">
 			</label>
 
+			<?php
+			// A new keyword must not throw away the stay the renter came
+			// with, so the dates ride along as hidden fields.
+			foreach ( [ Search::START, Search::END ] as $tdh_date_key ) :
+				$tdh_date = class_exists( Search::class ) ? Search::typed( $tdh_date_key ) : '';
+				?>
+				<?php if ( '' !== $tdh_date ) : ?>
+					<input type="hidden" name="<?php echo esc_attr( $tdh_date_key ); ?>" value="<?php echo esc_attr( $tdh_date ); ?>">
+				<?php endif; ?>
+			<?php endforeach; ?>
+
 			<button class="primary" type="submit"><?php echo esc_html( (string) $args['button_text'] ); ?></button>
 
 			<?php // Only offered once there is something to clear. ?>
@@ -238,6 +267,713 @@ final class Render {
 				</a>
 			<?php endif; ?>
 		</form>
+		<?php
+		return (string) ob_get_clean();
+	}
+
+	/**
+	 * A line that only the person building the page can see.
+	 *
+	 * Some widgets only mean something on a particular kind of page. Put
+	 * one on the wrong page and a visitor must see nothing at all — an
+	 * empty box, or worse a message about pages and templates, is the
+	 * site leaking its own plumbing. The person in the editor, though,
+	 * needs to know why the thing they just dragged in looks empty.
+	 *
+	 * Written in the same voice as the block-editor notice: it says where
+	 * the widget belongs and stops.
+	 */
+	public static function editor_note( string $text ): string {
+
+		if ( ! class_exists( '\Elementor\Plugin' ) ) {
+			return '';
+		}
+
+		$editor = \Elementor\Plugin::$instance->editor ?? null;
+
+		if ( ! $editor || ! method_exists( $editor, 'is_edit_mode' ) || ! $editor->is_edit_mode() ) {
+			return '';
+		}
+
+		return '<p class="tdh-editor-note">' . esc_html( $text ) . '</p>';
+	}
+
+	/**
+	 * The search results: the real page, not a copy of it.
+	 *
+	 * The theme owns how results look, so this renders the theme's own
+	 * template part and hands it what the editor chose. Duplicating the
+	 * markup here would give a page built in Elementor a quietly different
+	 * results list from `/homes/`, and the two would drift apart.
+	 *
+	 * On the archive it uses the page's own query, because that is the one
+	 * the URL describes and the one pagination pages. Anywhere else — a
+	 * landing page someone builds, and the Elementor editor, where a page
+	 * is never an archive — it runs its own query through
+	 * `Search::own_query()`, which is flagged so that the identical
+	 * keyword, date, hospital, price and sort rules apply. Either way the
+	 * homes come from the plugin; the layout never decides which.
+	 *
+	 * @param array<string,mixed> $args See template-parts/listing-results.php,
+	 *                                  plus `per_page` for its own query.
+	 */
+	public static function search_results( array $args = [] ): string {
+
+		$per_page = (int) ( $args['per_page'] ?? 0 );
+		unset( $args['per_page'] );
+
+		if ( Search::is_results_page() ) {
+			ob_start();
+			get_template_part( 'template-parts/listing-results', null, $args );
+
+			return (string) ob_get_clean();
+		}
+
+		/*
+		 * Its own query, standing in for the main one while the template
+		 * part runs. The globals are put back afterwards: a widget that
+		 * left them changed would break everything printed after it on
+		 * the page, which is the classic way a "posts" widget goes wrong.
+		 */
+		$query = Search::own_query( $per_page );
+
+		$was     = $GLOBALS['wp_query'];
+		$was_the = $GLOBALS['wp_the_query'];
+
+		$GLOBALS['wp_query'] = $query;
+
+		ob_start();
+		get_template_part( 'template-parts/listing-results', null, $args );
+		$html = (string) ob_get_clean();
+
+		$GLOBALS['wp_query']     = $was;
+		$GLOBALS['wp_the_query'] = $was_the;
+		wp_reset_postdata();
+
+		return $html;
+	}
+
+	/**
+	 * The nearest hospitals for one home.
+	 *
+	 * @param array<string,mixed> $args heading, count, listing_id.
+	 */
+	public static function nearby_facilities( array $args = [] ): string {
+
+		$args = wp_parse_args(
+			$args,
+			[
+				'heading'    => '',
+				'count'      => 0,
+				'listing_id' => 0,
+			]
+		);
+
+		$listing_id = (int) $args['listing_id'];
+
+		if ( $listing_id < 1 && is_singular( Post_Types::LISTING ) ) {
+			$listing_id = (int) get_queried_object_id();
+		}
+
+		if ( ! class_exists( '\TDH\Proximity' ) ) {
+			return '';
+		}
+
+		/*
+		 * In the editor, with no home in context, show a real one.
+		 *
+		 * A widget that can only ever say "I will work somewhere else" is
+		 * not something anybody can judge while building a page, and the
+		 * contract asks for real data in the editor, not a placeholder.
+		 * So the newest home that has a location stands in, and a line
+		 * says plainly that it is standing in. On the front end there is
+		 * no stand-in: a visitor gets nothing at all.
+		 */
+		$sample = '';
+
+		if ( $listing_id < 1 ) {
+
+			$listing_id = self::sample_listing();
+
+			if ( $listing_id < 1 ) {
+				return self::editor_note(
+					__( 'Nearby hospitals appear on a property page. There is no home with a location yet to show as an example.', 'thirtydayhomes' )
+				);
+			}
+
+			$sample = self::editor_note(
+				sprintf(
+					/* translators: %s: a home's name */
+					__( 'Showing %s as an example. On a property page this shows that home, measured from its own location.', 'thirtydayhomes' ),
+					get_the_title( $listing_id )
+				)
+			);
+
+			// Not the editor, so there is no example to show and no page
+			// to show it on.
+			if ( '' === $sample ) {
+				return '';
+			}
+		}
+
+		$count = (int) $args['count'];
+		$list  = Proximity::list_html( $listing_id, $count > 0 ? $count : null );
+
+		if ( '' === $list ) {
+			return $sample;
+		}
+
+		$heading = (string) $args['heading'];
+
+		return $sample
+			. ( '' !== $heading ? '<h2 class="facility-heading">' . esc_html( $heading ) . '</h2>' : '' )
+			. $list;
+	}
+
+	/**
+	 * The newest published home that has a point on the map, or 0.
+	 *
+	 * Only ever used to give the Elementor editor something real to show.
+	 */
+	private static function sample_listing(): int {
+
+		$ids = get_posts(
+			[
+				'post_type'      => Post_Types::LISTING,
+				'post_status'    => 'publish',
+				'posts_per_page' => 1,
+				'fields'         => 'ids',
+				'no_found_rows'  => true,
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+				'meta_query'     => [
+					[
+						'key'     => '_tdh_lat',
+						'compare' => 'EXISTS',
+					],
+				],
+			]
+		);
+
+		return $ids ? (int) $ids[0] : 0;
+	}
+
+	/**
+	 * List / Map, beside the count.
+	 *
+	 * Two links, not two buttons and not a script: the whole search is in
+	 * the URL, so each view is a real address that can be shared, opened
+	 * in a new tab and reached with the Back button. With no map key there
+	 * is nothing to switch to, so nothing is offered.
+	 */
+	public static function view_toggle(): string {
+
+		if ( ! class_exists( Maps::class ) || ! Maps::configured() ) {
+			return '';
+		}
+
+		$icon = static fn( string $name, int $size = 16 ): string =>
+			function_exists( 'tdh_icon' ) ? tdh_icon( $name, $size ) : '';
+
+		$current = Search::view();
+
+		$views = [
+			Search::VIEW_LIST => [ 'label' => __( 'List', 'thirtydayhomes' ), 'icon' => 'layout-grid' ],
+			Search::VIEW_MAP  => [ 'label' => __( 'Map', 'thirtydayhomes' ), 'icon' => 'map-pinned' ],
+		];
+
+		ob_start();
+		?>
+		<div class="view-toggle" role="group" aria-label="<?php esc_attr_e( 'How to show the homes', 'thirtydayhomes' ); ?>">
+			<?php foreach ( $views as $key => $view ) : ?>
+				<a
+					class="view-choice<?php echo $current === $key ? ' is-current' : ''; ?>"
+					href="<?php echo esc_url( Search::view_url( $key ) ); ?>"
+					<?php echo $current === $key ? 'aria-current="true"' : ''; ?>
+				>
+					<?php echo $icon( $view['icon'] ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+					<?php echo esc_html( $view['label'] ); ?>
+				</a>
+			<?php endforeach; ?>
+		</div>
+		<?php
+		return (string) ob_get_clean();
+	}
+
+	/**
+	 * The map itself.
+	 *
+	 * Everything the browser is given about a home is in one data
+	 * attribute, and it is built by {@see Maps::homes()}, which is the only
+	 * place allowed to turn a real address into something publishable. No
+	 * exact coordinate and no street address passes through here.
+	 *
+	 * @param int[] $listing_ids The homes on this page, in the order shown.
+	 */
+	public static function map_panel( array $listing_ids ): string {
+
+		if ( ! class_exists( Maps::class ) || ! Maps::configured() ) {
+			return '';
+		}
+
+		$summary = Maps::homes( $listing_ids );
+		$note    = Maps::note( $summary );
+
+		$payload = [
+			'homes'   => $summary['homes'],
+			'circle'  => Maps::CIRCLE_METRES,
+			'listUrl' => Search::view_url( Search::VIEW_LIST ),
+			'words'   => [
+				'about'  => __( 'Approximate area', 'thirtydayhomes' ),
+				'view'   => __( 'View this home', 'thirtydayhomes' ),
+				'close'  => __( 'Close', 'thirtydayhomes' ),
+				'failed' => __( 'The map could not be loaded. Every home is still here as a list.', 'thirtydayhomes' ),
+				'list'   => __( 'Show the list', 'thirtydayhomes' ),
+			],
+		];
+
+		ob_start();
+		?>
+		<div class="map-panel">
+
+			<div class="map-canvas" data-tdh-map="<?php echo esc_attr( (string) wp_json_encode( $payload ) ); ?>">
+				<?php // Replaced by the map, or by the failure line if it never loads. ?>
+				<p class="map-status"><?php esc_html_e( 'Loading the map…', 'thirtydayhomes' ); ?></p>
+			</div>
+
+			<p class="map-privacy">
+				<?php esc_html_e( 'Each circle is the neighborhood, not the address. Owners share the address after you make contact.', 'thirtydayhomes' ); ?>
+			</p>
+
+			<?php if ( '' !== $note ) : ?>
+				<p class="map-note"><?php echo esc_html( $note ); ?></p>
+			<?php endif; ?>
+		</div>
+		<?php
+		return (string) ob_get_clean();
+	}
+
+	/**
+	 * The single home's circle, for the property page.
+	 *
+	 * Falls back to the words that were there before the maps account
+	 * existed, so a page with no key still explains why the address is not
+	 * shown rather than leaving a hole where a map should be.
+	 */
+	public static function map_area( int $listing_id ): string {
+
+		$point = class_exists( Maps::class ) && Maps::configured() ? Maps::approximate( $listing_id ) : null;
+
+		if ( null === $point ) {
+			return '';
+		}
+
+		$payload = [
+			'homes'  => [
+				[
+					'id'    => $listing_id,
+					'lat'   => $point['lat'],
+					'lng'   => $point['lng'],
+					'title' => get_the_title( $listing_id ),
+				],
+			],
+			'circle' => Maps::CIRCLE_METRES,
+			'single' => true,
+			'words'  => [
+				'about'  => __( 'Approximate area', 'thirtydayhomes' ),
+				'failed' => __( 'The map could not be loaded.', 'thirtydayhomes' ),
+			],
+		];
+
+		ob_start();
+		?>
+		<div class="map-panel is-single">
+			<div class="map-canvas" data-tdh-map="<?php echo esc_attr( (string) wp_json_encode( $payload ) ); ?>">
+				<p class="map-status"><?php esc_html_e( 'Loading the map…', 'thirtydayhomes' ); ?></p>
+			</div>
+			<p class="map-privacy">
+				<b><?php esc_html_e( 'Approximate area', 'thirtydayhomes' ); ?></b>
+				<?php esc_html_e( 'We show the neighborhood rather than the exact address. A furnished home that is often empty should not have its address published — the owner shares it with you after you make contact.', 'thirtydayhomes' ); ?>
+			</p>
+		</div>
+		<?php
+		return (string) ob_get_clean();
+	}
+
+	/**
+	 * The one search form on a results page (G3a design review): the place
+	 * a renter types, the stay, the hospital and the radius, price, rooms,
+	 * type and pets — and a single filled button that applies all of it. It
+	 * used to be two forms with two filled buttons, "Search" beside the
+	 * keyword and "Show homes" under the filters, and a renter could not
+	 * tell whether one applied the other's fields.
+	 *
+	 * One plain GET form. Nothing here needs JavaScript to work — the
+	 * theme's filters.js only turns the filter panel into a drawer on
+	 * phones. Every control is a real <label>, and every active filter
+	 * comes back as a chip whose × removes only that one. The sort is not a
+	 * filter — it changes the order of what was found, not what was found —
+	 * so it lives beside the result count; see sort_control().
+	 *
+	 * @param array<string,mixed> $args button_text; placeholder; search —
+	 *                                  print the keyword row (the default),
+	 *                                  or carry the keyword as a hidden
+	 *                                  field when the page shows the search
+	 *                                  box somewhere else or not at all.
+	 */
+	public static function filter_bar( array $args = [] ): string {
+
+		$args = wp_parse_args(
+			$args,
+			[
+				'button_text' => __( 'Show homes', 'thirtydayhomes' ),
+				'placeholder' => __( 'Neighborhood, city, or ZIP', 'thirtydayhomes' ),
+				'search'      => true,
+			]
+		);
+
+		$icon = static fn( string $name, int $size = 18 ): string =>
+			function_exists( 'tdh_icon' ) ? tdh_icon( $name, $size ) : '';
+
+		$f           = Search::filters();
+		$active      = Search::active();
+		$count       = count( $active );
+		$term        = Search::term();
+		$types       = get_terms( [ 'taxonomy' => Post_Types::TAX_TYPE, 'hide_empty' => true ] );
+		$types       = is_array( $types ) ? $types : [];
+		$swapped     = Search::swapped_notice();
+		$dates       = Search::date_notice();
+		$with_search = (bool) $args['search'];
+
+		ob_start();
+		?>
+		<div class="filters" data-tdh-filters>
+
+			<form id="tdh-filter-form" class="filter-bar<?php echo $with_search ? ' has-search' : ''; ?>" method="get" action="<?php echo esc_url( Search::base_url() ); ?>" data-tdh-min-stay="<?php echo esc_attr( (string) Search::MIN_STAY_DAYS ); ?>" aria-label="<?php esc_attr_e( 'Search homes', 'thirtydayhomes' ); ?>">
+
+				<?php
+				/*
+				 * The "Filters" button that opens the drawer on a phone. It is
+				 * hidden until a phone width AND filters.js are both present,
+				 * so it sits wherever the phone layout wants it: beside the
+				 * filled button in the keyword row, or alone when the page
+				 * shows no keyword row.
+				 */
+				$toggle = static function () use ( $icon, $count ): void {
+					?>
+					<button class="secondary filter-toggle" type="button" aria-controls="tdh-filter-drawer" aria-expanded="false" data-tdh-filter-toggle>
+						<?php echo $icon( 'settings-2', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+						<?php esc_html_e( 'Filters', 'thirtydayhomes' ); ?>
+						<?php if ( $count > 0 ) : ?>
+							<em class="filter-count" aria-label="<?php echo esc_attr( sprintf( /* translators: %s: number of active filters */ _n( '%s filter on', '%s filters on', $count, 'thirtydayhomes' ), number_format_i18n( $count ) ) ); ?>"><?php echo esc_html( number_format_i18n( $count ) ); ?></em>
+						<?php endif; ?>
+					</button>
+					<?php
+				};
+				?>
+
+				<?php if ( $with_search ) : ?>
+					<?php
+					/*
+					 * The keyword and the one filled button. Clear removes
+					 * only the keyword and keeps every other filter, because
+					 * a renter narrowing by price who mistypes a ZIP has not
+					 * changed their mind about the price.
+					 */
+					?>
+					<div class="search-bar" role="search">
+						<label>
+							<span class="screen-reader-text"><?php esc_html_e( 'Search homes', 'thirtydayhomes' ); ?></span>
+							<?php echo $icon( 'search', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+							<input type="search" name="<?php echo esc_attr( Search::PARAM ); ?>" value="<?php echo esc_attr( $term ); ?>" placeholder="<?php echo esc_attr( (string) $args['placeholder'] ); ?>">
+						</label>
+						<?php $toggle(); ?>
+						<button class="primary" type="submit"><?php echo esc_html( (string) $args['button_text'] ); ?></button>
+						<?php if ( '' !== $term ) : ?>
+							<a class="search-clear" href="<?php echo esc_url( add_query_arg( array_diff_key( Search::args(), [ Search::PARAM => 1 ] ), Search::base_url() ) ); ?>">
+								<?php esc_html_e( 'Clear', 'thirtydayhomes' ); ?>
+							</a>
+						<?php endif; ?>
+					</div>
+				<?php else : ?>
+					<?php if ( '' !== $term ) : ?>
+						<input type="hidden" name="<?php echo esc_attr( Search::PARAM ); ?>" value="<?php echo esc_attr( $term ); ?>">
+					<?php endif; ?>
+					<?php $toggle(); ?>
+				<?php endif; ?>
+
+				<div id="tdh-filter-drawer" class="filter-drawer" data-tdh-filter-drawer>
+
+					<div class="filter-head">
+						<b><?php esc_html_e( 'Filters', 'thirtydayhomes' ); ?></b>
+						<button class="filter-close" type="button" data-tdh-filter-close>
+							<?php echo $icon( 'x', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+							<span class="screen-reader-text"><?php esc_html_e( 'Close filters', 'thirtydayhomes' ); ?></span>
+						</button>
+					</div>
+
+					<div class="filter-fields">
+
+						<?php
+						/*
+						 * The stay comes first, because it is the one thing this
+						 * marketplace is about and the one the hero already asked
+						 * for. The fields hold what was typed, not what survived
+						 * validation, so a refused date can be corrected in place.
+						 */
+						?>
+						<label class="filter-field">
+							<span><?php esc_html_e( 'Move in', 'thirtydayhomes' ); ?></span>
+							<input type="date" name="<?php echo esc_attr( Search::START ); ?>" min="<?php echo esc_attr( Availability::today() ); ?>" max="<?php echo esc_attr( Availability::horizon() ); ?>" value="<?php echo esc_attr( Search::typed( Search::START ) ); ?>" data-tdh-start>
+						</label>
+
+						<label class="filter-field">
+							<span><?php esc_html_e( 'Move out', 'thirtydayhomes' ); ?></span>
+							<input type="date" name="<?php echo esc_attr( Search::END ); ?>" min="<?php echo esc_attr( Availability::today() ); ?>" max="<?php echo esc_attr( Availability::horizon() ); ?>" value="<?php echo esc_attr( Search::typed( Search::END ) ); ?>" data-tdh-end>
+						</label>
+
+						<?php // Helper text belongs beside the fields it explains, not at the foot of the form. ?>
+						<?php if ( '' !== $dates ) : ?>
+							<p class="date-notice"><?php echo esc_html( $dates ); ?></p>
+						<?php endif; ?>
+
+						<?php
+						/*
+						 * The hospital and how far from it. Two controls, one
+						 * decision: the radius means nothing on its own, so it
+						 * is disabled until there is something to measure from
+						 * and says why. Disabling rather than hiding keeps the
+						 * row from jumping about as choices are made.
+						 *
+						 * "Something to measure from" is the chosen hospital or
+						 * a postcode or town typed into the search box, so a
+						 * renter who searched "15226" gets a working radius
+						 * without having to pick a hospital they did not ask
+						 * about.
+						 */
+						$has_facility = null !== $f['facility'];
+						$has_anchor   = Search::anchored();
+						?>
+						<label class="filter-field wide">
+							<span><?php esc_html_e( 'Near a hospital', 'thirtydayhomes' ); ?></span>
+							<select name="<?php echo esc_attr( Search::FACILITY ); ?>">
+								<option value=""><?php esc_html_e( 'Any hospital', 'thirtydayhomes' ); ?></option>
+								<?php foreach ( Search::facilities() as $city => $group ) : ?>
+									<optgroup label="<?php echo esc_attr( $city ); ?>">
+										<?php foreach ( $group as $place ) : ?>
+											<option value="<?php echo esc_attr( (string) $place->ID ); ?>" <?php selected( $has_facility && $f['facility']->ID === $place->ID ); ?>><?php echo esc_html( $place->post_title ); ?></option>
+										<?php endforeach; ?>
+									</optgroup>
+								<?php endforeach; ?>
+							</select>
+						</label>
+
+						<?php
+						/*
+						 * The real distances are always in the list, so the
+						 * script can switch the field on the moment a hospital
+						 * is chosen or a place typed (filters.js), without a
+						 * round trip. While there is nothing to measure from,
+						 * "Pick a place" is the option shown, nothing else is
+						 * marked selected, and screen readers hear what unlocks
+						 * it (a visible line under one field would push it out
+						 * of line with its row). Without the script it unlocks after Show
+						 * homes, as it always has.
+						 *
+						 * The staff radius is the default, so it has to be in
+						 * the list even when it is not one of the standard
+						 * steps: a 9-mile setting left nothing selected and the
+						 * browser showed "5 miles" under a count that said
+						 * "within 9 miles" (G3a).
+						 */
+						$radii   = Search::radii();
+						$default = Proximity::radius_setting();
+						$has     = static fn( float $r ): bool => null !== $f['within'] && abs( $f['within'] - $r ) < 0.001;
+						foreach ( [ $f['within'], $default ] as $must ) {
+							if ( null !== $must && ! array_filter( $radii, static fn( float $r ): bool => abs( $r - $must ) < 0.001 ) ) {
+								$radii[] = $must;
+							}
+						}
+						sort( $radii );
+						?>
+						<label class="filter-field">
+							<span><?php esc_html_e( 'Within', 'thirtydayhomes' ); ?></span>
+							<select name="<?php echo esc_attr( Search::WITHIN ); ?>" <?php disabled( ! $has_anchor ); ?> data-tdh-within aria-describedby="tdh-within-hint">
+								<?php
+								/*
+								 * No longer than the longest real choice
+								 * ("Any distance"), because this column is
+								 * sized for those. "Pick a place first"
+								 * fitted at 1280 with three pixels to spare
+								 * and was cut off at every width above it.
+								 */
+								?>
+								<option value="" data-tdh-within-placeholder <?php selected( ! $has_anchor ); ?> <?php echo $has_anchor ? 'hidden' : ''; ?>><?php esc_html_e( 'Pick a place', 'thirtydayhomes' ); ?></option>
+								<?php foreach ( $radii as $miles ) : ?>
+									<option value="<?php echo esc_attr( Proximity::miles_number( (float) $miles ) ); ?>" <?php selected( $has_anchor && $has( (float) $miles ) ); ?> <?php echo abs( (float) $miles - $default ) < 0.001 ? 'data-tdh-within-default' : ''; ?>><?php echo esc_html( Proximity::miles_phrase( (float) $miles ) ); ?></option>
+								<?php endforeach; ?>
+								<option value="<?php echo esc_attr( Search::WITHIN_ANY ); ?>" <?php selected( $has_anchor && null === $f['within'] ); ?>><?php esc_html_e( 'Any distance', 'thirtydayhomes' ); ?></option>
+							</select>
+							<span class="screen-reader-text" id="tdh-within-hint" data-tdh-within-hint <?php echo $has_anchor ? 'hidden' : ''; ?>><?php esc_html_e( 'Choose a hospital or type a place to set a distance.', 'thirtydayhomes' ); ?></span>
+						</label>
+
+						<label class="filter-field">
+							<span><?php esc_html_e( 'Min price', 'thirtydayhomes' ); ?></span>
+							<span class="filter-money">
+								<i aria-hidden="true">$</i>
+								<input type="number" inputmode="numeric" name="<?php echo esc_attr( Search::MIN ); ?>" min="0" max="<?php echo esc_attr( (string) Search::PRICE_CAP ); ?>" step="50" placeholder="<?php esc_attr_e( 'Any', 'thirtydayhomes' ); ?>" value="<?php echo esc_attr( null !== $f['min_price'] ? (string) $f['min_price'] : '' ); ?>">
+							</span>
+						</label>
+
+						<label class="filter-field">
+							<span><?php esc_html_e( 'Max price', 'thirtydayhomes' ); ?></span>
+							<span class="filter-money">
+								<i aria-hidden="true">$</i>
+								<input type="number" inputmode="numeric" name="<?php echo esc_attr( Search::MAX ); ?>" min="0" max="<?php echo esc_attr( (string) Search::PRICE_CAP ); ?>" step="50" placeholder="<?php esc_attr_e( 'Any', 'thirtydayhomes' ); ?>" value="<?php echo esc_attr( null !== $f['max_price'] ? (string) $f['max_price'] : '' ); ?>">
+							</span>
+						</label>
+
+						<label class="filter-field">
+							<span><?php esc_html_e( 'Bedrooms', 'thirtydayhomes' ); ?></span>
+							<select name="<?php echo esc_attr( Search::BEDS ); ?>">
+								<option value=""><?php esc_html_e( 'Any', 'thirtydayhomes' ); ?></option>
+								<?php foreach ( Search::beds_options() as $n ) : ?>
+									<option value="<?php echo esc_attr( (string) $n ); ?>" <?php selected( $f['beds'], $n ); ?>><?php echo esc_html( number_format_i18n( $n ) . '+' ); ?></option>
+								<?php endforeach; ?>
+							</select>
+						</label>
+
+						<label class="filter-field">
+							<span><?php esc_html_e( 'Bathrooms', 'thirtydayhomes' ); ?></span>
+							<select name="<?php echo esc_attr( Search::BATHS ); ?>">
+								<option value=""><?php esc_html_e( 'Any', 'thirtydayhomes' ); ?></option>
+								<?php foreach ( Search::baths_options() as $n ) : ?>
+									<option value="<?php echo esc_attr( Search::half( $n ) ); ?>" <?php selected( null !== $f['baths'] && abs( $f['baths'] - $n ) < 0.01 ); ?>><?php echo esc_html( Search::half( $n ) . '+' ); ?></option>
+								<?php endforeach; ?>
+							</select>
+						</label>
+
+						<?php // A type is a name ("Single-family house"), not a number: two tracks, like the hospital. ?>
+						<label class="filter-field wide">
+							<span><?php esc_html_e( 'Property type', 'thirtydayhomes' ); ?></span>
+							<select name="<?php echo esc_attr( Search::TYPE ); ?>">
+								<option value=""><?php esc_html_e( 'Any type', 'thirtydayhomes' ); ?></option>
+								<?php foreach ( $types as $type ) : ?>
+									<option value="<?php echo esc_attr( $type->slug ); ?>" <?php selected( null !== $f['type'] && $f['type']->term_id === $type->term_id ); ?>><?php echo esc_html( $type->name ); ?></option>
+								<?php endforeach; ?>
+							</select>
+						</label>
+
+						<label class="filter-field">
+							<span><?php esc_html_e( 'Pets', 'thirtydayhomes' ); ?></span>
+							<select name="<?php echo esc_attr( Search::PETS ); ?>">
+								<option value=""><?php esc_html_e( 'Any', 'thirtydayhomes' ); ?></option>
+								<?php foreach ( Search::pets_options() as $value => $label ) : ?>
+									<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $f['pets'], $value ); ?>><?php echo esc_html( $label ); ?></option>
+								<?php endforeach; ?>
+							</select>
+						</label>
+
+					</div>
+
+					<?php
+					/*
+					 * The drawer's own Show homes exists for the phone, where
+					 * the keyword row's button is off screen behind the open
+					 * drawer. On a desktop with the keyword row the stylesheet
+					 * hides it, so one filled button is ever in view.
+					 */
+					?>
+					<div class="filter-actions">
+						<button class="primary filter-apply" type="submit"><?php echo esc_html( (string) $args['button_text'] ); ?></button>
+						<?php if ( $count > 0 ) : ?>
+							<a class="filter-clear" href="<?php echo esc_url( Search::clear_url() ); ?>"><?php esc_html_e( 'Clear all filters', 'thirtydayhomes' ); ?></a>
+						<?php endif; ?>
+					</div>
+				</div>
+			</form>
+
+			<?php if ( '' !== $swapped ) : ?>
+				<p class="notice filter-notice" role="status"><?php echo esc_html( $swapped ); ?></p>
+			<?php endif; ?>
+
+			<?php echo self::filter_chips(); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped inside. ?>
+		</div>
+		<?php
+		return (string) ob_get_clean();
+	}
+
+	/**
+	 * "Sort by", beside the result count rather than among the filters
+	 * (G3a design review): sorting changes the order of what was found, not
+	 * what was found. Its own small GET form carrying the current search as
+	 * hidden fields, so choosing an order never loses a filter. filters.js
+	 * submits it on change; without the script its Sort button does.
+	 */
+	public static function sort_control(): string {
+
+		$f          = Search::filters();
+		$has_anchor = Search::anchored();
+		$sorted     = Search::sort_notice();
+		$carry      = array_diff_key( Search::args(), [ Search::SORT => 1 ] );
+
+		ob_start();
+		?>
+		<form class="sort-form" method="get" action="<?php echo esc_url( Search::base_url() ); ?>" data-tdh-sort-form>
+			<?php foreach ( $carry as $key => $value ) : ?>
+				<input type="hidden" name="<?php echo esc_attr( (string) $key ); ?>" value="<?php echo esc_attr( (string) $value ); ?>">
+			<?php endforeach; ?>
+			<label>
+				<span><?php esc_html_e( 'Sort by', 'thirtydayhomes' ); ?></span>
+				<select name="<?php echo esc_attr( Search::SORT ); ?>" data-tdh-sort>
+					<?php foreach ( array_keys( Search::sorts() ) as $value ) : ?>
+						<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $f['sort'], $value ); ?> <?php disabled( Search::SORT_CLOSEST === $value && ! $has_anchor ); ?>><?php echo esc_html( Search::sort_label( $value ) ); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</label>
+			<button class="secondary sort-apply" type="submit"><?php esc_html_e( 'Sort', 'thirtydayhomes' ); ?></button>
+			<?php if ( '' !== $sorted ) : ?>
+				<p class="date-notice sort-notice"><?php echo esc_html( $sorted ); ?></p>
+			<?php endif; ?>
+		</form>
+		<?php
+		return (string) ob_get_clean();
+	}
+
+	/**
+	 * The active filters as removable chips, with Clear all at the end.
+	 *
+	 * Printed under the bar and again inside the empty state, so a renter
+	 * who matched nothing can loosen one thing without scrolling back up.
+	 */
+	public static function filter_chips(): string {
+
+		$chips = Search::chips();
+
+		if ( ! $chips ) {
+			return '';
+		}
+
+		$icon = static fn( string $name, int $size = 14 ): string =>
+			function_exists( 'tdh_icon' ) ? tdh_icon( $name, $size ) : '';
+
+		ob_start();
+		?>
+		<ul class="filter-chips" aria-label="<?php esc_attr_e( 'Active filters', 'thirtydayhomes' ); ?>">
+			<?php foreach ( $chips as $chip ) : ?>
+				<li>
+					<a href="<?php echo esc_url( $chip['remove'] ); ?>">
+						<?php echo esc_html( $chip['label'] ); ?>
+						<?php echo $icon( 'x', 14 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+						<span class="screen-reader-text"><?php esc_html_e( '— remove', 'thirtydayhomes' ); ?></span>
+					</a>
+				</li>
+			<?php endforeach; ?>
+			<?php if ( count( $chips ) > 1 ) : ?>
+				<li class="filter-chips-clear">
+					<a href="<?php echo esc_url( Search::clear_url() ); ?>"><?php esc_html_e( 'Clear all', 'thirtydayhomes' ); ?></a>
+				</li>
+			<?php endif; ?>
+		</ul>
 		<?php
 		return (string) ob_get_clean();
 	}
@@ -254,7 +990,6 @@ final class Render {
 				'image'         => '',
 				'button_text'   => __( 'Search homes', 'thirtydayhomes' ),
 				'placeholder'   => __( 'Neighborhood, ZIP, or hospital', 'thirtydayhomes' ),
-				'require_dates' => true,
 				'trust'         => [
 					__( 'Fully furnished', 'thirtydayhomes' ),
 					__( 'Utilities included', 'thirtydayhomes' ),
@@ -270,12 +1005,6 @@ final class Render {
 		if ( '' === $image && function_exists( 'tdh_hero_image' ) ) {
 			$image = tdh_hero_image();
 		}
-
-		$require = (bool) $args['require_dates'];
-
-		// Unique per instance: a page may hold two heroes, and duplicate
-		// ids would break the aria-describedby link on both.
-		$hint_id = 'tdh-search-hint-' . sanitize_html_class( (string) $args['uid'] );
 
 		$icon = static fn( string $name, int $size = 19 ): string =>
 			function_exists( 'tdh_icon' ) ? tdh_icon( $name, $size ) : '';
@@ -315,30 +1044,33 @@ final class Render {
 					<label>
 						<?php echo $icon( 'calendar-days' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 						<span>
-							<b><?php esc_html_e( 'Start date', 'thirtydayhomes' ); ?><?php echo $require ? ' <span aria-hidden="true">*</span>' : ''; ?></b>
-							<input type="date" name="start" <?php echo $require ? 'required' : ''; ?> data-tdh-start>
+							<b><?php esc_html_e( 'Start date', 'thirtydayhomes' ); ?></b>
+							<input type="date" name="start" data-tdh-start>
 						</span>
 					</label>
 
 					<label>
 						<?php echo $icon( 'calendar-days' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 						<span>
-							<b><?php esc_html_e( 'End date', 'thirtydayhomes' ); ?><?php echo $require ? ' <span aria-hidden="true">*</span>' : ''; ?></b>
-							<input type="date" name="end" <?php echo $require ? 'required' : ''; ?> data-tdh-end>
+							<b><?php esc_html_e( 'End date', 'thirtydayhomes' ); ?></b>
+							<input type="date" name="end" data-tdh-end>
 						</span>
 					</label>
 
-					<button type="submit" <?php echo $require ? 'disabled aria-describedby="' . esc_attr( $hint_id ) . '"' : ''; ?> data-tdh-submit>
+					<?php
+					/*
+					 * Always usable (G2 design review). The button used to sit
+					 * greyed out until both dates were typed, which read as
+					 * "not available"; dates narrow the search, they are not a
+					 * condition of it. An old `require_dates` attribute on a
+					 * shortcode or a saved widget is ignored.
+					 */
+					?>
+					<button type="submit" data-tdh-submit>
 						<?php echo $icon( 'search' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 						<?php echo esc_html( (string) $args['button_text'] ); ?>
 					</button>
 				</form>
-
-				<?php if ( $require ) : ?>
-					<p id="<?php echo esc_attr( $hint_id ); ?>" class="hero-hint" role="status">
-						<?php esc_html_e( 'Enter a start and end date to search.', 'thirtydayhomes' ); ?>
-					</p>
-				<?php endif; ?>
 
 				<?php if ( ! empty( $args['trust'] ) ) : ?>
 					<ul class="hero-trust">
@@ -400,7 +1132,7 @@ final class Render {
 							// stripped, so the field stays plain text to a
 							// client and cannot become a markup injection
 							// point. CSS drops the break on narrow screens.
-							echo wp_kses( (string) $args['heading'], [ 'br' => [] ] );
+							echo self::heading_with_breaks( (string) $args['heading'] ); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped inside.
 							?>
 						</h2>
 					<?php endif; ?>
@@ -662,7 +1394,7 @@ final class Render {
 						// <br> only, same rule as the audience heading: the
 						// approved design breaks after "harder". CSS drops
 						// the break on narrow screens.
-						echo wp_kses( (string) $args['heading'], [ 'br' => [] ] );
+						echo self::heading_with_breaks( (string) $args['heading'] ); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped inside.
 						?>
 					</h2>
 				<?php endif; ?>
@@ -816,6 +1548,12 @@ final class Render {
 			$checkout_error = (string) ( Billing\Checkout::messages()[ $reason ] ?? '' );
 		}
 
+		// F1: said before they press a plan, not only after — as information,
+		// not an error: they have done nothing wrong yet.
+		$verify_note = '' === $checkout_error && $signed_in && ! Email_Verification::is_verified( get_current_user_id() )
+			? Email_Verification::sentence( get_current_user_id() )
+			: '';
+
 		/*
 		 * Ascending, exactly as plans() lists them. NOT reordered to put the
 		 * recommended plan in the middle.
@@ -867,6 +1605,11 @@ final class Render {
 				<div class="form-notice form-notice--error pricing-notice">
 					<?php echo function_exists( 'tdh_icon' ) ? tdh_icon( 'shield-check', 18 ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput ?>
 					<p><?php echo esc_html( $checkout_error ); ?></p>
+				</div>
+			<?php elseif ( '' !== $verify_note ) : ?>
+				<div class="form-notice form-notice--info pricing-notice">
+					<?php echo function_exists( 'tdh_icon' ) ? tdh_icon( 'mail', 18 ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput ?>
+					<p><?php echo esc_html( $verify_note ); ?></p>
 				</div>
 			<?php endif; ?>
 
@@ -966,15 +1709,37 @@ final class Render {
 						 * say. A single disabled button for all of them is
 						 * how a landlord ends up staring at a dead control
 						 * with no idea whether the fault is theirs.
+						 *
+						 * The button names the plan ("Start with 3 homes")
+						 * and the line under it says what happens next and
+						 * what it costs, because a button that costs money
+						 * must say so (G3b design review). Button and line
+						 * sit in one block pinned to the card's foot, so the
+						 * three cards end on the same line.
 						 */
 						$button_class = ( $is_featured ? 'gold-btn' : 'secondary' ) . ' full';
-
-						if ( ! $signed_in ) :
-							// Nothing to attach a subscription to yet.
-							?>
+						$start_label  = sprintf(
+							/* translators: %d: number of homes the plan allows */
+							_n( 'Start with %d home', 'Start with %d homes', $listings, 'thirtydayhomes' ),
+							$listings
+						);
+						$monthly      = $args['currency'] . number_format_i18n( (float) $plan['price'] );
+						?>
+						<div class="plan-action">
+						<?php if ( ! $signed_in ) : ?>
+							<?php // Nothing to attach a subscription to yet: the account comes first. ?>
 							<a class="<?php echo esc_attr( $button_class ); ?>" href="<?php echo esc_url( Accounts::url( 'register' ) ); ?>">
-								<?php esc_html_e( 'Create an account', 'thirtydayhomes' ); ?>
+								<?php echo esc_html( $start_label ); ?>
 							</a>
+							<p class="plan-next">
+								<?php
+								printf(
+									/* translators: %s: monthly price, e.g. "$49" */
+									esc_html__( 'Create your account, then pay %s a month by card. Cancel any time.', 'thirtydayhomes' ),
+									esc_html( $monthly )
+								);
+								?>
+							</p>
 
 						<?php elseif ( $has_plan ) : ?>
 							<?php // Already paying. Buying again would bill them twice for one account. ?>
@@ -1018,14 +1783,46 @@ final class Render {
 							<form method="post" class="plan-buy">
 								<?php echo Billing\Checkout::form_fields( $listings ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 								<button class="<?php echo esc_attr( $button_class ); ?>" type="submit">
-									<?php esc_html_e( 'Choose this plan', 'thirtydayhomes' ); ?>
+									<?php echo esc_html( $start_label ); ?>
 								</button>
 							</form>
+							<p class="plan-next">
+								<?php
+								printf(
+									/* translators: %s: monthly price, e.g. "$125" */
+									esc_html__( 'You’ll pay %s a month by card, through Stripe. Cancel any time.', 'thirtydayhomes' ),
+									esc_html( $monthly )
+								);
+								?>
+							</p>
 						<?php endif; ?>
+						</div>
 
 					</div>
 				<?php endforeach; ?>
 			</div>
+
+			<?php
+			/*
+			 * The boundary, stated (G3b). A landlord with five homes found
+			 * no answer on this page; now they find the door. No price is
+			 * invented for it — that is a conversation.
+			 */
+			$contact_page = get_page_by_path( 'contact' );
+			$most         = $plans ? max( array_map( static fn( array $p ): int => (int) $p['listings'], $plans ) ) : 0;
+			if ( $contact_page && $most > 0 ) :
+				?>
+				<p class="pricing-more">
+					<?php
+					printf(
+						/* translators: 1: the largest plan's number of homes, 2: a link reading "Contact us" */
+						esc_html__( 'More than %1$d homes? %2$s and we’ll sort out a plan for you.', 'thirtydayhomes' ),
+						(int) $most,
+						'<a href="' . esc_url( (string) get_permalink( $contact_page ) ) . '">' . esc_html__( 'Contact us', 'thirtydayhomes' ) . '</a>' // phpcs:ignore WordPress.Security.EscapeOutput
+					);
+					?>
+				</p>
+			<?php endif; ?>
 
 			<?php if ( $features ) : ?>
 				<section class="plan-included">
@@ -1041,11 +1838,20 @@ final class Render {
 				</section>
 			<?php endif; ?>
 
-			<?php if ( '' !== $args['note'] || '' !== $args['note_emphasis'] ) : ?>
+			<?php
+			/*
+			 * The emphasised sentence is a note to the client — "prices are
+			 * not final" — and a visitor reading it under a Start button
+			 * loses trust in the number above it (G3b). Staff still see
+			 * it, labelled as theirs; the plain line stays public.
+			 */
+			$staff = Accounts::is_staff();
+			?>
+			<?php if ( '' !== $args['note'] || ( $staff && '' !== $args['note_emphasis'] ) ) : ?>
 				<p class="pricing-note">
 					<?php echo esc_html( (string) $args['note'] ); ?>
-					<?php if ( '' !== $args['note_emphasis'] ) : ?>
-						<strong><?php echo esc_html( (string) $args['note_emphasis'] ); ?></strong>
+					<?php if ( $staff && '' !== $args['note_emphasis'] ) : ?>
+						<strong><?php echo esc_html( __( 'Staff note:', 'thirtydayhomes' ) . ' ' . (string) $args['note_emphasis'] ); ?></strong>
 					<?php endif; ?>
 				</p>
 			<?php endif; ?>
@@ -1109,6 +1915,15 @@ final class Render {
 				'lead'       => __( 'A real person answers this, from the same team that reviews every home on the site.', 'thirtydayhomes' ),
 				'status'     => __( 'Someone reads this inbox every business day', 'thirtydayhomes' ),
 				'assurances' => self::default_contact_assurances(),
+
+				/*
+				 * The way round the form (G3b design review): the address
+				 * the site already sends from, so it is a mailbox somebody
+				 * reads. Empty when none is configured, and then not shown.
+				 *
+				 * @param string $email The address offered on the Contact page.
+				 */
+				'email'      => (string) apply_filters( 'tdh_contact_email', (string) get_option( Mail::OPTION_FROM, '' ) ),
 			]
 		);
 
@@ -1171,6 +1986,13 @@ final class Render {
 								<span class="contact-dot" aria-hidden="true"></span>
 								<?php echo esc_html( (string) $args['status'] ); ?>
 							</p>
+
+							<?php if ( '' !== (string) $args['email'] && is_email( (string) $args['email'] ) ) : ?>
+								<p class="contact-alt">
+									<?php esc_html_e( 'Prefer email?', 'thirtydayhomes' ); ?>
+									<a href="mailto:<?php echo esc_attr( (string) $args['email'] ); ?>"><?php echo esc_html( (string) $args['email'] ); ?></a>
+								</p>
+							<?php endif; ?>
 						</div>
 					</aside>
 
@@ -1393,6 +2215,28 @@ final class Render {
 				'q' => __( 'Why is the exact address not shown?', 'thirtydayhomes' ),
 				'a' => __( 'Listings show the neighborhood and an approximate map area. The full address is shared by the owner after you make contact — a deliberate choice, because a furnished home that is often empty should not have its address published.', 'thirtydayhomes' ),
 			],
+
+			/*
+			 * The owner's three (G3b design review). Every answer states
+			 * something the product already does; the price is read from
+			 * the plans, so confirming it there confirms it here.
+			 */
+			[
+				'q' => __( 'What does it cost to list a home?', 'thirtydayhomes' ),
+				'a' => sprintf(
+					/* translators: %s: the smallest plan's monthly price, e.g. "$49" */
+					__( 'Membership is %s a month for one home, and less per home for two or three. There is no commission, and renters pay no booking fee.', 'thirtydayhomes' ),
+					'$' . number_format_i18n( (float) ( self::plans()[0]['price'] ?? 0 ) )
+				),
+			],
+			[
+				'q' => __( 'What happens after I submit a home?', 'thirtydayhomes' ),
+				'a' => __( 'A member of our team checks it before it goes live. Your dashboard shows where it stands, and if anything needs changing first you get a note saying what.', 'thirtydayhomes' ),
+			],
+			[
+				'q' => __( 'Can I pause a listing while the home is occupied?', 'thirtydayhomes' ),
+				'a' => __( 'Yes. Pause and resume it from your dashboard. Resuming needs no second review unless you changed the home’s main details while it was paused.', 'thirtydayhomes' ),
+			],
 		];
 	}
 
@@ -1424,7 +2268,7 @@ final class Render {
 
 		<section class="section hiw-tracks">
 			<div class="hiw-inner hiw-tracks-grid">
-				<?php foreach ( (array) $args['tracks'] as $track ) : ?>
+				<?php foreach ( array_values( (array) $args['tracks'] ) as $track_i => $track ) : ?>
 					<article class="hiw-track">
 
 						<header>
@@ -1454,8 +2298,16 @@ final class Render {
 							<?php endforeach; ?>
 						</ol>
 
+						<?php
+						/*
+						 * A button at the foot of each track, not a text link
+						 * (G3b design review): the renter's gold, the owner's
+						 * outlined — one filled primary on the page — and both
+						 * pinned level by the stylesheet.
+						 */
+						?>
 						<?php if ( ! empty( $track['url'] ) && ! empty( $track['cta'] ) ) : ?>
-							<a class="hiw-track-cta" href="<?php echo esc_url( (string) $track['url'] ); ?>">
+							<a class="<?php echo 0 === $track_i ? 'gold-btn' : 'secondary'; ?> hiw-track-cta" href="<?php echo esc_url( (string) $track['url'] ); ?>">
 								<?php echo esc_html( (string) $track['cta'] ); ?>
 								<?php echo $icon( 'arrow-right', 14 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 							</a>
@@ -1799,25 +2651,41 @@ final class Render {
 
 				<div class="about-doors-grid">
 					<?php
+					$door_i = 0;
 					foreach ( (array) $args['doors'] as $door ) :
 						if ( empty( $door['url'] ) ) {
 							continue;
 						}
 						?>
+						<?php
+						/*
+						 * Two doors, one gold (G3b design review): the first
+						 * is the renter's, and renters are the marketplace's
+						 * larger audience, so it takes the filled button; the
+						 * owner's door is outlined. Both are pinned to the
+						 * card's foot so the pair ends level.
+						 */
+						$door_kind = 0 === $door_i ? 'about-door-cta--gold' : 'about-door-cta--outline';
+						?>
 						<a class="about-door" href="<?php echo esc_url( (string) $door['url'] ); ?>">
 							<i><?php echo $icon( (string) ( $door['icon'] ?? 'arrow-right' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
 							<h3><?php echo esc_html( (string) ( $door['title'] ?? '' ) ); ?></h3>
 							<p><?php echo esc_html( (string) ( $door['copy'] ?? '' ) ); ?></p>
-							<span class="about-door-cta">
+							<span class="about-door-cta <?php echo esc_attr( $door_kind ); ?>">
 								<?php echo esc_html( (string) ( $door['cta'] ?? '' ) ); ?>
 								<?php echo $icon( 'arrow-right', 14 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 							</span>
 						</a>
+						<?php ++$door_i; ?>
 					<?php endforeach; ?>
 				</div>
 
-				<?php if ( '' !== $args['note'] ) : ?>
-					<p class="about-note"><em><?php echo esc_html( (string) $args['note'] ); ?></em></p>
+				<?php
+				// A note to the client, not to a visitor (G3b): staff see it,
+				// labelled; the public page carries no "draft" on its face.
+				if ( '' !== $args['note'] && Accounts::is_staff() ) :
+					?>
+					<p class="about-note"><em><?php echo esc_html( __( 'Staff note:', 'thirtydayhomes' ) . ' ' . (string) $args['note'] ); ?></em></p>
 				<?php endif; ?>
 
 			</div>

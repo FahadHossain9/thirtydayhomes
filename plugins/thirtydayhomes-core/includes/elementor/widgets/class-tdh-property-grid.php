@@ -78,7 +78,7 @@ final class Property_Grid extends Widget_Base {
 				'label'   => __( 'Supporting copy', 'thirtydayhomes' ),
 				'type'    => Controls_Manager::TEXTAREA,
 				'rows'    => 2,
-				'default' => __( 'Handpicked monthly rentals close to leading medical centres.', 'thirtydayhomes' ),
+				'default' => __( 'Handpicked monthly rentals close to leading medical centers.', 'thirtydayhomes' ),
 			]
 		);
 

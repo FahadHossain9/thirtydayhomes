@@ -513,7 +513,7 @@ final class Stripe {
 					/* translators: 1: plan name, 2: message from Stripe */
 					__( '%1$s: %2$s', 'thirtydayhomes' ),
 					$plan['label'],
-					isset( $body['error']['message'] ) ? (string) $body['error']['message'] : __( 'Stripe does not recognise that Price ID.', 'thirtydayhomes' )
+					isset( $body['error']['message'] ) ? (string) $body['error']['message'] : __( 'Stripe does not recognize that Price ID.', 'thirtydayhomes' )
 				);
 				continue;
 			}

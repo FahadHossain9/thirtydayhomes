@@ -131,6 +131,26 @@ add_filter(
 			$classes[] = 'tdh-portal-page';
 		}
 
+		// A results page: the archive and the city, type and neighborhood
+		// pages. The stylesheet trims the gap between the banner and the
+		// search form there (G3a).
+		if ( class_exists( '\TDH\Search' ) && \TDH\Search::is_results_page() ) {
+			$classes[] = 'tdh-results';
+		}
+
+		// Which seeded page this is — "tdh-page-login", "tdh-page-register"
+		// — so a stylesheet can treat one page differently (the header's
+		// call to action steps back on the two account pages) without a
+		// template fork and without depending on a page ID that differs
+		// between localhost and live.
+		if ( is_page() ) {
+			$seed = sanitize_html_class( (string) get_post_meta( get_queried_object_id(), '_tdh_seed_key', true ) );
+
+			if ( '' !== $seed ) {
+				$classes[] = 'tdh-page-' . $seed;
+			}
+		}
+
 		return $classes;
 	}
 );
@@ -141,8 +161,8 @@ add_filter(
  * The portal is a full-viewport app with its own top bar, and every link
  * on the toolbar (Dashboard, Listings, Edit Page) leads into wp-admin —
  * the exact trapdoor the portal exists to close for the client. The
- * developer's way in is the sidebar's "WordPress dashboard" link, and the
- * toolbar is untouched everywhere else on the site.
+ * staff operations belong in the marketplace portal; the toolbar is
+ * untouched everywhere else on the site.
  */
 add_filter(
 	'show_admin_bar',
@@ -162,5 +182,25 @@ add_filter(
  * band inside a 1040px column is a grey rectangle floating in white.
  */
 function tdh_is_wide_body_page(): bool {
-	return is_page() && (bool) get_post_meta( get_queried_object_id(), '_tdh_wide_body', true );
+
+	if ( ! is_page() ) {
+		return false;
+	}
+
+	$page_id = get_queried_object_id();
+	$wide    = (bool) get_post_meta( $page_id, '_tdh_wide_body', true );
+
+	/**
+	 * Something on the page may need the full width.
+	 *
+	 * The meta above is set by the importer for pages the theme knows
+	 * about. It cannot help somebody who builds a page themselves and
+	 * drops a wide block onto it — they would have no way of knowing a
+	 * hidden field decides whether their block is squeezed into a reading
+	 * column. The plugin answers this for its own blocks.
+	 *
+	 * @param bool $wide    Whether the page is already marked wide.
+	 * @param int  $page_id The page being rendered.
+	 */
+	return (bool) apply_filters( 'tdh_wide_body_page', $wide, $page_id );
 }

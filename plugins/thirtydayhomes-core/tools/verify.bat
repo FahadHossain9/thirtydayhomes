@@ -46,6 +46,17 @@ if not exist "%TDH_WP%\wp-load.php" (
 	exit /b 1
 )
 
+REM The suites create and delete hundreds of fixtures. Those are not events
+REM on the site, so the event log stays silent for the run; verify-log.php
+REM switches it back on for itself.
+set "TDH_LOG_SILENT=1"
+
+REM No suite may reach a paid outside service. The developer's machine has
+REM the client's real Geocoding key in wp-config.php, and a search for a
+REM postcode would otherwise spend his quota and answer differently every
+REM run. A suite that needs an answer stands in its own fake provider.
+set "TDH_OFFLINE=1"
+
 REM wp-cli must run from the WordPress root to find wp-config.php.
 pushd "%TDH_WP%"
 
@@ -58,6 +69,15 @@ REM not hide the state of everything else. Their exit codes are folded in.
 if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
 
 "%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify-delivery.php"
+if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
+
+"%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify-inquiry.php"
+if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
+
+"%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify-notifications.php"
+if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
+
+"%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify-sms.php"
 if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
 
 "%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify-page-widgets.php"
@@ -73,6 +93,38 @@ if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
 if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
 
 "%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify-search.php"
+if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
+
+"%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify-preview.php"
+if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
+
+"%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify-photos.php"
+if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
+
+"%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify-listing-actions.php"
+if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
+
+"%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify-availability.php"
+if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
+
+"%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify-geocode.php"
+if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
+
+"%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify-proximity.php"
+if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
+
+"%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify-enforcement.php"
+if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
+
+"%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify-email-verification.php"
+if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
+
+"%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify-log.php"
+if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
+
+"%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify-admin.php"
+if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
+"%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify-address-homes.php"
 if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
 
 popd

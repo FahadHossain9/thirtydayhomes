@@ -81,36 +81,33 @@ elseif ( ! tdh_elementor_location( 'single' ) ) :
 				<label>
 					<?php tdh_the_icon( 'calendar-days' ); ?>
 					<span>
-						<b><?php esc_html_e( 'Start date', 'thirtydayhomes' ); ?> <span aria-hidden="true">*</span></b>
-						<input type="date" name="start" required data-tdh-start>
+						<b><?php esc_html_e( 'Start date', 'thirtydayhomes' ); ?></b>
+						<input type="date" name="start" data-tdh-start>
 					</span>
 				</label>
 
 				<label>
 					<?php tdh_the_icon( 'calendar-days' ); ?>
 					<span>
-						<b><?php esc_html_e( 'End date', 'thirtydayhomes' ); ?> <span aria-hidden="true">*</span></b>
-						<input type="date" name="end" required data-tdh-end>
+						<b><?php esc_html_e( 'End date', 'thirtydayhomes' ); ?></b>
+						<input type="date" name="end" data-tdh-end>
 					</span>
 				</label>
 
 				<?php
 				/**
-				 * The approved design dims this button until both dates are
-				 * set. A disabled control with no stated reason is a dead end
-				 * for a screen reader, so the hint below is wired to it with
-				 * aria-describedby and announces when the state changes.
+				 * Always usable (G2 design review). The page's main action
+				 * used to sit greyed out until both dates were typed, which
+				 * read as "not available"; dates narrow the search, they are
+				 * not a condition of it, and the results page already handles
+				 * a search with no dates.
 				 */
 				?>
-				<button type="submit" disabled aria-describedby="tdh-search-hint" data-tdh-submit>
+				<button type="submit" data-tdh-submit>
 					<?php tdh_the_icon( 'search' ); ?>
 					<?php esc_html_e( 'Search homes', 'thirtydayhomes' ); ?>
 				</button>
 			</form>
-
-			<p id="tdh-search-hint" class="hero-hint" role="status">
-				<?php esc_html_e( 'Enter a start and end date to search.', 'thirtydayhomes' ); ?>
-			</p>
 
 			<ul class="hero-trust">
 				<li><?php tdh_the_icon( 'check', 14 ); ?><?php esc_html_e( 'Fully furnished', 'thirtydayhomes' ); ?></li>
@@ -186,7 +183,7 @@ elseif ( ! tdh_elementor_location( 'single' ) ) :
 				?>
 				<p class="overline gold"><?php esc_html_e( 'Explore homes', 'thirtydayhomes' ); ?></p>
 				<h2><?php esc_html_e( 'Homes ready when you are', 'thirtydayhomes' ); ?></h2>
-				<p><?php esc_html_e( 'Handpicked monthly rentals close to leading medical centres.', 'thirtydayhomes' ); ?></p>
+				<p><?php esc_html_e( 'Handpicked monthly rentals close to leading medical centers.', 'thirtydayhomes' ); ?></p>
 			</div>
 			<a class="text-btn" href="<?php echo esc_url( $archive ); ?>">
 				<?php esc_html_e( 'View all homes →', 'thirtydayhomes' ); ?>
