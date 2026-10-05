@@ -234,6 +234,18 @@ final class Accounts {
 			$this->fail( __( 'That form expired. Please try again.', 'thirtydayhomes' ) );
 		}
 
+		// The public forms ask "is this a person?" (Turnstile; off until its
+		// keys are in wp-config). The email typed is kept for the retry.
+		if ( in_array( $action, [ 'register', 'login', 'lost_password' ], true ) && ! Bot_Check::passes( $action ) ) {
+			$this->fail(
+				Bot_Check::message(),
+				[
+					'tdh_email' => sanitize_text_field( wp_unslash( (string) ( $_POST['tdh_email'] ?? '' ) ) ),
+					'tdh_name'  => sanitize_text_field( wp_unslash( (string) ( $_POST['tdh_name'] ?? '' ) ) ),
+				]
+			);
+		}
+
 		$this->{$handlers[ $action ]}();
 	}
 

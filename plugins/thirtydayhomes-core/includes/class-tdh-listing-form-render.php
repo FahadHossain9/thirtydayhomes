@@ -538,9 +538,11 @@ final class Listing_Form_Render {
 						<b><?php esc_html_e( 'Street address', 'thirtydayhomes' ); ?></b>
 						<small><?php esc_html_e( 'Never shown publicly', 'thirtydayhomes' ); ?></small>
 					</span>
-					<input name="tdh_address" type="text" required autocomplete="street-address"
-						placeholder="<?php esc_attr_e( 'e.g. 123 Walnut Street', 'thirtydayhomes' ); ?>"
+					<?php // Google suggests real addresses as the landlord types (places.js); a plain box without it. ?>
+					<input name="tdh_address" type="text" required autocomplete="street-address" data-tdh-places="address"
+						placeholder="<?php esc_attr_e( 'Start typing your address', 'thirtydayhomes' ); ?>"
 						value="<?php echo esc_attr( $meta( '_tdh_street_address' ) ); ?>">
+					<input type="hidden" name="tdh_state" value="">
 				</label>
 
 				<label class="lform-field">
@@ -1121,7 +1123,8 @@ final class Listing_Form_Render {
 			<label class="lform-drop"
 				data-one="<?php esc_attr_e( 'photo selected', 'thirtydayhomes' ); ?>"
 				data-many="<?php esc_attr_e( 'photos selected', 'thirtydayhomes' ); ?>"
-				data-max="<?php echo esc_attr( (string) wp_max_upload_size() ); ?>"
+				data-max="<?php echo esc_attr( (string) Listing_Form::max_photo_bytes() ); ?>"
+				data-room="<?php echo esc_attr( (string) ( Listing_Form::MAX_PHOTOS - $count ) ); ?>"
 				data-too-big="<?php esc_attr_e( 'Some of those photos are bigger than the server accepts — they will be refused.', 'thirtydayhomes' ); ?>">
 				<input type="file" name="tdh_photos[]" multiple
 					accept="image/jpeg,image/png,image/webp"
@@ -1135,7 +1138,7 @@ final class Listing_Form_Render {
 						esc_html__( 'Room for %1$s more of %2$s · JPG, PNG or WebP photos, up to %3$s each', 'thirtydayhomes' ),
 						esc_html( number_format_i18n( Listing_Form::MAX_PHOTOS - $count ) ),
 						esc_html( number_format_i18n( Listing_Form::MAX_PHOTOS ) ),
-						esc_html( (string) size_format( wp_max_upload_size() ) )
+						esc_html( (string) size_format( Listing_Form::max_photo_bytes() ) )
 					);
 					?>
 				</small>
@@ -1159,7 +1162,7 @@ final class Listing_Form_Render {
 			<div class="lform-preview" hidden>
 				<p class="lform-preview-head">
 					<b><?php esc_html_e( 'Ready to upload', 'thirtydayhomes' ); ?></b>
-					<small><?php esc_html_e( 'These are added when you press Continue', 'thirtydayhomes' ); ?></small>
+					<small><?php esc_html_e( 'Uploaded when you press Continue. Choose more to add them; press × to take one out.', 'thirtydayhomes' ); ?></small>
 				</p>
 				<div class="lform-preview-grid"></div>
 			</div>
@@ -1228,7 +1231,17 @@ final class Listing_Form_Render {
 				one:    <?php echo wp_json_encode( __( 'photo selected', 'thirtydayhomes' ) ); ?>,
 				many:   <?php echo wp_json_encode( __( 'photos selected', 'thirtydayhomes' ) ); ?>,
 				drop:   title ? title.textContent : '',
-				big:    <?php echo wp_json_encode( __( 'Some of these are bigger than the server accepts — they will be refused.', 'thirtydayhomes' ) ); ?>,
+				/* translators: %s: file names */
+				big:    <?php echo wp_json_encode( sprintf( __( 'Not added — larger than %s: ', 'thirtydayhomes' ), size_format( Listing_Form::max_photo_bytes() ) ) . '%s.' ); ?>,
+				/* translators: %s: file names */
+				over:   <?php echo wp_json_encode( sprintf( __( 'Not added — the limit is %s photos: ', 'thirtydayhomes' ), number_format_i18n( Listing_Form::MAX_PHOTOS ) ) . '%s.' ); ?>,
+				/* translators: %s: file name */
+				remove: <?php echo wp_json_encode( __( 'Take out %s', 'thirtydayhomes' ) ); ?>,
+				/* translators: %s: file name */
+				removed: <?php echo wp_json_encode( __( '%s taken out.', 'thirtydayhomes' ) ); ?>,
+				/* translators: %s: number of photos */
+				left:   <?php echo wp_json_encode( __( 'room for %s more', 'thirtydayhomes' ) ); ?>,
+				full:   <?php echo wp_json_encode( __( 'no room for more', 'thirtydayhomes' ) ); ?>,
 				busy:   <?php echo wp_json_encode( __( 'Uploading…', 'thirtydayhomes' ) ); ?>,
 				saving: <?php echo wp_json_encode( __( 'Saving…', 'thirtydayhomes' ) ); ?>
 			};
@@ -1279,55 +1292,137 @@ final class Listing_Form_Render {
 			}
 
 			function reset() {
+				chosen = [];
 				clearPreviews();
 				if ( preview ) { preview.hidden = true; }
 				if ( title ) { title.textContent = TXT.drop; }
 			}
 
+			/*
+			 * The chosen photos are kept HERE, not only in the file input
+			 * (team review, 4 Oct 2026). A browser's picker replaces its
+			 * whole selection every time it is opened, so choosing three
+			 * photos and then two more used to leave just the two. Now each
+			 * choice is added to the list, a photo can be taken out with its
+			 * ×, and the input is rebuilt from the list before sending.
+			 * Browsers without DataTransfer keep the old replace-on-choose.
+			 */
+			var room    = drop ? parseInt( drop.dataset.room, 10 ) || 0 : 0;
+			var chosen  = [];
+			var canKeep = ( function () {
+				try { return !! new DataTransfer().items; } catch ( e ) { return false; }
+			}() );
+			var note    = document.createElement( 'p' );
+			note.className = 'lform-preview-note';
+			note.setAttribute( 'role', 'status' );
+			if ( preview ) { preview.appendChild( note ); }
+
+			var mb = function ( bytes ) { return ( bytes / 1048576 ).toFixed( 1 ) + ' MB'; };
+			var same = function ( a, b ) { return a.name === b.name && a.size === b.size && a.lastModified === b.lastModified; };
+
+			function sync() {
+				if ( ! canKeep || ! input ) { return; }
+				var dt = new DataTransfer();
+				chosen.forEach( function ( f ) { dt.items.add( f ); } );
+				input.files = dt.files;
+			}
+
+			function draw( said ) {
+				clearPreviews();
+				note.textContent = said || '';
+
+				if ( ! chosen.length ) {
+					if ( preview ) { preview.hidden = ! said; }
+					if ( title ) { title.textContent = TXT.drop; }
+					return;
+				}
+
+				var total = 0;
+
+				chosen.forEach( function ( file, i ) {
+					total += file.size;
+
+					var fig = document.createElement( 'figure' );
+					fig.className = 'lform-preview-item';
+
+					if ( file.type.indexOf( 'image/' ) === 0 ) {
+						var url = URL.createObjectURL( file );
+						urls.push( url );
+						var img = document.createElement( 'img' );
+						img.src = url;
+						img.alt = '';
+						fig.appendChild( img );
+					}
+
+					var cap = document.createElement( 'figcaption' );
+					cap.textContent = file.name;
+					fig.appendChild( cap );
+
+					if ( canKeep ) {
+						var x = document.createElement( 'button' );
+						x.type = 'button';
+						x.className = 'lform-preview-remove';
+						x.setAttribute( 'aria-label', TXT.remove.replace( '%s', file.name ) );
+						x.textContent = '×';
+						x.addEventListener( 'click', function () {
+							chosen.splice( i, 1 );
+							sync();
+							draw( TXT.removed.replace( '%s', file.name ) );
+							var next = grid.querySelector( '.lform-preview-remove' );
+							( next || ( drop && drop.querySelector( 'input' ) ) || form ).focus();
+						} );
+						fig.appendChild( x );
+					}
+
+					grid.appendChild( fig );
+				} );
+
+				if ( title ) {
+					var left = room - chosen.length;
+					title.textContent = chosen.length + ' ' + ( 1 === chosen.length ? TXT.one : TXT.many ) + ' · ' + mb( total )
+						+ ( canKeep ? ' · ' + ( left > 0 ? TXT.left.replace( '%s', left ) : TXT.full ) : '' );
+				}
+
+				if ( preview ) { preview.hidden = false; }
+			}
+
 			if ( input ) {
 				input.addEventListener( 'change', function () {
 
-					var files = input.files || [];
-					clearPreviews();
+					var picked  = Array.prototype.slice.call( input.files || [] );
+					var refused = [];
+					var over    = [];
 
-					if ( ! files.length ) { reset(); return; }
+					if ( ! canKeep ) {
+						chosen = [];
+					}
 
-					var total = 0, tooBig = false, i, file, url, fig;
-
-					for ( i = 0; i < files.length; i++ ) {
-						file   = files[ i ];
-						total += file.size;
-
-						if ( max && file.size > max ) { tooBig = true; }
-
-						if ( grid && file.type.indexOf( 'image/' ) === 0 ) {
-							url = URL.createObjectURL( file );
-							urls.push( url );
-
-							fig = document.createElement( 'figure' );
-							fig.className = 'lform-preview-item';
-
-							var img = document.createElement( 'img' );
-							img.src = url;
-							img.alt = '';
-
-							var cap = document.createElement( 'figcaption' );
-							cap.textContent = file.name;
-
-							fig.appendChild( img );
-							fig.appendChild( cap );
-							grid.appendChild( fig );
+					picked.forEach( function ( file ) {
+						if ( chosen.some( function ( f ) { return same( f, file ); } ) ) {
+							return; // Chosen twice: kept once.
 						}
+						if ( max && file.size > max ) {
+							refused.push( file.name );
+							return;
+						}
+						if ( canKeep && chosen.length >= room ) {
+							over.push( file.name );
+							return;
+						}
+						chosen.push( file );
+					} );
+
+					sync();
+
+					var said = [];
+					if ( refused.length ) {
+						said.push( TXT.big.replace( '%s', refused.join( ', ' ) ) );
+					}
+					if ( over.length ) {
+						said.push( TXT.over.replace( '%s', over.join( ', ' ) ) );
 					}
 
-					if ( title ) {
-						title.textContent = tooBig
-							? TXT.big
-							: files.length + ' ' + ( 1 === files.length ? TXT.one : TXT.many )
-								+ ' · ' + ( total / 1048576 ).toFixed( 1 ) + ' MB';
-					}
-
-					if ( preview ) { preview.hidden = false; }
+					draw( said.join( ' ' ) );
 				} );
 			}
 

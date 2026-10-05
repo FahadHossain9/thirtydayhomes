@@ -73,7 +73,8 @@ final class Shortcodes {
 		// The landlord's create-a-listing wizard. One shortcode for the whole
 		// flow — the step lives in the URL, not in an attribute, because a
 		// step frozen into page content would break the wizard's own links.
-		add_shortcode( 'tdh_add_listing', [ Listing_Form_Render::class, 'form' ] );
+		// Inside the dashboard's frame: sidebar, top bar and tab bar (team review, 4 Oct 2026).
+		add_shortcode( 'tdh_add_listing', static fn(): string => Account_Render::framed( Listing_Form_Render::form() ) );
 	}
 
 	/**

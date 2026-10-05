@@ -42,7 +42,8 @@ $tdh_view   = class_exists( '\TDH\Search' ) ? \TDH\Search::view() : 'list';
 
 ?>
 
-<div class="page-shell">
+<?php // data-tdh-results: the block results.js swaps in place on a filter, sort or page change. ?>
+<div class="page-shell" data-tdh-results>
 
 	<?php if ( '' !== (string) $tdh_set['heading'] || '' !== (string) $tdh_set['intro'] ) : ?>
 		<div class="results-intro">

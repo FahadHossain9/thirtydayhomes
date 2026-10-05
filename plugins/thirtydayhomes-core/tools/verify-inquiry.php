@@ -252,6 +252,9 @@ $_POST = good_post( $home );
 $where = run_handler( $inquiry );
 
 ok( 'a complete inquiry is accepted', Inquiry::SENT === outcome( $where ), $where );
+ok( '...and lands back on the form ("Message sent" in view), not the top of the page', str_ends_with( (string) $where, '#' . Inquiry::ANCHOR ), $where );
+$rp = (string) file_get_contents( get_template_directory() . '/template-parts/listing-results.php' );
+ok( 'the results block is marked for in-place refresh (filters, sort, pages)', str_contains( $rp, 'class="page-shell" data-tdh-results' ) && is_readable( get_template_directory() . '/assets/results.js' ) );
 ok( '...and lands back on the home it was about', str_contains( $where, (string) wp_parse_url( (string) get_permalink( $home ), PHP_URL_PATH ) ), $where );
 ok( '...and exactly one inquiry was written', inquiry_count() === $before + 1 );
 

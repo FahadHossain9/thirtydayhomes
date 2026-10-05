@@ -48,6 +48,9 @@ final class Inquiry {
 	/** The query argument the property page reads after the redirect. */
 	public const PARAM = 'inquiry';
 
+	/** The id of the section that holds the form on a home's page. */
+	public const ANCHOR = 'inquire';
+
 	public const SENT     = 'sent';
 	public const EXPIRED  = 'expired';
 	public const TOO_MANY = 'too_many';
@@ -347,6 +350,12 @@ final class Inquiry {
 			$errors['consent'] = __( 'Please tick the box to send your details to the owner.', 'thirtydayhomes' );
 		}
 
+		// "Is this a person?" (Turnstile; off until its keys are in wp-config).
+		// Asked last, so a mistyped field is fixed in the same round trip.
+		if ( ! $errors && ! Bot_Check::passes( 'inquiry' ) ) {
+			$errors['_bot'] = Bot_Check::message();
+		}
+
 		if ( $errors ) {
 			$this->remember( $values, $errors );
 			$this->bounce( $back, self::INVALID );
@@ -630,7 +639,7 @@ final class Inquiry {
 			<?php if ( '' !== $notice ) : ?>
 				<p class="inquiry-notice" role="alert"><?php echo esc_html( $notice ); ?></p>
 			<?php elseif ( $errors ) : ?>
-				<p class="inquiry-notice" role="alert"><?php echo esc_html( (string) self::messages()[ self::INVALID ] ); ?></p>
+				<p class="inquiry-notice" role="alert"><?php echo esc_html( '' !== $error( '_bot' ) ? $error( '_bot' ) : (string) self::messages()[ self::INVALID ] ); ?></p>
 			<?php endif; ?>
 
 			<p class="form-field">
@@ -730,6 +739,8 @@ final class Inquiry {
 				<label for="tdh-inq-website"><?php esc_html_e( 'Leave this empty', 'thirtydayhomes' ); ?></label>
 				<input type="text" id="tdh-inq-website" name="tdh_website" tabindex="-1" autocomplete="off" value="">
 			</p>
+
+			<?php echo Bot_Check::field(); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped inside. ?>
 
 			<button type="submit" class="primary" data-tdh-send
 				data-sending="<?php esc_attr_e( 'Sending…', 'thirtydayhomes' ); ?>">
@@ -1212,7 +1223,16 @@ final class Inquiry {
 	 * a useful thing to be able to link somebody to.
 	 */
 	private function bounce( string $to, string $reason, string $param = self::PARAM ): void {
-		wp_safe_redirect( add_query_arg( $param, $reason, $to ) );
+
+		/*
+		 * The renter's form lands back ON the form, not at the top of the
+		 * page (team review, 4 Oct 2026): "Message sent", or the message
+		 * saying what to fix, is the first thing in view. The landlord's
+		 * archive actions keep their own place.
+		 */
+		$anchor = self::PARAM === $param ? '#' . self::ANCHOR : '';
+
+		wp_safe_redirect( add_query_arg( $param, $reason, $to ) . $anchor );
 		exit;
 	}
 }

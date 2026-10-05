@@ -4,7 +4,7 @@ Theme URI:    https://github.com/FahadHossain9/thirtydayhomes
 Author:       Instaquirk
 Author URI:   https://instaquirk.com
 Description:  Presentation layer for the ThirtyDayHomes marketplace. Owns global design tokens, header, footer, navigation, responsive framework and Elementor integration. Holds NO marketplace business rules — those live in the ThirtyDayHomes Core plugin, so replacing this theme never costs a listing, membership, inquiry or facility.
-Version:      0.56.4
+Version:      0.57.6
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 8.1
@@ -745,6 +745,15 @@ img, video { max-width: 100%; height: auto; }
 .page-banner .breadcrumb a:hover { color: var( --color-gold-light ); }
 .page-banner .breadcrumb li + li::before { color: var( --color-on-dark-subtle ); }
 .page-banner .breadcrumb [aria-current="page"] { color: var( --color-gold-light ); }
+
+/* The homes archive uses this shorter orientation only on phones (H1).
+   Desktop keeps the photographic page banner above; keeping the two
+   openings mutually exclusive means one visible page title at every width. */
+.results-mobile-intro { display: none; }
+
+/* The inline retry is deliberately a phone-only H1 recovery. If the
+   viewport widens after a failure, desktop keeps its established surface. */
+.post-type-archive-tdh_listing.tdh-results .page-shell[ data-tdh-results ] > .results-error { display: none; }
 
 /* The banner already gives the page its opening space, so the shell below
    does not need a full section gap on top as well. That double gap left
@@ -1744,6 +1753,132 @@ img, video { max-width: 100%; height: auto; }
 }
 
 @media ( max-width: 43.75rem ) {
+	/* H1, selected Version B: on /homes/ only, remove the decorative phone
+	   banner and lead with a short orientation, search, controls and a real
+	   home. Taxonomy archives and results widgets keep their own openings. */
+	.post-type-archive-tdh_listing.tdh-results .page-banner { display: none; }
+
+	.post-type-archive-tdh_listing.tdh-results .results-mobile-intro {
+		display: block;
+		padding: var( --space-5 ) var( --gutter-narrow ) var( --space-4 );
+	}
+
+	.post-type-archive-tdh_listing.tdh-results .results-mobile-intro > h1 {
+		margin: 0;
+		font-size: var( --text-h2 );
+	}
+
+	.post-type-archive-tdh_listing.tdh-results .results-mobile-intro > p {
+		margin: var( --space-1 ) 0 0;
+		color: var( --text-body );
+		font-size: var( --text-sm );
+	}
+
+	.post-type-archive-tdh_listing.tdh-results .page-shell[ data-tdh-results ] {
+		padding: 0 var( --gutter-narrow ) var( --section-gap );
+	}
+
+	/* Once filters.js has made the full filter panel a drawer, its wrapper
+	   no longer needs to look like a second card around the two search rows.
+	   Without the script the original bordered, expanded form stays intact. */
+	.post-type-archive-tdh_listing.tdh-results .filters.has-js > .filter-bar {
+		border: 0;
+		border-radius: 0;
+	}
+
+	.post-type-archive-tdh_listing.tdh-results .filters.has-js > .filter-bar > .search-bar {
+		gap: var( --space-2 );
+		padding: 0;
+	}
+
+	.post-type-archive-tdh_listing.tdh-results .filters.has-js > .filter-bar > .search-bar > label > input,
+	.post-type-archive-tdh_listing.tdh-results .filters.has-js > .filter-bar > .search-bar > button {
+		min-height: var( --space-9 );
+		padding-block: var( --space-2 );
+	}
+
+	/* Keep count, sorting and List / Map on one calm toolbar at 390px. Long
+	   result summaries and the 320px width can still wrap instead of being
+	   clipped. The words remain; only redundant icons step out on phones. */
+	.post-type-archive-tdh_listing.tdh-results .result-top {
+		gap: var( --space-2 );
+		margin: var( --space-3 ) 0;
+	}
+
+	.post-type-archive-tdh_listing.tdh-results .result-top > .result-tools {
+		gap: var( --space-2 );
+		flex-wrap: nowrap;
+		margin-left: 0;
+	}
+
+	.post-type-archive-tdh_listing.tdh-results .result-tools > .sort-form > label {
+		gap: var( --space-1 );
+	}
+
+	.post-type-archive-tdh_listing.tdh-results .result-tools > .sort-form > label > select {
+		padding-inline-start: var( --space-2 );
+		padding-inline-end: calc( var( --space-5 ) + var( --icon-sm ) );
+		background-position: right var( --space-2 ) center;
+	}
+
+	.post-type-archive-tdh_listing.tdh-results .view-toggle > .view-choice {
+		gap: 0;
+		padding-inline: var( --space-2 );
+	}
+
+	.post-type-archive-tdh_listing.tdh-results .view-toggle > .view-choice > .tdh-icon {
+		display: none;
+	}
+
+	/* A failed in-place refresh keeps the current homes and search visible.
+	   One compact alert says what happened and ends in the one recovery. */
+	.post-type-archive-tdh_listing.tdh-results .page-shell[ data-tdh-results ] > .results-error {
+		display: flex;
+		align-items: center;
+		gap: var( --space-3 );
+		flex-wrap: wrap;
+		margin: var( --space-3 ) 0 0;
+	}
+
+	.post-type-archive-tdh_listing.tdh-results .page-shell[ data-tdh-results ] > .results-error > p {
+		flex: 1;
+		min-width: 0;
+		margin: 0;
+	}
+
+	.post-type-archive-tdh_listing.tdh-results .page-shell[ data-tdh-results ] > .results-error > .results-retry {
+		flex: none;
+	}
+
+	/* A blocked script leaves the real menu and the full filter form in the
+	   page. Let both take honest space: the inert hamburger steps out, the
+	   menu wraps below the logo, and nothing covers the compact page title. */
+	html:not( .has-js ) .post-type-archive-tdh_listing.tdh-results .site-header {
+		height: auto;
+		flex-wrap: wrap;
+		gap: var( --space-3 );
+		padding-block: var( --space-3 );
+	}
+
+	html:not( .has-js ) .post-type-archive-tdh_listing.tdh-results .site-header > .site-nav {
+		flex: 1 0 100%;
+		min-width: 0;
+	}
+
+	html:not( .has-js ) .post-type-archive-tdh_listing.tdh-results .site-nav ul {
+		flex-flow: row wrap;
+		justify-content: center;
+		gap: var( --space-2 ) var( --space-4 );
+	}
+
+	html:not( .has-js ) .post-type-archive-tdh_listing.tdh-results .site-nav .nav-cta > a {
+		padding: var( --space-2 ) var( --space-3 );
+	}
+
+	html:not( .has-js ) .post-type-archive-tdh_listing.tdh-results .nav-toggle {
+		display: none;
+	}
+
 	/* With the script: a "Filters" button beside Show homes, and the panel
 	   as a drawer from the bottom. Without it (.has-js never set): the panel
 	   stays put, stacked, and the one button is the panel's own. */
@@ -2468,41 +2603,40 @@ img, video { max-width: 100%; height: auto; }
 .detail-location .tdh-icon { flex: none; }
 
 /* --- The photo gallery ---------------------------------------------------
-   The cover large on the left, up to four more on the right, all at the
-   height the single cover photo always had, so the page does not jump when
-   a landlord adds a second photo. The layout follows how many there are. */
+   Version B: a balanced 60/40 marketplace mosaic on larger screens, one
+   calm cover on phones, and every ordered photo in a focused viewer. */
 
 .detail-gallery {
 	position: relative;
 	display: grid;
 	gap: var( --space-2 );
-	height: var( --split-photo-height );
+	height: var( --gallery-height );
 	margin: 0 0 var( --space-7 );
 	overflow: hidden;
 	border-radius: var( --radius-md );
 }
 
 .detail-gallery[data-count="1"] { grid-template-columns: 1fr; }
-.detail-gallery[data-count="2"] { grid-template-columns: 2fr 1fr; }
-.detail-gallery[data-count="3"] { grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; }
-.detail-gallery[data-count="4"] { grid-template-columns: 2fr 1fr 1fr; grid-template-rows: 1fr 1fr; }
-.detail-gallery[data-count="5"] { grid-template-columns: 2fr 1fr 1fr; grid-template-rows: 1fr 1fr; }
+.detail-gallery[data-count="2"] { grid-template-columns: 3fr 2fr; }
+.detail-gallery[data-count="3"] { grid-template: repeat( 2, 1fr ) / 3fr 2fr; }
+.detail-gallery[data-count="4"],
+.detail-gallery[data-count="5"] { grid-template: repeat( 2, 1fr ) / 3fr 1fr 1fr; }
 
 .detail-gallery[data-count="3"] > .detail-gallery-tile:first-child,
 .detail-gallery[data-count="4"] > .detail-gallery-tile:first-child,
 .detail-gallery[data-count="5"] > .detail-gallery-tile:first-child { grid-row: 1 / span 2; }
 
-/* Four photos: the second spans the top of the right side. */
+/* Four photos: the second spans the top of the supporting-photo area. */
 .detail-gallery[data-count="4"] > .detail-gallery-tile:nth-child( 2 ) { grid-column: 2 / span 2; }
 
-.detail-gallery-tile {
+.detail-gallery > .detail-gallery-tile {
 	position: relative;
 	margin: 0;
 	min-height: 0;
 	background: var( --bg-surface-accent );
 }
 
-.detail-gallery-tile > img {
+.detail-gallery > .detail-gallery-tile > img {
 	display: block;
 	width: 100%;
 	height: 100%;
@@ -2511,7 +2645,7 @@ img, video { max-width: 100%; height: auto; }
 }
 
 /* Each tile's opener covers it; only present once the viewer can open. */
-.detail-gallery-open {
+.detail-gallery > .detail-gallery-tile > .detail-gallery-open {
 	position: absolute;
 	inset: 0;
 	width: 100%;
@@ -2521,20 +2655,23 @@ img, video { max-width: 100%; height: auto; }
 	cursor: zoom-in;
 }
 
-.detail-gallery-tile:has( > .detail-gallery-open:hover ) > img { filter: brightness( 0.9 ); }
+.detail-gallery > .detail-gallery-tile:has( > .detail-gallery-open:hover ) > img { filter: var( --hover-dim ); }
 
-.detail-gallery-open:focus-visible {
-	outline: 3px solid var( --color-gold );
+.detail-gallery > .detail-gallery-tile > .detail-gallery-open:focus-visible {
+	outline: 3px solid var( --border-focus );
 	outline-offset: -3px;
 }
 
-.detail-gallery-all {
+.detail-gallery > .detail-gallery-all {
 	position: absolute;
 	right: var( --space-4 );
 	bottom: var( --space-4 );
+	z-index: 2;
 	display: inline-flex;
 	align-items: center;
 	gap: var( --space-2 );
+	max-width: calc( 100% - 2 * var( --space-4 ) );
+	min-height: 2.75rem;
 	padding: var( --btn-pad-y-sm ) var( --btn-pad-x-sm );
 	border: 1px solid var( --border-strong );
 	border-radius: var( --radius-sm );
@@ -2543,49 +2680,76 @@ img, video { max-width: 100%; height: auto; }
 	font: inherit;
 	font-size: var( --text-sm );
 	font-weight: var( --weight-semibold );
+	line-height: var( --leading-snug );
+	text-align: left;
 	box-shadow: var( --shadow-sm );
 	cursor: pointer;
 }
 
-.detail-gallery-all:hover { background: var( --bg-surface-tint ); }
-.detail-gallery-all:focus-visible { outline: 2px solid var( --border-focus ); outline-offset: 2px; }
+.detail-gallery > .detail-gallery-all:hover { background: var( --bg-surface-tint ); }
+.detail-gallery > .detail-gallery-all:focus-visible { outline: 2px solid var( --border-focus ); outline-offset: 2px; }
+.detail-gallery > .detail-gallery-all[hidden],
+.detail-gallery > .detail-gallery-tile > .detail-gallery-open[hidden] { display: none; }
 
-/* The viewer: every photo, in order, over the page. */
+/* The viewer keeps one uncropped photo in focus and names its place. */
 .gallery-dialog {
-	width: min( 64rem, 100vw );
-	max-width: 100vw;
-	height: 100dvh;
-	max-height: 100dvh;
-	margin: 0 auto;
+	box-sizing: border-box;
+	width: min( var( --container ), calc( 100vw - 2 * var( --space-7 ) ) );
+	max-width: none;
+	height: calc( 100dvh - 2 * var( --space-7 ) );
+	max-height: none;
+	margin: auto;
 	padding: 0;
-	border: 0;
-	background: var( --bg-surface );
-	color: var( --text-default );
+	overflow: hidden;
+	border: 1px solid var( --color-border-on-dark );
+	border-radius: var( --radius-md );
+	background: var( --color-navy-deep );
+	color: var( --text-inverse );
 }
+
+.gallery-dialog[open] {
+	display: flex;
+	flex-direction: column;
+}
+
+html.tdh-gallery-is-open { overflow: hidden; }
 
 .gallery-dialog::backdrop { background: color-mix( in srgb, var( --color-navy ) 88%, transparent ); }
 
-.gallery-dialog-head {
-	position: sticky;
-	top: 0;
+.gallery-dialog > .gallery-dialog-head {
+	position: relative;
 	z-index: 1;
+	flex: none;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: var( --space-4 );
 	padding: var( --space-4 ) var( --space-5 );
-	border-bottom: 1px solid var( --border-soft );
-	background: var( --bg-surface );
+	border-bottom: 1px solid var( --color-border-on-dark );
+	background: var( --color-navy );
 }
 
-.gallery-dialog-head > h2 {
+.gallery-dialog > .gallery-dialog-head > .gallery-dialog-copy {
+	min-width: 0;
+}
+
+.gallery-dialog > .gallery-dialog-head > .gallery-dialog-copy > h2 {
 	margin: 0;
 	font-family: var( --font-body );
 	font-size: var( --text-base );
 	font-weight: var( --weight-semibold );
+	color: var( --text-inverse );
+	overflow-wrap: anywhere;
 }
 
-.gallery-dialog-close {
+.gallery-dialog > .gallery-dialog-head > .gallery-dialog-copy > .gallery-dialog-position {
+	margin: var( --space-1 ) 0 0;
+	font-size: var( --text-sm );
+	color: var( --color-on-dark-muted );
+}
+
+.gallery-dialog > .gallery-dialog-head > .gallery-dialog-close,
+.gallery-dialog > .gallery-dialog-stage > .gallery-dialog-nav {
 	flex: none;
 	display: inline-flex;
 	align-items: center;
@@ -2600,34 +2764,134 @@ img, video { max-width: 100%; height: auto; }
 	cursor: pointer;
 }
 
-.gallery-dialog-close:hover { background: var( --bg-surface-tint ); }
-.gallery-dialog-close:focus-visible { outline: 2px solid var( --border-focus ); outline-offset: 2px; }
+.gallery-dialog > .gallery-dialog-head > .gallery-dialog-close:hover,
+.gallery-dialog > .gallery-dialog-stage > .gallery-dialog-nav:hover:not( :disabled ) { background: var( --bg-surface-tint ); }
 
-.gallery-dialog-list {
-	display: flex;
-	flex-direction: column;
-	gap: var( --space-5 );
-	margin: 0;
+.gallery-dialog > .gallery-dialog-head > .gallery-dialog-close:focus-visible,
+.gallery-dialog > .gallery-dialog-stage > .gallery-dialog-nav:focus-visible {
+	outline: 3px solid var( --border-focus );
+	outline-offset: 2px;
+}
+
+.gallery-dialog > .gallery-dialog-stage > .gallery-dialog-nav:disabled {
+	opacity: var( --disabled-opacity );
+	cursor: not-allowed;
+}
+
+.gallery-dialog > .gallery-dialog-stage {
+	flex: 1 1 auto;
+	display: grid;
+	grid-template-columns: 2.75rem minmax( 0, 1fr ) 2.75rem;
+	align-items: center;
+	gap: var( --space-4 );
+	min-height: 0;
 	padding: var( --space-5 );
+	background: var( --color-navy-deep );
+}
+
+.gallery-dialog > .gallery-dialog-stage > .gallery-dialog-list {
+	align-self: stretch;
+	min-width: 0;
+	min-height: 0;
+	margin: 0;
+	padding: 0;
 	list-style: none;
 }
 
-/* Opened at a photo, that photo clears the sticky head instead of sliding under it. */
-.gallery-dialog-list > li { scroll-margin-top: calc( 2.75rem + 2 * var( --space-4 ) + var( --space-5 ) ); }
+.gallery-dialog > .gallery-dialog-stage > .gallery-dialog-list > li {
+	height: 100%;
+	min-height: 0;
+}
 
-.gallery-dialog-list > li > figure { margin: 0; }
+.gallery-dialog > .gallery-dialog-stage > .gallery-dialog-list > li[hidden] { display: none; }
 
-.gallery-dialog-list > li > figure > img {
+.gallery-dialog > .gallery-dialog-stage > .gallery-dialog-list > li > figure {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+	min-height: 0;
+	margin: 0;
+}
+
+.gallery-dialog > .gallery-dialog-stage > .gallery-dialog-list > li > figure > img {
+	flex: 0 1 auto;
 	display: block;
-	width: 100%;
+	width: auto;
+	max-width: 100%;
 	height: auto;
+	max-height: 100%;
+	min-height: 0;
+	object-fit: contain;
 	border-radius: var( --radius-sm );
 }
 
-.gallery-dialog-list > li > figure > figcaption {
-	margin-top: var( --space-2 );
+.gallery-dialog > .gallery-dialog-stage > .gallery-dialog-list > li > figure:has( > figcaption ) > img {
+	max-height: calc( 100% - var( --space-12 ) - var( --space-3 ) );
+}
+
+.gallery-dialog > .gallery-dialog-stage > .gallery-dialog-list > li > figure > .gallery-dialog-unavailable {
+	max-width: var( --measure );
+	margin: 0;
+	padding: var( --space-5 );
+	font-size: var( --text-base );
+	text-align: center;
+	color: var( --color-on-dark-muted );
+}
+
+.gallery-dialog > .gallery-dialog-stage > .gallery-dialog-list > li > figure > figcaption {
+	flex: none;
+	align-self: stretch;
+	max-height: var( --space-12 );
+	margin-top: var( --space-3 );
+	overflow: auto;
 	font-size: var( --text-sm );
-	color: var( --text-muted );
+	color: var( --color-on-dark-muted );
+}
+
+@media ( max-width: 62rem ) and ( min-width: 43.8125rem ) {
+	.detail-gallery { height: var( --gallery-height-md ); }
+	.detail-gallery[data-count="2"] { grid-template: 1fr / 3fr 2fr; }
+	.detail-gallery[data-count="3"],
+	.detail-gallery[data-count="4"],
+	.detail-gallery[data-count="5"] { grid-template: repeat( 2, 1fr ) / 3fr 2fr; }
+	.detail-gallery[data-count="4"] > .detail-gallery-tile:nth-child( 2 ) { grid-column: auto; }
+	.detail-gallery > .detail-gallery-tile:nth-child( n + 4 ) { display: none; }
+}
+
+@media ( max-width: 43.75rem ) {
+	.gallery-dialog {
+		width: 100vw;
+		height: 100dvh;
+		border: 0;
+		border-radius: 0;
+	}
+
+	.gallery-dialog > .gallery-dialog-head { padding: var( --space-3 ) var( --space-4 ); }
+
+	.gallery-dialog > .gallery-dialog-stage {
+		grid-template: minmax( 0, 1fr ) 2.75rem / 1fr 1fr;
+		gap: var( --space-3 );
+		padding: var( --space-3 );
+	}
+
+	.gallery-dialog > .gallery-dialog-stage > .gallery-dialog-list {
+		grid-column: 1 / -1;
+		grid-row: 1;
+	}
+
+	.gallery-dialog > .gallery-dialog-stage > .gallery-dialog-nav--previous {
+		grid-column: 1;
+		grid-row: 2;
+		justify-self: end;
+	}
+
+	.gallery-dialog > .gallery-dialog-stage > .gallery-dialog-nav--next {
+		grid-column: 2;
+		grid-row: 2;
+		justify-self: start;
+	}
 }
 
 .detail-grid {
@@ -5371,11 +5635,15 @@ html.tdh-inquire-in-view .price-box > .ask-owner { visibility: hidden; }
 	.audience-grid article > p:not( .overline ) { display: none; }
 
 	/* A phone shows the cover alone; "Show all photos" opens the rest. */
-	.detail-gallery { height: var( --split-photo-height-sm ); }
+	.detail-gallery { height: auto; aspect-ratio: var( --gallery-aspect-phone ); }
 	.detail-gallery[data-count] { grid-template-columns: 1fr; grid-template-rows: 1fr; }
 	.detail-gallery > .detail-gallery-tile:not( :first-child ) { display: none; }
-	.detail-gallery > .detail-gallery-tile:first-child { grid-row: auto; }
-	.detail-gallery-all { right: var( --space-3 ); bottom: var( --space-3 ); }
+	.detail-gallery > .detail-gallery-tile:first-child { grid-row: auto; grid-column: auto; }
+	.detail-gallery > .detail-gallery-all {
+		right: var( --space-3 );
+		bottom: var( --space-3 );
+		max-width: calc( 100% - 2 * var( --space-3 ) );
+	}
 
 	/* 64px of vertical padding is a lot of dead space on a phone. */
 	.owner-cta { padding: var( --space-9 ) var( --band-gutter-sm ); }
@@ -10108,11 +10376,94 @@ body.tdh-portal-page .site-footer { display: none; }
 	outline-offset: 2px;
 }
 
-.portal--admin .portal-metric > span > .portal-metric-go {
-	margin-top: var( --space-1 );
-	color: var( --text-accent );
+/* The waiting tile: two lines like its neighbours and a button on the right
+   (reviewer, 5 Oct 2026). It had a third line, "3 homes waiting · Review
+   now", which said the number twice and made this one tile look different.
+
+   A grid, so one piece of markup serves every width. The tile is the
+   CONTAINER, so the button follows the tile's own width, not the screen's:
+   beside both lines when the tile is wide, beside the number when it is
+   not, and down to its arrow when even that is tight. The label is never
+   squeezed onto two lines by the button. */
+.portal--admin .portal-metrics > a.portal-metric--action {
+	position: relative;
+	display: grid;
+	grid-template-columns: var( --icon-well ) minmax( 0, 1fr ) auto;
+	column-gap: var( --space-3 );
+	/* No space between the label and the figure, as in the tiles beside it;
+	   the tile's 12px gap would otherwise apply between the two rows. */
+	row-gap: 0;
+	/* Rows hug their content and the block sits in the middle, as the
+	   neighbours' text does; stretched rows pulled the two lines apart. */
+	align-content: center;
+	container-type: inline-size;
+}
+
+/* The icon is centred in its own column without taking part in the rows:
+   as a grid item spanning both, its height spread the label and the figure
+   apart, so the lines no longer matched the tiles beside it. */
+.portal--admin .portal-metric--action > i {
+	position: absolute;
+	left: var( --space-5 );
+	top: 50%;
+	transform: translateY( -50% );
+}
+
+/* The label and the figure become cells of the tile's own grid. */
+.portal--admin .portal-metric--action > span { display: contents; }
+.portal--admin .portal-metric--action > span > small { grid-column: 2 / span 2; grid-row: 1; }
+.portal--admin .portal-metric--action > span > b { grid-column: 2; grid-row: 2; }
+
+.portal--admin .portal-metric--action > .portal-metric-go {
+	grid-column: 3;
+	grid-row: 2;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: var( --space-2 );
+	/* The whole tile is the link and the tap target; this is its label, so
+	   it can stay compact beside a figure without stretching the tile. */
+	min-height: 2rem;
+	padding: 0 var( --space-4 );
+	border-radius: var( --radius-pill );
+	background: var( --color-warning );
+	color: var( --text-inverse );
 	font-size: var( --text-sm );
 	font-weight: var( --weight-semibold );
+	white-space: nowrap;
+}
+
+.portal--admin .portal-metric--action > .portal-metric-go > .tdh-icon { flex: none; }
+
+/* Wide tile: the button sits beside both lines, centred, and the tile is
+   exactly as tall as the three next to it. */
+@container ( min-width: 19.5rem ) {
+	.portal--admin .portal-metric--action > span > small { grid-column: 2; white-space: nowrap; }
+	.portal--admin .portal-metric--action > .portal-metric-go { grid-row: 1 / span 2; align-self: center; }
+}
+
+/* Tight tile: the arrow alone, round. The words stay for screen readers. */
+@container ( max-width: 13.5rem ) {
+	.portal--admin .portal-metric--action > .portal-metric-go { width: 2rem; padding: 0; }
+
+	.portal--admin .portal-metric--action > .portal-metric-go > span {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip-path: inset( 50% );
+		white-space: nowrap;
+	}
+}
+
+/* Phone: icon, label, then the figure with the arrow beside it — the same
+   stack as the tiles next to it. */
+@media ( max-width: 43.75rem ) {
+	.portal--admin .portal-metrics > a.portal-metric--action { align-content: start; }
+	.portal--admin .portal-metric--action > i { position: static; transform: none; grid-column: 1 / -1; grid-row: 1; margin-bottom: var( --space-3 ); }
+	.portal--admin .portal-metric--action > span > small { grid-column: 1 / -1; grid-row: 2; }
+	.portal--admin .portal-metric--action > span > b { grid-column: 1 / span 2; grid-row: 3; }
+	.portal--admin .portal-metric--action > .portal-metric-go { grid-column: 3; grid-row: 3; }
 }
 
 .portal--admin .portal-metric--action.is-waiting {
@@ -10121,7 +10472,8 @@ body.tdh-portal-page .site-footer { display: none; }
 }
 
 .portal--admin .portal-metric--action.is-waiting > i { background: var( --color-warning ); color: var( --text-inverse ); }
-.portal--admin .portal-metric--action.is-waiting > span > .portal-metric-go { color: var( --color-warning ); }
+
+.portal--admin .portal-metrics > a.portal-metric--action:hover > .portal-metric-go { background: var( --color-navy ); }
 
 /* The health figures in the sans face, like the tiles (G4a did the
    landlord's; the team's kept the serif at a 0.6 line height). */
@@ -10645,3 +10997,179 @@ body.tdh-portal-page .site-footer { display: none; }
 @media ( prefers-reduced-motion: reduce ) {
 	.listing-pagination > .nav-links > .page-numbers { transition: none; }
 }
+
+/* ==========================================================================
+   PHONE FIXES — team lead's mobile review (4 Oct 2026)
+   ========================================================================== */
+
+/* The administrator portal gets the same bottom tab bar as the landlord's:
+   six sections instead of five. */
+@media ( max-width: 48rem ) {
+	.portal--admin > .portal-main > .portal-tabs { grid-template-columns: repeat( 6, 1fr ); }
+}
+
+/* A home's page, stacked: the price and fees come BEFORE the inquiry form,
+   not after it. A renter weighs the deposit and fees before asking, and
+   below the form the box read like a footnote. The main column's sections
+   join the grid so the side column can sit between them. */
+@media ( max-width: 950px ) {
+	.detail-grid { row-gap: 0; }
+	.detail-grid > div:first-child { display: contents; }
+	.detail-grid > div:first-child > * { order: 1; min-width: 0; }
+	.detail-grid > .listing-side { order: 2; margin-block: var( --space-7 ); }
+	.detail-grid > div:first-child > #inquire { order: 3; }
+}
+
+/* The facility form's "Active in renter search" box was the browser's
+   13px default: as large as the site's other checkboxes now, in its colour,
+   and the whole label is the tap target. */
+.portal-check { min-height: 2.75rem; cursor: pointer; }
+.portal-check > input[type="checkbox"] {
+	flex: none;
+	width: 1.25rem;
+	height: 1.25rem;
+	margin: 0;
+	accent-color: var( --color-gold-deep );
+}
+
+/* ==========================================================================
+   ADDRESS SUGGESTIONS — places.js (team review, 4 Oct 2026)
+   The list drops under the address box; picked with mouse, touch or keys.
+   ========================================================================== */
+
+.lform-field:has( > [data-tdh-places] ),
+.form-field:has( > [data-tdh-places] ) { position: relative; }
+
+.lform-field > .places-pop,
+.form-field > .places-pop {
+	position: absolute;
+	inset-inline: 0;
+	z-index: 40;
+	margin-top: var( --space-1 );
+	border: 1px solid var( --border-default );
+	border-radius: var( --radius-md );
+	background: var( --color-white );
+	box-shadow: var( --shadow-lg );
+	overflow: hidden;
+}
+
+.places-pop > .places-list {
+	margin: 0;
+	padding: var( --space-1 ) 0;
+	list-style: none;
+	/* Room for all five suggestions: a cut-off fifth read as a broken list. */
+	max-height: 22rem;
+	overflow-y: auto;
+}
+
+.places-pop > .places-list > li {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-height: 2.75rem;
+	justify-content: center;
+	padding: var( --space-2 ) var( --space-4 );
+	cursor: pointer;
+}
+
+.places-pop > .places-list > li > b {
+	color: var( --text-default );
+	font-size: var( --text-base );
+	font-weight: var( --weight-semibold );
+}
+
+.places-pop > .places-list > li > span {
+	color: var( --text-muted );
+	font-size: var( --text-sm );
+}
+
+.places-pop > .places-list > li:hover,
+.places-pop > .places-list > li.is-active { background: var( --color-sand ); }
+
+.places-pop > .places-credit {
+	margin: 0;
+	padding: var( --space-1 ) var( --space-4 ) var( --space-2 );
+	border-top: 1px solid var( --border-soft );
+	color: var( --text-subtle );
+	font-size: var( --text-xs );
+	text-align: right;
+}
+
+.lform-field > .places-note,
+.form-field > .places-note {
+	margin: var( --space-1 ) 0 0;
+	font-size: var( --text-sm );
+	color: var( --text-muted );
+}
+
+.lform-field > .places-note.is-ok,
+.form-field > .places-note.is-ok { color: var( --color-success ); font-weight: var( --weight-semibold ); }
+
+.lform-field > .places-note.is-warn,
+.form-field > .places-note.is-warn { color: var( --color-warning ); font-weight: var( --weight-semibold ); }
+
+/* Results refreshing in place (results.js): the old ones dim while the new
+   ones load, so the wait is visible and nothing jumps. */
+.page-shell.is-refreshing > .property-grid,
+.page-shell.is-refreshing > .result-top,
+.page-shell.is-refreshing > .empty {
+	opacity: 0.45;
+	pointer-events: none;
+	transition: opacity var( --duration-fast ) var( --ease );
+}
+
+@media ( prefers-reduced-motion: reduce ) {
+	.page-shell.is-refreshing > .property-grid,
+	.page-shell.is-refreshing > .result-top,
+	.page-shell.is-refreshing > .empty { transition: none; }
+}
+
+/* The photo picker keeps every choice (team review, 4 Oct 2026): each
+   chosen photo has a round × to take it out before uploading, and a line
+   under the photos says what was refused or taken out. */
+.lform-preview-item { position: relative; }
+
+.lform-preview-item > .lform-preview-remove {
+	position: absolute;
+	top: calc( -1 * var( --space-2 ) );
+	right: calc( -1 * var( --space-2 ) );
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.25rem;
+	height: 2.25rem;
+	padding: 0;
+	border: 2px solid var( --color-white );
+	border-radius: var( --radius-full );
+	background: var( --color-navy );
+	color: var( --color-white );
+	font-size: var( --text-lg );
+	line-height: 1;
+	cursor: pointer;
+	box-shadow: var( --shadow-sm, 0 1px 3px rgba( 12, 25, 43, 0.25 ) );
+}
+
+.lform-preview-item > .lform-preview-remove:hover { background: var( --color-danger ); }
+.lform-preview-item > .lform-preview-remove:focus-visible { outline: 2px solid var( --border-focus ); outline-offset: 2px; }
+
+.lform-preview > .lform-preview-note:empty { display: none; }
+.lform-preview > .lform-preview-note {
+	margin: var( --space-3 ) 0 0;
+	color: var( --color-warning );
+	font-size: var( --text-sm );
+	font-weight: var( --weight-semibold );
+}
+
+/* The listing form inside the dashboard frame (R61): as wide as the other
+   portal screens and aligned with them, not a narrow column floating in
+   the middle with empty space on both sides. */
+.portal-body > .lform {
+	max-width: 64rem;
+	margin-inline: 0;
+	padding: 0 0 var( --space-10 );
+}
+
+/* The bot check (Turnstile) above a public form's button: its own space,
+   never touching the button, and full width so it never overflows a phone. */
+.tdh-bot-check { margin: var( --space-3 ) 0 var( --space-4 ); min-height: 4.0625rem; }
+.tdh-bot-check-note { margin: var( --space-2 ) 0; color: var( --color-warning ); font-size: var( --text-sm ); }

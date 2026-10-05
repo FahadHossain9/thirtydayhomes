@@ -655,14 +655,29 @@ and the Elementor widget.
    `Search::MAX_TERM` (100 characters), and the chips, the count and the
    empty heading wrap a long unbroken one instead of widening the page
    (23 Sep 2026).
+   On the `/homes/` archive only, H1 Version B replaces the photographic
+   banner below 43.75rem with the short **Find a home** orientation and
+   puts the full-width keyword, Filters / Show homes row, result count,
+   Sort by and List / Map directly above the first home; when that toolbar
+   wraps at 320px, its second row stays aligned with the result count. The first card
+   begins inside the opening viewport at both 390px and 320px. Desktop,
+   taxonomy archives, Elementor result blocks, GET URLs, Back/share and
+   successful in-place refreshes are unchanged. If a phone refresh fails,
+   the current homes and typed fields stay put, loading clears, and one
+   alert offers **Try again** for the same URL. Without JavaScript the real
+   GET filter fields stay expanded in the page, so every filter still works.
 4. Card (`template-parts/listing-card.php`; since G3a read in the order a
    renter decides: the rent largest with an availability **pill** beside
    it — "Available now" · "Available 6 Nov" · "No open dates right now" ·
    "Free for your dates", green / sand / grey and always in words — then
    the name, the place, the facts as icon + bold number + unit, the
    hospital band, and one **View home** link at the foot) → single page
-   (`single-tdh_listing.php`): photos in the landlord's order with a
-   "Show all photos" viewer, the facts as one line ("2 bedrooms · 1
+   (`single-tdh_listing.php`): valid photos stay in the landlord's order in
+   a 60/40 five-tile desktop mosaic, cover plus two tablet previews or one
+   phone cover. **Show all N photos** opens a focused viewer with **Photo X
+   of N**, captions, bounded Previous / Next, keyboard navigation and exact
+   focus return; one photo stays a plain cover without false controls. The
+   facts follow as one line ("2 bedrooms · 1
    bathroom · 1,050 sq ft · 5 rooms", singular when one), description,
    **Included** (amenities, utilities, parking, backyard — ticks) and
    **House rules** (pets, minimum stay — neutral marks, because "✓ No
@@ -1335,15 +1350,21 @@ wp-admin → Listings → Trash (WordPress restores it as a draft).
   ≤ 2000 px, re-encoded (JPEG/WebP 82, PNG 6). Re-encoding drops all
   metadata, including **GPS, which would publish the home's address**.
   HEIC/HEIF and > 40 MP are refused with a named message.
-- Property page: `template-parts/listing-gallery.php` shows the cover and
-  up to four more (phone: cover only), "Show all N photos" opens a native
-  `<dialog>` of every photo with its description (`assets/gallery.js`).
+- Property page: `template-parts/listing-gallery.php` rejects stale,
+  non-attachment, non-image and unrenderable IDs before it counts. It shows
+  a 60/40 cover + 2×2 desktop mosaic, cover + two previews on tablets and the
+  cover only on phones. **Show all N photos** opens a native `<dialog>` at
+  the chosen photo; one photo prints no dialog/count/navigation. The viewer
+  keeps every valid photo in landlord order, says **Photo X of N**, keeps its
+  caption with the photo, stops at both ends, supports arrows/Home/End/Escape
+  and returns focus to the exact opener (`assets/gallery.js`). Without the
+  script, up to five real previews remain and dead controls stay hidden.
 
 ### Staff: the marketplace portal (`/account/` when `is_staff()`)
 
 | `?view=` | Shows |
 |---|---|
-| (overview) | Tiles (active members, live, pending, recent inquiries), approval queue, membership health |
+| (overview) | Tiles (active members, live, pending, recent inquiries), approval queue, membership health. When work is waiting, the first tile says **Pending approval**, shows the count once, and has a separate **Review now** button; with zero waiting it has no button |
 | listings | Status filter; the maps-service notice (B1); "Waiting for approval" with **Approve** / **Request changes** (opens a required note under the row, `?request_changes=ID`); all listings, 20 a page (title opens the wizard). Rows needing a location show a chip + **Set location** (`?locate=ID`, form under the row) |
 | listing-setup | Vocabulary counts; management disabled ("Milestone 2") |
 | members | Add member; per-member edit (status, plan, quota, expiry), reset password, delete |
@@ -1568,6 +1589,7 @@ LiteSpeed serves cached pages without running PHP.
 | class-tdh-geocode-command.php | Geocode_Command | `wp tdh geocode` (B1) |
 | class-tdh-availability-render.php | Availability_Render | The availability editor (wizard step 2 and My listings) and the quick-edit panel (A5) |
 | class-tdh-contact.php | Contact | Contact form handler, storage, notification |
+| class-tdh-bot-check.php | Bot_Check | Cloudflare Turnstile on sign-in, sign-up, password reset, contact and inquiry (R62). Keys `TDH_TURNSTILE_SITE_KEY` / `TDH_TURNSTILE_SECRET` in wp-config only; off until both exist. `passes()` is what a form asks (a WP-CLI run is never challenged); `judge()` is the verdict on one token. Cloudflare unreachable lets the person through and logs it. Suite `verify-bot-check.php` |
 | class-tdh-render.php | Render | Every public section (hero, grid, audience, pricing, about, how it works, contact, search bar), plans |
 | class-tdh-shortcodes.php | Shortcodes | All shortcode registrations |
 | class-tdh-mail.php | Mail | From name/address, local mail capture |
@@ -1610,15 +1632,17 @@ Plugin `tools/`: `verify.bat` and `verify*.php` (tests), `import-demo.php`
 | header.php / footer.php | Site chrome; opens/closes `<main id="content">`; `has-js` class |
 | front-page.php | Page content if present, otherwise a coded fallback home |
 | page.php | Banner + content; full-layout and wide-body variants; on the three legal pages (seed keys `terms`, `privacy`, `fair-housing`) a **Last updated** line from the page's modified date, and the theme's `tdh-page-<seed>` classes give them a compact navy banner without the photograph (G3b) |
-| archive-tdh_listing.php | Search results |
+| archive-tdh_listing.php | Search results; H1 adds the concise `/homes/` phone orientation that replaces the archive's photographic banner only below 43.75rem |
 | single-tdh_listing.php | Property page (never the street address); fires `tdh_listing_preview_bar`; hides "About this home" when there is no description; photos via `listing-gallery`; since G3a the facts are one line, Included and House rules are two sections, the inquiry form is in the main column at `#inquire`, the side column pins with **Ask the owner**, and phones get a bottom bar (`.detail-bar`, printed only when the inquiry hook exists) |
-| template-parts/listing-gallery.php | Photo mosaic (cover + 4) and the "Show all photos" dialog; alt falls back to "{title} — photo n of N" |
+| template-parts/listing-gallery.php | H3 Version B gallery: validates IDs before the count; five-tile 60/40 desktop mosaic, tablet/phone reductions and every valid ordered photo in the native viewer; one photo stays plain; alt falls back to "{title} — photo n of N" |
 | template-parts/listing-availability.php | Property page availability: first move-in day, minimum stay, upcoming unavailable periods, legend, 12-month calendar (A5) |
 | 404.php | Designed not-found page, with home-specific wording under `/homes/` |
 | template-parts/listing-card.php | Listing card: rent + availability pill (`.card-head`), name, place, facts, hospital band, **View home** (G3a); fires `tdh_listing_card_proximity` inside `.property-body` |
 | template-parts/listing-results.php | The search results: one search form (`filter_bar( [ 'search' => … ] )`, or the plain `search_bar()` when the filters are switched off), Sort by and List / Map beside the count (`.result-tools`), chips, cards, pagination, the two empty states (the no-homes-at-all one offers **List your home**) — shared by the listing archive and the taxonomy archives (C1, G3a) |
 | taxonomy-tdh_city.php, taxonomy-tdh_property_type.php, taxonomy-tdh_neighborhood.php | A term's banner, then the shared results part; before C1 these fell through to `index.php` |
 | assets/filters.js | The filter panel as a drawer on phones (backdrop, Escape, focus trap, focus return, closes when the screen widens), the sort form's submit-on-change (its Sort button hidden), and the move-out `min` sync; the form works without it |
+| assets/results.js | Filters, sort, page numbers, filter labels and clear links refresh only the `[data-tdh-results]` block (R59): fetches the same URL, swaps the block, updates the address bar, re-runs `tdhFiltersInit` / `tdhSavedInit`, settles on the results below any pinned header. Map view and failures normally fall back to a page load; H1's phone `/homes/` keeps the old results and typed fields on failure, clears busy, shows one alert and retries the exact intended URL |
+| assets/places.js | Address suggestions from Google Places (New) (R58): the listing form's street box (`data-tdh-places="address"`, fills street, ZIP, state, city, neighbourhood; addresses only) and staff's Set location search (`"point"`, fills the coordinates). Settings from `Maps::places_settings()`; loaded only on the listing form and the staff portal. Plain text boxes without it |
 | index.php, elementor/tpl-full-width.php, elementor/tpl-canvas.php | Fallbacks and page templates |
 | inc/setup.php | Theme supports, menus (`primary`, `footer`), image sizes `tdh-card` 640×480, `tdh-gallery` 1300×760, `tdh-thumb` 160×120 |
 | inc/assets.php | Enqueues fonts, `tdh-tokens`, `tdh-theme`, `tdh-nav`, `tdh-saved`, and on the property page only `tdh-gallery`, `tdh-availability`, `tdh-inquiry` and `tdh-detail`; hero preload; favicon redirect |
@@ -1630,14 +1654,14 @@ Plugin `tools/`: `verify.bat` and `verify*.php` (tests), `import-demo.php`
 | inc/account.php | Portal page detection, hides header/footer/admin bar on portal pages; `tdh-page-<seed>` body classes (the header CTA is outlined on `tdh-page-login` / `-register`) |
 | inc/icons.php | Inline Lucide icons: `tdh_icon( name, size )` |
 | inc/listings.php | `tdh_listing_city()`, `tdh_listing_location()`, `tdh_listing_utilities()` |
-| assets/design-tokens.css | All colours, type, spacing, radii, shadows, motion. Since G2 (theme 0.51.0) the type scale has no step under 12px (`--text-3xs`/`--text-2xs` = 12, `--text-sm` = 14), text is two-tone (`--text-default` for headings and figures, `--text-body` #3e4956 for running text, `--text-muted` #5b6774 ≥ 5.4:1), gold text is `#7a6222` (5.8:1) and the three shadows are navy-tinted (Y 4/12/16, blur 16/48/56). The standard is `D:\fahad vi backup\MASTER-DESIGN-PROMPT.md` |
+| assets/design-tokens.css | All colours, type, spacing, radii, shadows, motion, plus H3's gallery height/tablet height/phone aspect tokens. Since G2 (theme 0.51.0) the type scale has no step under 12px (`--text-3xs`/`--text-2xs` = 12, `--text-sm` = 14), text is two-tone (`--text-default` for headings and figures, `--text-body` #3e4956 for running text, `--text-muted` #5b6774 ≥ 5.4:1), gold text is `#7a6222` (5.8:1) and the three shadows are navy-tinted (Y 4/12/16, blur 16/48/56). The standard is `D:\fahad vi backup\MASTER-DESIGN-PROMPT.md` |
 | assets/nav.js | Mobile nav drawer, portal sidebar, hero end-date `min` sync (the button is always enabled since G2) |
 | assets/saved.js | Saved-homes hearts (localStorage) |
-| assets/gallery.js | Opens the property page photo dialog at the clicked photo; focus returns on close |
+| assets/gallery.js | H3 focused photo viewer: opens at the chosen tile, updates Photo X of N and caption, bounded Previous / Next plus arrows/Home/End/Escape, traps focus, locks page scroll, handles image failure and returns focus to the exact opener |
 | assets/availability.js | Previous / Next month buttons for the property page calendar; reduced motion honoured (A5) |
 | assets/detail.js | Property page (G3a): hides the side column's **Ask the owner** and the phone bar while `#inquire` or the footer is on screen, and moves focus to the form's first field after the jump; without it the button is a plain link |
 | assets/auth.js | Sign in, Create account, Choose a new password and the landlord portal (G3b, G4a): reveals the **Show / Hide** control beside each password field (`aria-pressed`); holds the text-alerts **Send code** until a 10-digit number and the consent tick, with the reason beside it; closes the listing cards' **More** menus on phones; opens the marketplace portal's **Add member** / **Add facility** panel in place and puts the cursor in its first field (G5a, `data-tdh-add`). Without it: plain password fields, a pressable Send code the server checks, menus open in the row, the Add button opens the panel through `?add=1` |
-| style.css | The only stylesheet (~5,400 lines) |
+| style.css | The only stylesheet; H1's `/homes/` phone rules stay archive-scoped; H3 adds the token-based 60/40 gallery, tablet/phone reductions and navy focused viewer with scoped direct-child selectors |
 
 ### style.css map (search for the banner comments)
 
@@ -1792,13 +1816,13 @@ Run one: `D:\xampp\php\php.exe D:\xampp\wp-cli.phar eval-file wp-content/plugins
 | verify-contact.php | Contact form end to end | 92 |
 | verify-delivery.php | Mail and SMTP | 71 |
 | verify-notifications.php | Who the email goes to (contact address, the fall-back and what is logged, nobody to write to); one row per inquiry+channel; a send that works (the row, the recipient, the subject, the link, and that the renter's phone and message are NOT in it); reply-to with commas, angle brackets and no address; the failure ladder (failed, the reason, +10 min, +60 min, never stacked, given up at three, a fourth attempt refused, and a row already sent not sent twice); the sweep (not yet due, due, a second attempt waiting the full hour, terminal rows never swept); resend (the counter restarts, the address is re-read, no address refuses without spending an attempt); the button (a stale page, a landlord, a logged-out visitor, staff, double press, an id that does not exist); the words (singular "1 attempt", every state its own); the screen (the Delivery block, badges, the address, the reason, the form and its nonce, no Resend on a sent one, a landlord shown none of it, the list badging only trouble); copies (off by default, rubbish refused, the settings form and who may use it); the real capture file; the log lines; that the renter never waits for the mail server (the row is queued and the send booked, not made), the sweep collecting queued rows so cron being off delays an email rather than losing it, an sms row never reaching the email sweep or send(), a failed staff copy still logged, the staff list's second page and its total, the resend form's handler being well-formed markup with its label in a data attribute; and that the run leaves no enquiry, no row and no false alarm on the Email delivery screen | 167 |
-| verify-page-widgets.php | Elementor page widgets vs shortcodes | 44 |
+| verify-page-widgets.php | Elementor page widgets vs shortcodes; H1's phone-only archive opening, DOM order, 320px toolbar alignment and offline recovery contract | 100 |
 | verify-portal.php | Views, landlord portal, staff portal, moderation, the sign-in box takes a username | 85–86 (one check runs only when a pending listing exists) |
 | verify-listing-form.php | Wizard gate, every step, phone, Back saves, review mode, submit | 148 |
 | verify-privacy.php | Username enumeration closed | 9 |
 | verify-search.php | Keyword search; each filter alone, combined, nothing (never everything), prices swapped and said, negative and nonsense refused, a home with no price; sorting; the stay (which homes are free, the shared turnover day, open-ended, dates plus filters, a window no home can take) and every refused stay with its wording; chips and what removing one keeps, Clear all; the count and empty-state words; the filter bar markup (labels, kept values, count, drawer parts, the two date fields and their bounds, the hospital groups, the disabled radius); the hospital (order, radius, any distance, un-geocoded last, refused choices, the words, a hospital name typed as a keyword); the city archive gets the same filters and posts back to itself; a secondary query untouched | 178 |
 | verify-preview.php | Who may preview, the preview bar per role/status, 404 template | 24 |
-| verify-photos.php | Upload cleaning (size, EXIF gone), order, cover, alt text, removal, HEIC refusal, legacy cover, step 3 controls, gallery template | 36 |
+| verify-photos.php | Upload cleaning (size, EXIF gone), order, cover, alt text, removal, HEIC refusal, legacy cover and step 3 controls; H3 validates zero/invalid/mixed/one/ten renderable photos, exact order, five previews/all viewer slides, captions, labels, bounded initial control, progressive enhancement, keyboard script and hidden-control CSS | 42 |
 | verify-geocode.php | Reading Google's answer, pasted coordinates, lookup on save / not on an unchanged address, not found and imprecise, the landlord notice, approval held (server, queue button, preview bar), Set location (refused, expired, saved, not staff), typed points, service down and the pause, no key, 0,0, facilities (address only, override, clear, not found, in-page delete), REST privacy — with a fake provider | 71 |
 | verify-log.php | Writing (fields, UTC time, source, request id, level and feature fallbacks, long messages), what a row may never carry (secret-looking keys and values, emails, phones, logins, nested, objects, WP_Error), features and levels, filters and pages, counts and latest, purge and schedule, the line every hook produces (approve, pause, edit to review, refused and throttled sign-in, geocode outcomes, mail failed and captured, Stripe refused/duplicate/received, membership, settings), the staff screen (grouped tabs, rows, the line that opens its context, masked, Eastern Time, feature and group tabs, warnings first and ?level=all, errors only, empty state, unknown tab, the Section select, System status), landlord refused | 89 |
 | verify-admin.php | wp-admin for the administrator (G5b): the Listings table's columns, heads and sortables, every cell (status pills, landlord, rent, map point, updated, photo, the missing cases), no post-state suffix, who is sent to the portal, the Elementor notice, the Logs groups, words and zone | 28 |
@@ -2186,7 +2210,7 @@ snapshot (`tools/DEPLOY.md`).
 
 ---
 
-## 17. Current state (17 September 2026)
+## 17. Current state (5 October 2026)
 
 - **Milestone 1:** all code live. Client comments #1–#4, #8 done; #9
   answered; #5, #7, #10 are M2; #6 (email verification) proposed as M2,
@@ -2221,6 +2245,13 @@ snapshot (`tools/DEPLOY.md`).
   key; reviewer's localhost check passed 20 Sep 2026, **committed 20 Sep
   2026; waiting for push and live check**. Real lookups wait for Rob's
   Google Cloud access and a key in wp-config.
+- **H3 property gallery, 5–6 Oct:** the reviewer selected Version B. Theme
+  0.57.6 now has the 60/40 desktop mosaic, reduced tablet/phone entries and
+  focused viewer; `verify-photos.php` is 42/0, the 37/37 browser walk, 4/4
+  boundary-focus check and landlord draft preview passed, and the full
+  23-suite gate is green. The reviewer approved it on localhost and it was
+  included in the acceptance commit on 6 Oct; it awaits the user's push and
+  live check.
 - **From Rob, 18 Sep:** Twilio login (upgraded), Google Cloud login, the
   hospital list (11, incl. Greensburg and Washington → two new cities
   needed), 14 test addresses, a test phone, "hold off" on #15, and the

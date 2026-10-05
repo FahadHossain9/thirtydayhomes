@@ -29,6 +29,33 @@ final class Account_Render {
 	/** Matches the handler. Stated once so the two cannot drift. */
 	private const MIN_PASSWORD = Accounts::MIN_PASSWORD;
 
+	/**
+	 * Markup shown in the portal's body instead of a view — the listing
+	 * form, so adding or editing a home happens inside the dashboard with
+	 * its sidebar and tab bar (team review, 4 Oct 2026). Null otherwise.
+	 */
+	private static ?string $embed = null;
+
+	/**
+	 * Any markup inside the portal frame, with "Listings" marked current.
+	 * A visitor who is not signed in gets the markup as it is (the form's
+	 * own sign-in gate).
+	 */
+	public static function framed( string $html ): string {
+
+		if ( ! is_user_logged_in() ) {
+			return $html;
+		}
+
+		self::$embed = $html;
+
+		try {
+			return self::dashboard();
+		} finally {
+			self::$embed = null;
+		}
+	}
+
 	/* ---------------------------------------------------------------------
 	 * Shared parts
 	 * ------------------------------------------------------------------ */
@@ -398,6 +425,7 @@ final class Account_Render {
 					</label>
 				</div>
 
+				<?php echo \TDH\Bot_Check::field(); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped inside. ?>
 				<button class="primary full big" type="submit">
 					<?php esc_html_e( 'Create account', 'thirtydayhomes' ); ?>
 				</button>
@@ -491,6 +519,7 @@ final class Account_Render {
 					</label>
 				</div>
 
+				<?php echo \TDH\Bot_Check::field(); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped inside. ?>
 				<button class="primary full big" type="submit"><?php esc_html_e( 'Sign in', 'thirtydayhomes' ); ?></button>
 			</form>
 
@@ -548,6 +577,7 @@ final class Account_Render {
 					<input id="tdh-lost-email" name="tdh_email" type="email" autocomplete="email" required>
 				</div>
 
+				<?php echo \TDH\Bot_Check::field(); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped inside. ?>
 				<button class="primary full big" type="submit"><?php esc_html_e( 'Send reset link', 'thirtydayhomes' ); ?></button>
 			</form>
 
@@ -735,6 +765,10 @@ final class Account_Render {
 			$view = 'overview';
 		}
 
+		if ( null !== self::$embed ) {
+			$view = 'listings';
+		}
+
 		$live     = self::count_listings( $user_id, [ 'publish' ] );
 		$pending  = self::count_listings( $user_id, [ 'pending' ] );
 		$views    = Views::total_for_author( $user_id );
@@ -916,6 +950,10 @@ final class Account_Render {
 				</div>
 
 				<div class="portal-body">
+
+					<?php if ( null !== self::$embed ) : ?>
+						<?php echo self::$embed; // phpcs:ignore WordPress.Security.EscapeOutput -- built and escaped by its renderer. ?>
+					<?php else : ?>
 
 					<?php
 					$headings = [
@@ -1149,6 +1187,8 @@ final class Account_Render {
 					<?php elseif ( 'profile' === $view ) : ?>
 						<?php self::landlord_profile( $user ); ?>
 					<?php endif; ?>
+
+					<?php endif; // embed ?>
 
 				</div>
 			</div>
@@ -1489,6 +1529,10 @@ final class Account_Render {
 			$view = 'overview';
 		}
 
+		if ( null !== self::$embed ) {
+			$view = 'listings';
+		}
+
 		$icon = static fn( string $name, int $size = 19 ): string =>
 			function_exists( 'tdh_icon' ) ? tdh_icon( $name, $size ) : '';
 
@@ -1551,7 +1595,45 @@ final class Account_Render {
 
 			<div class="portal-main" id="overview">
 
+				<?php
+				/*
+				 * Phone navigation, as the landlord portal has: the sidebar
+				 * is hidden there, and without this bar a phone could reach
+				 * no screen but the one it opened on. Site content is left
+				 * out — it opens the WordPress editor, a desktop job.
+				 */
+				$tabs = [
+					'overview'      => [ 'layout-dashboard', __( 'Overview', 'thirtydayhomes' ) ],
+					'listings'      => [ 'building-2', __( 'Listings', 'thirtydayhomes' ) ],
+					'members'       => [ 'users', __( 'Members', 'thirtydayhomes' ) ],
+					'inquiries'     => [ 'mail', __( 'Inquiries', 'thirtydayhomes' ) ],
+					'facilities'    => [ 'stethoscope', __( 'Facilities', 'thirtydayhomes' ) ],
+					'listing-setup' => [ 'settings-2', __( 'Setup', 'thirtydayhomes' ) ],
+				];
+				?>
+				<nav class="portal-tabs" aria-label="<?php esc_attr_e( 'Administration sections', 'thirtydayhomes' ); ?>">
+					<?php foreach ( $tabs as $slug => [ $tab_icon, $tab_label ] ) : ?>
+						<a href="<?php echo esc_url( self::mk_url( $slug ) ); ?>"<?php echo $view === $slug ? ' aria-current="page"' : ''; ?>>
+							<?php echo $icon( $tab_icon, 20 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+							<span><?php echo esc_html( $tab_label ); ?></span>
+							<?php if ( 'listings' === $slug && $pending_total > 0 ) : ?>
+								<em class="portal-tabs-count"><?php echo esc_html( number_format_i18n( $pending_total ) ); ?><span class="screen-reader-text"> <?php esc_html_e( 'waiting for approval', 'thirtydayhomes' ); ?></span></em>
+							<?php endif; ?>
+						</a>
+					<?php endforeach; ?>
+				</nav>
+
 				<div class="portal-top">
+					<?php // The phone's brand: the sidebar that carries it is hidden there. ?>
+					<a class="portal-top-brand" href="<?php echo esc_url( home_url( '/' ) ); ?>" aria-label="<?php esc_attr_e( 'Public website', 'thirtydayhomes' ); ?>">
+						<?php
+						if ( function_exists( 'tdh_the_logo' ) ) {
+							tdh_the_logo();
+						} else {
+							echo '<b>' . esc_html( get_bloginfo( 'name' ) ) . '</b>';
+						}
+						?>
+					</a>
 					<div class="portal-top-context">
 						<button class="portal-menu-toggle" type="button" aria-controls="portal-sidebar" aria-expanded="true" aria-label="<?php esc_attr_e( 'Collapse dashboard sidebar', 'thirtydayhomes' ); ?>">
 							<span class="portal-toggle-collapse"><?php echo $icon( 'chevron-left', 18 ); // phpcs:ignore WordPress.Security.EscapeOutput ?></span>
@@ -1567,6 +1649,10 @@ final class Account_Render {
 
 				<div class="portal-body">
 
+					<?php if ( null !== self::$embed ) : ?>
+						<?php echo self::$embed; // phpcs:ignore WordPress.Security.EscapeOutput -- built and escaped by its renderer. ?>
+					<?php else : ?>
+
 					<?php self::notices( $notice ); ?>
 
 					<?php
@@ -1579,6 +1665,8 @@ final class Account_Render {
 						default      => self::mk_overview(),
 					};
 					?>
+
+					<?php endif; // embed ?>
 
 				</div>
 			</div>
@@ -1714,20 +1802,24 @@ final class Account_Render {
 					<i><?php echo self::mk_icon( $tile_icon ); // phpcs:ignore WordPress.Security.EscapeOutput ?></i>
 					<span>
 						<small><?php echo esc_html( $label ); ?></small>
-						<b><?php echo esc_html( number_format_i18n( (int) $value ) ); ?></b>
-						<?php if ( $is_action ) : ?>
-							<strong class="portal-metric-go">
-								<?php
-								if ( $value > 0 ) {
-									/* translators: %s: number of homes waiting for approval */
-									echo esc_html( sprintf( _n( '%s home waiting · Review now', '%s homes waiting · Review now', $value, 'thirtydayhomes' ), number_format_i18n( $value ) ) );
-								} else {
-									esc_html_e( 'Nothing waiting', 'thirtydayhomes' );
-								}
-								?>
-							</strong>
-						<?php endif; ?>
+						<b><?php echo esc_html( number_format_i18n( (int) $value ) ); ?><?php if ( $is_action ) : ?><span class="screen-reader-text"> <?php echo esc_html( _n( 'home waiting', 'homes waiting', (int) $value, 'thirtydayhomes' ) ); ?></span><?php endif; ?></b>
 					</span>
+					<?php
+					/*
+					 * Two lines like the other tiles, and a button on the right
+					 * (reviewer, 5 Oct 2026). It had a third line, "3 homes
+					 * waiting · Review now", which said the number twice and
+					 * made this one tile taller than its row. The words the
+					 * figure stands for are still read out; with nothing
+					 * waiting there is nothing to press, so no button.
+					 */
+					?>
+					<?php if ( $is_action && $value > 0 ) : ?>
+						<strong class="portal-metric-go">
+							<span><?php esc_html_e( 'Review now', 'thirtydayhomes' ); ?></span>
+							<?php echo self::mk_icon( 'arrow-right', 15 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+						</strong>
+					<?php endif; ?>
 				</a>
 			<?php endforeach; ?>
 		</div>
@@ -2158,6 +2250,20 @@ final class Account_Render {
 				<?php if ( '' !== $why ) : ?>
 					<p class="portal-locate-why"><?php echo esc_html( $why ); ?></p>
 				<?php endif; ?>
+
+				<?php
+				/*
+				 * Search Google instead of copying numbers out of Google Maps
+				 * (team review, 4 Oct 2026). Hidden until the address script
+				 * can actually answer; without it the coordinates box below
+				 * works exactly as before.
+				 */
+				?>
+				<div class="form-field" data-tdh-places-shell hidden>
+					<label for="<?php echo esc_attr( $field ); ?>-search"><?php esc_html_e( 'Search the address on Google', 'thirtydayhomes' ); ?></label>
+					<input id="<?php echo esc_attr( $field ); ?>-search" type="search" data-tdh-places="point" data-tdh-places-target="<?php echo esc_attr( $field ); ?>"
+						placeholder="<?php esc_attr_e( 'Start typing the street address', 'thirtydayhomes' ); ?>">
+				</div>
 
 				<div class="form-field">
 					<label for="<?php echo esc_attr( $field ); ?>">

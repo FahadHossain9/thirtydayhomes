@@ -106,6 +106,16 @@ function tdh_enqueue_assets(): void {
 			TDH_THEME_VERSION,
 			true
 		);
+
+		// Filters, sort and page numbers refresh the results in place
+		// instead of reloading the page (team review, 4 Oct 2026).
+		wp_enqueue_script(
+			'tdh-results',
+			get_template_directory_uri() . '/assets/results.js',
+			[ 'tdh-filters', 'tdh-saved' ],
+			TDH_THEME_VERSION,
+			true
+		);
 	}
 
 	// The photo viewer and the availability calendar exist only on a
@@ -159,6 +169,27 @@ function tdh_enqueue_assets(): void {
 			TDH_THEME_VERSION,
 			true
 		);
+	}
+
+	/*
+	 * Address suggestions (team review, 4 Oct 2026): the listing form, and
+	 * the staff portal where "Set location" lives. Not on the landlord's
+	 * own portal views or any public page — Google bills per session.
+	 */
+	$tdh_seed       = is_page() ? (string) get_post_meta( get_queried_object_id(), '_tdh_seed_key', true ) : '';
+	$tdh_wants_addr = class_exists( '\TDH\Maps' ) && method_exists( '\TDH\Maps', 'places_settings' )
+		&& (
+			'add-listing' === $tdh_seed
+			|| ( 'account' === $tdh_seed && class_exists( '\TDH\Accounts' ) && \TDH\Accounts::is_staff() )
+		);
+
+	if ( $tdh_wants_addr ) {
+		$tdh_places = \TDH\Maps::places_settings();
+
+		if ( $tdh_places ) {
+			wp_enqueue_script( 'tdh-places', get_template_directory_uri() . '/assets/places.js', [], TDH_THEME_VERSION, true );
+			wp_add_inline_script( 'tdh-places', 'window.tdhPlaces = ' . wp_json_encode( $tdh_places ) . ';', 'before' );
+		}
 	}
 
 	/*

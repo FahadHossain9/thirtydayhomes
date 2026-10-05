@@ -250,6 +250,9 @@
 
 	--split-photo-height:   35rem;     /* 560 */
 	--split-photo-height-sm:23.75rem;  /* 380 */
+	--gallery-height:       30rem;     /* 480 */
+	--gallery-height-md:    23.75rem;  /* 380 */
+	--gallery-aspect-phone: 4 / 3;
 	--card-image-height:    15rem;     /* 240 */
 	--card-min-height:      24.375rem; /* 390 */
 

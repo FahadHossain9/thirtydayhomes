@@ -28,7 +28,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * ─── WHY IT REUSES tdh_inquiry ─────────────────────────────────────────────
  *
- * A contact message and a renter's enquiry about a home are the same shape:
+ * A contact message and a renter's inquiry about a home are the same shape:
  * somebody outside the business wants a reply. The difference is only
  * whether a listing is attached, and the capability filter already handles
  * that — an inquiry with no listing has no owner to route to, so it falls
@@ -44,7 +44,7 @@ final class Contact {
 	private const ACTION = 'tdh_contact';
 	private const NONCE  = 'tdh_contact_send';
 
-	/** Marks which kind of enquiry a record is. */
+	/** Marks which kind of inquiry a record is. */
 	public const META_KIND    = '_tdh_inquiry_kind';
 	public const KIND_CONTACT = 'contact';
 
@@ -61,7 +61,7 @@ final class Contact {
 	 * So a stored message opened in wp-admin as a row of blank fields. The
 	 * entire reason this feature writes the message down before emailing it
 	 * is that the email may fail — and the place somebody goes to recover it
-	 * showed them nothing. Reusing the enquiry schema's own keys means the
+	 * showed them nothing. Reusing the inquiry schema's own keys means the
 	 * screen that already exists displays them, with no second meta box.
 	 */
 	public const META_NAME     = '_tdh_renter_name';
@@ -230,6 +230,12 @@ final class Contact {
 			'topic'   => $topic,
 			'message' => $message,
 		];
+
+		// "Is this a person?" (Turnstile; off until its keys are in wp-config).
+		// Asked last, so a mistyped field is fixed in the same round trip.
+		if ( ! $errors && ! Bot_Check::passes( 'contact' ) ) {
+			$errors[] = Bot_Check::message();
+		}
 
 		if ( $errors ) {
 			$this->remember( $typed_values, $errors );

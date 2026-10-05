@@ -352,6 +352,215 @@ ok( '...with the search box', str_contains( $on_archive, 'search-bar' ) );
 ok( '...with the filters', str_contains( $on_archive, 'data-tdh-filters' ) );
 ok( '...and with real homes, not a placeholder', str_contains( $on_archive, 'property-card' ) || str_contains( $on_archive, 'No homes are listed yet' ) );
 
+/*
+ * H1, selected Version B: a phone gets a short, archive-only orientation
+ * instead of the photographic banner. The results band's source order stays
+ * semantic rather than being rearranged visually: search first, then the
+ * count and its controls, then the homes. This is the order a keyboard and a
+ * screen reader meet as well as the order shown on screen.
+ */
+$archive_template = (string) file_get_contents( get_template_directory() . '/archive-tdh_listing.php' );
+$results_template = (string) file_get_contents( get_template_directory() . '/template-parts/listing-results.php' );
+$theme_css        = (string) file_get_contents( get_template_directory() . '/style.css' );
+$intro_at         = strpos( $archive_template, 'class="results-mobile-intro"' );
+$results_at       = strpos( $archive_template, "get_template_part( 'template-parts/listing-results'" );
+$phone_rule_at    = strpos( $theme_css, '.post-type-archive-tdh_listing.tdh-results .page-banner' );
+$phone_media_at   = false !== $phone_rule_at
+	? strrpos( substr( $theme_css, 0, $phone_rule_at ), '@media ( max-width: 43.75rem )' )
+	: false;
+$phone_css        = '';
+
+/* Read one balanced @media block, so a desktop rule elsewhere cannot pass. */
+if ( false !== $phone_media_at ) {
+	$opening = strpos( $theme_css, '{', $phone_media_at );
+	$depth   = 0;
+	$length  = strlen( $theme_css );
+
+	if ( false !== $opening ) {
+		for ( $i = $opening; $i < $length; ++$i ) {
+			if ( '{' === $theme_css[ $i ] ) {
+				++$depth;
+			} elseif ( '}' === $theme_css[ $i ] ) {
+				--$depth;
+				if ( 0 === $depth ) {
+					$phone_css = substr( $theme_css, $phone_media_at, $i - $phone_media_at + 1 );
+					break;
+				}
+			}
+		}
+	}
+}
+
+ok(
+	'H1: the homes archive has one concise phone orientation before its results',
+	false !== $intro_at
+		&& false !== $results_at
+		&& $intro_at < $results_at
+		&& 1 === substr_count( $archive_template, 'class="results-mobile-intro"' )
+		&& (bool) preg_match( '/<header class="results-mobile-intro">\s*<h1>.*?<\/h1>\s*<p>.*?<\/p>\s*<\/header>/s', $archive_template )
+);
+ok(
+	'...hidden by default and substituted for the banner only on the phone homes archive',
+	str_contains( $theme_css, '.results-mobile-intro { display: none; }' )
+		&& str_contains( $phone_css, '.post-type-archive-tdh_listing.tdh-results .page-banner { display: none; }' )
+		&& str_contains( $phone_css, '.post-type-archive-tdh_listing.tdh-results .results-mobile-intro {' )
+);
+
+/*
+ * Check the shared template itself, not one rendered fixture. A clean CI
+ * database can legitimately reach an empty result state after earlier suites;
+ * that changes which conditional branch renders, but never the source order a
+ * populated results screen gives to a renter or assistive technology.
+ */
+$form_at    = strpos( $results_template, 'filter_bar(' );
+$top_at     = strpos( $results_template, 'class="result-top"' );
+$summary_at = false !== $top_at ? strpos( $results_template, '<b>', $top_at ) : false;
+$sort_at    = false !== $top_at ? strpos( $results_template, 'sort_control()', $top_at ) : false;
+$view_at    = false !== $top_at ? strpos( $results_template, 'view_toggle()', $top_at ) : false;
+$homes_at   = false !== $top_at ? strpos( $results_template, 'class="property-grid', $top_at ) : false;
+
+ok(
+	'H1: search, summary, Sort by, List / Map and the homes keep a logical DOM order',
+	false !== $form_at
+		&& false !== $top_at
+		&& false !== $summary_at
+		&& false !== $sort_at
+		&& false !== $view_at
+		&& false !== $homes_at
+		&& $form_at < $top_at
+		&& $top_at < $summary_at
+		&& $summary_at < $sort_at
+		&& $sort_at < $view_at
+		&& $view_at < $homes_at
+);
+ok(
+	'...when the phone toolbar wraps, Sort by and List / Map start at the content edge',
+	(bool) preg_match(
+		'/\.post-type-archive-tdh_listing\.tdh-results \.result-top > \.result-tools\s*\{[^}]*margin-left:\s*0\s*;/s',
+		$phone_css
+	)
+);
+
+/*
+ * A phone fetch can fail after the renter has typed a place or opened a
+ * filtered result set. H1 keeps that work and the current homes in place,
+ * removes the loading state, and offers one retry for the exact address that
+ * failed. Other result surfaces retain the established full-page fallback.
+ */
+$results_js    = (string) file_get_contents( get_template_directory() . '/assets/results.js' );
+$read_js_function = static function ( string $source, string $declaration ): string {
+	$start   = strpos( $source, $declaration );
+	$opening = false !== $start ? strpos( $source, '{', $start ) : false;
+	$depth   = 0;
+	$length  = strlen( $source );
+
+	if ( false === $start || false === $opening ) {
+		return '';
+	}
+
+	for ( $i = $opening; $i < $length; ++$i ) {
+		if ( '{' === $source[ $i ] ) {
+			++$depth;
+		} elseif ( '}' === $source[ $i ] ) {
+			--$depth;
+			if ( 0 === $depth ) {
+				return substr( $source, $start, $i - $start + 1 );
+			}
+		}
+	}
+
+	return '';
+};
+
+$scope_block   = $read_js_function( $results_js, 'var keepsInlineFailure = function' );
+$clear_block   = $read_js_function( $results_js, 'var clearLoading = function' );
+$failure_block = $read_js_function( $results_js, 'var showFailure = function' );
+$retry_block   = $read_js_function( $failure_block, "retry.addEventListener( 'click', function" );
+$go_block      = $read_js_function( $results_js, 'var go = function' );
+$catch_at      = strpos( $go_block, '} ).catch( function ( error ) {' );
+$catch_end     = false !== $catch_at ? strpos( $go_block, '} ).then( function () {', $catch_at ) : false;
+$catch_block   = false !== $catch_at && false !== $catch_end ? substr( $go_block, $catch_at, $catch_end - $catch_at ) : '';
+
+ok(
+	'H1: inline refresh recovery is limited to the phone homes archive',
+	str_contains( $scope_block, "classList.contains( 'post-type-archive-tdh_listing' )" )
+		&& str_contains( $scope_block, "classList.contains( 'tdh-results' )" )
+		&& str_contains( $scope_block, "matchMedia( '(max-width: 43.75rem)' ).matches" )
+		&& ! str_contains( $scope_block, '||' )
+		&& str_contains( $catch_block, 'if ( inlineRecovery && keepsInlineFailure() )' )
+		&& str_contains( $catch_block, 'window.location.href = url.toString();' )
+);
+ok(
+	'...keeps the current fields and homes, clears busy, and shows one worded alert',
+	str_contains( $clear_block, "classList.remove( 'is-refreshing' )" )
+		&& str_contains( $clear_block, "removeAttribute( 'aria-busy' )" )
+		&& strpos( $failure_block, 'clearLoading( block )' ) < strpos( $failure_block, "block.querySelector( '.results-error' )" )
+		&& str_contains( $failure_block, "block.querySelector( '.results-error' )" )
+		&& str_contains( $failure_block, "setAttribute( 'role', 'alert' )" )
+		&& str_contains( $failure_block, 'your current results are still here' )
+		&& str_contains( $failure_block, "live.textContent = '';" )
+		&& ! preg_match( '/block\.(?:innerHTML|outerHTML|textContent|replaceWith|replaceChildren|removeChild)|form\.reset|\.value\s*=|history\.|window\.location/', $clear_block . $failure_block )
+		&& str_contains( $failure_block, "filters.insertAdjacentElement( 'afterend', notice )" )
+		&& str_contains( $failure_block, 'block.insertBefore( notice, block.firstChild )' )
+);
+ok(
+	'...Retry repeats the same intended URL and another failure cannot stack a notice',
+	str_contains( $failure_block, "notice.setAttribute( 'data-retry-url', url.toString() )" )
+		&& str_contains( $failure_block, "retry.textContent = 'Try again'" )
+		&& str_contains( $retry_block, "notice.getAttribute( 'data-retry-url' )" )
+		&& str_contains( $retry_block, "notice.getAttribute( 'data-retry-push' )" )
+		&& str_contains( $retry_block, 'go( retryUrl, retryPush )' )
+		&& str_contains( $failure_block, 'if ( ! notice )' )
+		&& strpos( $failure_block, "block.querySelector( '.results-error' )" ) < strpos( $failure_block, 'if ( ! notice )' )
+		&& strpos( $failure_block, 'if ( ! notice )' ) < strpos( $failure_block, "notice.setAttribute( 'role', 'alert' )" )
+		&& strpos( $failure_block, "notice.setAttribute( 'role', 'alert' )" ) < strpos( $failure_block, "notice.setAttribute( 'data-retry-url'" )
+		&& 1 === substr_count( $failure_block, "notice = document.createElement( 'div' )" )
+		&& 1 === substr_count( $failure_block, "setAttribute( 'role', 'alert' )" )
+);
+ok(
+	'...only the latest request may replace results or show the recovery',
+	str_contains( $results_js, 'var requestId = 0;' )
+		&& str_contains( $go_block, 'var request    = ++requestId;' )
+		&& 2 === substr_count( $go_block, 'if ( request !== requestId )' )
+		&& strpos( $go_block, 'if ( request !== requestId )' ) < strpos( $go_block, 'old.replaceWith(' )
+		&& strpos( $catch_block, 'if ( request !== requestId )' ) < strpos( $catch_block, 'showFailure( url, push )' )
+		&& str_contains( $go_block, 'if ( request === requestId && inFlight === controller )' )
+);
+ok(
+	'...a completed refresh is never mislabeled as a connection failure',
+	str_contains( $go_block, 'var committed  = false;' )
+		&& strpos( $go_block, 'committed = true;' ) > strpos( $go_block, 'old.replaceWith(' )
+		&& strpos( $catch_block, 'if ( committed )' ) > strpos( $catch_block, "'AbortError' === error.name" )
+		&& strpos( $catch_block, 'if ( committed )' ) < strpos( $catch_block, 'showFailure( url, push )' )
+);
+ok(
+	'...map, desktop fallback and the real GET controls keep their established behavior',
+	strpos( $go_block, 'isMap( url ) || isMap( new URL( window.location.href ) )' ) < strpos( $go_block, '++requestId' )
+		&& strpos( $go_block, 'isMap( url ) || isMap( new URL( window.location.href ) )' ) < strpos( $go_block, 'fetch( url.toString()' )
+		&& strpos( $catch_block, 'if ( request !== requestId )' ) < strpos( $catch_block, "'AbortError' === error.name" )
+		&& strpos( $catch_block, "'AbortError' === error.name" ) < strpos( $catch_block, 'if ( inlineRecovery && keepsInlineFailure() )' )
+		&& strpos( $catch_block, 'if ( inlineRecovery && keepsInlineFailure() )' ) < strpos( $catch_block, 'window.location.href = url.toString();' )
+		&& strpos( $results_js, 'if ( ! root || ! window.fetch' ) < strpos( $results_js, "document.addEventListener( 'submit'" )
+		&& str_contains( $results_js, "if ( go( url.toString(), true ) ) {\n\t\t\tevent.preventDefault();" )
+		&& str_contains( $results_js, "if ( go( link.href, true ) ) {\n\t\t\tevent.preventDefault();" )
+);
+ok(
+	'...the H1 loading state is visible and announced until success or failure',
+	str_contains( $go_block, 'var inlineRecovery = keepsInlineFailure();' )
+		&& strpos( $go_block, "block.classList.add( 'is-refreshing' )" ) < strpos( $go_block, 'fetch( url.toString()' )
+		&& strpos( $go_block, "block.setAttribute( 'aria-busy', 'true' )" ) < strpos( $go_block, 'fetch( url.toString()' )
+		&& str_contains( $go_block, "if ( inlineRecovery ) {\n\t\t\tlive.textContent = 'Updating homes.';" )
+		&& str_contains( $failure_block, "live.textContent = '';" )
+);
+ok(
+	'...the alert layout is token-based, direct-child scoped, and phone-only',
+	str_contains( $theme_css, '.post-type-archive-tdh_listing.tdh-results .page-shell[ data-tdh-results ] > .results-error { display: none; }' )
+		&& str_contains( $phone_css, '.post-type-archive-tdh_listing.tdh-results .page-shell[ data-tdh-results ] > .results-error {' )
+		&& str_contains( $phone_css, '.page-shell[ data-tdh-results ] > .results-error > p {' )
+		&& str_contains( $phone_css, '.page-shell[ data-tdh-results ] > .results-error > .results-retry {' )
+		&& str_contains( $phone_css, 'gap: var( --space-3 );' )
+);
+
 $headed = as_archive( static fn(): string => render_widget( 'tdh-search-results', [ 'heading' => 'Homes near the hospital' ] ) );
 ok( 'a heading typed in the editor appears on the page', str_contains( $headed, 'Homes near the hospital' ) );
 

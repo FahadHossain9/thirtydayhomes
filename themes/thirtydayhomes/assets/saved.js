@@ -44,9 +44,14 @@
 		button.classList.toggle( 'liked', isSaved );
 	}
 
-	document.addEventListener( 'DOMContentLoaded', function () {
+	/*
+	 * Wire every heart inside scope. Exposed as window.tdhSavedInit so the
+	 * results area can call it again after it refreshes in place
+	 * (results.js); a heart is only wired once.
+	 */
+	function wire( scope ) {
 
-		var buttons = document.querySelectorAll( '[data-tdh-save]' );
+		var buttons = ( scope || document ).querySelectorAll( '[data-tdh-save]:not([data-tdh-save-ready])' );
 
 		if ( ! buttons.length ) {
 			return;
@@ -58,6 +63,7 @@
 
 			var id = button.getAttribute( 'data-tdh-save' );
 
+			button.setAttribute( 'data-tdh-save-ready', '' );
 			button.hidden = false;
 			paint( button, saved.indexOf( id ) !== -1 );
 
@@ -79,5 +85,11 @@
 				paint( button, current.indexOf( id ) !== -1 );
 			} );
 		} );
+	}
+
+	window.tdhSavedInit = wire;
+
+	document.addEventListener( 'DOMContentLoaded', function () {
+		wire( document );
 	} );
 }() );

@@ -118,6 +118,8 @@ if ( $admin ) {
 	wp_set_current_user( $admin->ID );
 	ok( 'an administrator passes with no plan', '' === Listing_Form::gate_reason() );
 	ok( 'and gets the real form, not a gate card', str_contains( TDH\Listing_Form_Render::form(), 'tdh_action' ) );
+	$framed = do_shortcode( '[tdh_add_listing]' );
+	ok( 'the form sits inside the dashboard: sidebar, tab bar, Listings current', str_contains( $framed, 'class="portal-side"' ) && str_contains( $framed, 'class="portal-tabs"' ) && (bool) preg_match( '#class="is-current"[^>]*title="[^"]*listings"#si', $framed ) && str_contains( $framed, 'class="lform"' ) );
 }
 
 echo "\n=== step 1 creates a draft ===\n";
@@ -147,6 +149,7 @@ if ( $landlord ) {
 		'tdh_contact_email'   => 'owner-probe@example.com',
 		'tdh_contact_phone'   => '412-555-0184',
 		'tdh_contact_method'  => 'both',
+		'tdh_state'           => 'oh', // Picked from Google's suggestions.
 	];
 
 	$where   = run_wizard( $form );
@@ -173,6 +176,14 @@ if ( $landlord ) {
 	ok( 'the neighborhood term is assigned', $post && in_array( $hood, wp_get_object_terms( $created, 'tdh_neighborhood', [ 'fields' => 'ids' ] ), true ) );
 	ok( 'the city term is assigned', $post && in_array( $city, wp_get_object_terms( $created, 'tdh_city', [ 'fields' => 'ids' ] ), true ) );
 	ok( 'a fake term id assigns nothing', $post && [] === wp_get_object_terms( $created, 'tdh_property_type', [ 'fields' => 'ids' ] ) );
+	ok( 'address suggestions: a picked state is stored as two capitals', $post && 'OH' === get_post_meta( $created, '_tdh_state', true ) );
+	ok( '...and the lookup uses it, not PA', $post && str_ends_with( TDH\Geocoder::address( $created ), 'OH 15232' ) );
+	$_GET  = [ 'step' => '1', 'listing' => (string) $created ];
+	$step1 = TDH\Listing_Form_Render::form();
+	$_GET  = [];
+	ok( '...the street box asks Google for suggestions, with a state field beside it', str_contains( $step1, 'data-tdh-places="address"' ) && str_contains( $step1, 'name="tdh_state"' ) && str_contains( $step1, 'Start typing your address' ) );
+	$ps = TDH\Maps::places_settings();
+	ok( '...the browser is given a loader, the service area and every message, no server key', ! TDH\Maps::configured() || ( str_contains( (string) $ps['src'], 'callback=tdhPlacesReady' ) && isset( $ps['bounds']['south'], $ps['words']['found'], $ps['words']['noCity'] ) && ( ! defined( 'TDH_MAPS_SERVER_KEY' ) || ! str_contains( wp_json_encode( $ps ), (string) TDH_MAPS_SERVER_KEY ) ) ) );
 
 	// A city id from the wrong taxonomy must not invent a city term.
 	reset_request();
@@ -658,7 +669,7 @@ if ( $landlord && $created ) {
 	reset_request();
 	$_GET  = [ 'step' => '3', 'listing' => (string) $created ];
 	$three = TDH\Listing_Form_Render::form();
-	ok( 'the dropzone states the per-photo size limit', str_contains( $three, 'each' ) && str_contains( $three, (string) size_format( wp_max_upload_size() ) ) );
+	ok( 'the dropzone states the per-photo size limit', str_contains( $three, 'each' ) && str_contains( $three, (string) size_format( TDH\Listing_Form::max_photo_bytes() ) ) );
 	ok( 'and carries the selection-feedback script', str_contains( $three, 'data-one' ) && str_contains( $three, '</script>' ) );
 
 	/*
@@ -774,6 +785,9 @@ if ( $landlord && $created ) {
 	ok( 'G4b: the cover is named in words, not a fake button', str_contains( $three, 'Cover photo' ) && ! str_contains( $three, 'Shown first everywhere' ) );
 	ok( 'G4b: under five photos, a nudge (not a rule)', str_contains( $three, 'Add at least five photos' ) );
 	ok( 'G4b: the drop zone says how many more fit', str_contains( $three, 'Room for 9 more of 10' ) );
+	ok( 'photos: the limit is 20 MB a photo (never the 2 GB the server allowed)', TDH\Listing_Form::max_photo_bytes() <= 20 * MB_IN_BYTES && str_contains( $three, 'up to ' . size_format( TDH\Listing_Form::max_photo_bytes() ) . ' each' ) );
+	ok( '...the picker knows the limit and the room left, so it can keep adding', str_contains( $three, 'data-max="' . TDH\Listing_Form::max_photo_bytes() . '"' ) && str_contains( $three, 'data-room="9"' ) );
+	ok( '...and says choosing more adds, × takes out', str_contains( $three, 'Choose more to add them; press × to take one out.' ) && str_contains( $three, 'lform-preview-remove' ) );
 	ok( 'G4b: the description counts as it is typed', (bool) preg_match( '/id="lform-desc-limit" aria-live="polite"/', $three ) && str_contains( $three, ' of ' . number_format_i18n( Listing_Form::MAX_DESCRIPTION ) . ' characters' ) );
 	ok( 'G4b: a draft has no live-home lock message', ! str_contains( $three, 'lform-drop-locked' ) );
 

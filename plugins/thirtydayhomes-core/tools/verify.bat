@@ -126,6 +126,8 @@ if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
 if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
 "%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify-address-homes.php"
 if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
+"%TDH_PHP%" "%TDH_WPCLI%" eval-file "wp-content/plugins/thirtydayhomes-core/tools/verify-bot-check.php"
+if not "%ERRORLEVEL%"=="0" set "RESULT=%ERRORLEVEL%"
 
 popd
 

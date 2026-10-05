@@ -1431,8 +1431,9 @@ landlord or renter sees.
   cards go. The button opens the form panel (with `?add=1` when there is
   no script) and puts the cursor in the first field; the panel has Cancel
 - **Overview:** the pending tile is the action tile, first, tinted while
-  there is work ("2 homes waiting · Review now") and quiet when there is
-  none; every tile links to its filtered list; **Approve** and **Request
+  there is work; it says **Pending approval**, shows the count once and has
+  a separate **Review now** button (no button at zero); every tile links to
+  its filtered list; **Approve** and **Request
   changes** on the queue rows, as on Listings; the health figures in the
   sans face; "Past due" says "needs follow-up" when above zero
 - **Listings:** the queue's Approve is a green outlined button so the
@@ -1508,6 +1509,234 @@ Security — each already one form); the landlord's view of wp-admin
 **You check as** `instaquirk` at 1440 and 390.
 **Commit title.** `wp-admin: grouped Logs that lead with warnings, a Listings table with status, landlord, rent and map point`
 
+### Phase H — Team review design follow-ups
+
+#### H1 · The first phone screen shows the homes
+
+Source: team lead review, 4 Oct 2026; `MASTER-PROMPT.md` §4b. This first
+card is the mobile `/homes/` results screen only. It does not redesign the
+home page and does not change which homes search returns.
+
+**Versions before code.** Research at least ten strong USA / Canada rental
+marketplaces, then show two or three 390px visual versions with one-line
+rationales and a recommendation. Build only the version the reviewer picks.
+
+**Selected 5 Oct 2026.** The reviewer chose **B — Compact marketplace**:
+no decorative phone banner; a short orientation, full-width keyword,
+Filters / Show homes, then count, Sort by and List / Map before the first
+home. Desktop and taxonomy archive banners stay as they are.
+
+**Outcome.** At 390px and 320px, a renter reaches real listing content in
+the first viewport instead of spending it on the banner and controls. Keep
+one **Show homes** action; the keyword, Filters, result count, Sort by and
+List / Map stay available and in a clear order. Loading, matching,
+no-results, error and no-script states keep the same compact hierarchy;
+Back, sharing and successful in-place refreshes stay unchanged. A failed
+phone refresh keeps the current results and typed filters, explains what
+happened and offers **Try again** instead of leaving the branded page.
+
+**Pillar gate, walked 5 Oct 2026.** **A. Journey:** `/homes/` → compact
+orientation → keyword / Filters / Show homes → count / Sort / List–Map →
+first home; the count or empty state confirms the result, Back restores it,
+and the drawer traps focus, closes on Escape and returns focus. Loading is
+visible and announced; a failed phone refresh keeps the old results and
+typed filters, explains the failure in the page and offers **Try again**.
+There is no disabled or domain-pending state on this public GET screen.
+
+**B. Corner cases, item by item:** **empty** — the first-run state says no
+homes are listed and offers **List your home**; **one** — the result count is
+singular; **many** — cards and pagination continue normally; **zero results**
+— the exact constraint is named and all homes never appear as a fallback;
+**boundaries** — 0, 1 and many results plus 100 characters and limit + 1 are
+covered, with anything longer capped at 100; **null or missing data** — the
+existing card photo/location fallbacks remain in place and the H1 layout
+does not read record fields; **wrong type or wrong owner** — non-listings
+remain outside the public listing query and there is no owner action;
+**lapsed mid-task** — n/a, no session or membership is required; **partial
+success** — n/a, the screen writes nothing; **double submit** — a new GET
+aborts the older in-place request, so only the latest can replace the list;
+**Back and resubmit** — Back restores the earlier results and repeated GETs
+cannot duplicate data; **slow or offline** — `aria-busy` and dimming show the
+wait, then the inline alert preserves the current page and offers a retry;
+**graceful failure** — no white screen, raw error or lost filters.
+
+**C. Design:** tokens and archive-scoped child selectors only; worded
+controls, 48px search actions, visible focus, reduced motion inherited, no
+overflow at 320/390/768/1280; the inline error is worded and actionable;
+desktop and taxonomy banners stay unchanged. **Roles walked:** signed-out /
+Renter, New landlord, Active landlord, Failed payment and the local
+Administrator (marketplace staff) persona at 390; each receives the same
+public screen and no privileged action. A full WordPress administrator is
+n/a — H1 adds no capability or private control. **Tests:**
+`verify-page-widgets.php` 100/0;
+`verify-search.php` 264/0; full `verify.bat` green.
+
+**Not in this task:** making the whole card clickable (H2), the property
+gallery (H3), either map (H4), the site-wide empty-state pass (H5), or the
+sign-in / sign-up entry decision (H6).
+**You check as** Renter at 390 and 320, then keyboard-only at desktop.
+**Commit title.** `Find a home: put listings in the first phone screen`
+
+#### H2 · The whole listing card opens the home
+
+**Rejected 5 Oct 2026.** The reviewer did not like the built Version B (the View this home strip under the beige hospital band read as a heavy block) and asked for the previous card. The code was reverted to the live card (plain View home link); nothing of H2 shipped.
+
+Source: team lead review, 4 Oct 2026; R64. This task changes the public
+listing card only. It does not change which homes are found, card data, the
+property page, or how browser-only saved homes are stored.
+
+**Versions before code.** Ten current USA / Canada rental marketplaces were
+reviewed, then three ThirtyDayHomes versions were shown at 390px and desktop:
+A — Quiet marketplace; B — Clear action footer; C — Directional rail.
+
+**Selected 5 Oct 2026.** The reviewer continued with the recommended **B —
+Clear action footer**: the whole card opens the home, the calm **View this
+home** strip keeps that outcome visible, and Save remains an independent
+button.
+
+**Pillar plan.**
+
+1. **Journey.** Roles: logged-out visitor, new landlord, active landlord,
+   past-due landlord, staff and administrator all receive the same public
+   card; no role gains a private action. Steps: search or public listing band
+   → one card link → click/tap anywhere except Save, or focus the home name and
+   press Enter → property page → Back restores the results. Save toggles only
+   its pressed state and filled heart. Results already own empty, loading,
+   success and error; card states are unsaved / saved, with the button hidden
+   rather than disabled when the script cannot provide saving; pending is
+   n/a because opening and browser-only saving are immediate.
+2. **Corner cases.** **Empty** → no card is printed; the existing results
+   state answers instead. **One** → one card has one home link and one Save
+   button. **Many** → every card has the same two keyboard stops at most, with
+   grid and paging unchanged. **Zero results** → no fallback cards. **Limits**
+   → one semantic destination per card; long names and wrapped facts stay
+   inside it. **Null/missing data** → existing photo, location, fact and
+   proximity fallbacks remain. **Wrong type/owner** → only the public listing
+   query prints cards and there is no owner action. **Lapsed mid-task** → n/a,
+   no account or membership is required. **Partial success** → blocked local
+   storage can affect persistence only; the home link remains usable and no
+   account-sync claim appears. **Double submit** → Save is a toggle, not a
+   create action; opening follows one link once. **Back/resubmit** → Back keeps
+   the URL search and cannot duplicate anything. **Slow/offline** → opening is
+   a normal link with browser recovery; Save remains local. **Graceful
+   failure** → without CSS only the title link opens, without JavaScript the
+   unavailable Save control stays hidden, and the card never becomes dead.
+3. **Labels and UI.** Primary outcome: **View this home** in the selected
+   footer strip. The home title supplies the link's screen-reader name; the
+   card-wide hit area adds no duplicate link. Save keeps its per-home name and
+   `aria-pressed` state above the link layer. Hover and keyboard focus mark the
+   whole card; 2.25rem Save target, token colours/spacing/shadows, section-
+   scoped child selectors, and the existing reduced-motion rule. Nothing is
+   destructive.
+
+**Outcome, 5 Oct 2026.** Version B passed its local gate, but the reviewer
+rejected the heavy action strip and asked for the previous card. All H2 code
+was reverted; theme 0.57.5 remained the live/current version and nothing from
+H2 shipped.
+
+**Not in this task:** gallery H3, maps H4, empty states H5, sign-in / sign-up
+H6, server-side saved homes, or any change to the property page.
+**You check as** Renter at 320 / 390 / 768 / 1440, keyboard-only at desktop,
+then New landlord, Active landlord, Failed payment and Administrator on the
+same public results screen.
+**Commit title.** `Listing cards: one clear card-wide link with Save separate`
+
+#### H3 · Property gallery with clear photo navigation
+
+Source: team lead review, 4 Oct 2026; R65. This task improves only the
+property page's existing gallery and viewer. It keeps the landlord's cover
+and photo order, the ten-photo limit, descriptions/alt text, image privacy,
+and the rest of the property page unchanged.
+
+**Versions before code.** Airbnb, Zillow, Realtor.com, Apartments.com,
+Zumper, REALTOR.ca, Rentals.ca and Furnished Finder were reviewed for their
+current cover mosaics, worded photo totals, current/total position, focused
+viewer, captions and phone treatment. Three ThirtyDayHomes versions are
+shown at 390px and desktop. No production gallery code changes until the
+reviewer chooses one. Every version keeps all photos, explicit Previous /
+Next navigation, keyboard navigation, focus return, and a deliberate
+one-photo state.
+
+**Visual hand-over, 5 Oct 2026.** **A — Quiet cinematic cover:** one premium
+cover at entry, then a light focused viewer. **B — Balanced marketplace
+mosaic:** a regular 60/40 cover + 2×2 preview and a navy focused viewer.
+**C — Guided cover with filmstrip:** Previous / Next and thumbnails live on
+the property page. **Recommended: B** — it exposes several rooms on desktop,
+keeps the phone calm, and adds less main-page state than C. All three boards
+show the 390px treatment, navigation, count, and one-photo rule. The reviewer
+selected B below; production code remained untouched during the visual review.
+
+**Selected 5 Oct 2026.** The reviewer chose **B — Balanced marketplace
+mosaic**, which uses the regular 60/40 desktop preview and navy focused viewer;
+on phones it keeps the calm cover-only entry. Previous / Next stop at the ends,
+the current photo and total stay visible, and one photo prints no false
+viewer controls.
+
+**Pillar plan.**
+
+1. **Journey.** Roles: logged-out visitor, new landlord, active landlord,
+   past-due landlord, staff and administrator all receive the same public
+   gallery; preview permission remains where it is. Steps: results or preview
+   → property page → orient from cover and photo count → open the clicked
+   photo or **Show all N photos** → move Previous / Next or with the keyboard
+   while the current position is stated → close with Close, Escape or the
+   backdrop → focus returns to the exact opener and the page stays where it
+   was. Empty/loading/error remain page states; gallery states are one photo,
+   many photos, viewer open and viewer closed. Disabled applies to Previous at
+   the first photo and Next at the last; pending is n/a because viewing saves
+   nothing.
+2. **Corner cases.** **Empty** → no gallery is printed; H5 owns the future
+   missing-image design. **One** → one well-cropped cover, no false count,
+   arrows or Show-all action. **Many** → all photos remain reachable in the
+   landlord's order, up to the stated limit of ten. **Zero results** → n/a,
+   this is one property rather than search. **Boundaries** → 0 / 1 / 10 are
+   designed; no eleventh photo can enter from the form. **Null/missing data**
+   → a removed or non-image attachment is skipped before the count, and the
+   remaining photos are renumbered. **Wrong type/owner** → the gallery is
+   read-only and receives only that listing's attachment IDs; it exposes no
+   edit or owner action. **Lapsed mid-task** → a public home needs no session;
+   preview access remains enforced by the property page. **Partial success**
+   → one missing photo does not hide the others or break navigation.
+   **Double submit** → a rapid second Open or navigation press cannot open a
+   second viewer or skip twice while busy. **Back/resubmit** → viewing changes
+   no data and creates no duplicate history entry. **Slow/offline** → cover is
+   eager, later photos lazy, stable frames prevent layout shift, and controls
+   do not claim a photo loaded when it did not. **Graceful failure** → without
+   JavaScript the cover and up to four real photos remain visible, buttons
+   that cannot work stay hidden, and there is no dead overlay or raw error.
+3. **Labels and UI.** Primary action: **Show all N photos** with correct
+   singular handling; viewer says **N photos · Home name** and **Photo X of N**.
+   Icon buttons are named **Previous photo**, **Next photo** and **Close
+   photos**, at least 2.75rem, with visible focus. The selected version uses
+   design tokens, deliberate cropping, a stable desktop mosaic and a clean
+   phone composition; captions remain available. Motion is minimal and the
+   reduced-motion preference is honoured. Nothing is destructive.
+
+**Built and local gate, 5 Oct 2026.** Theme 0.57.6 implements Version B: a
+60/40 five-photo desktop mosaic, cover plus two previews at tablet width, a
+cover-only phone entry and a navy focused viewer. Valid photos are counted and
+kept in landlord order; zero, one and ten photos, stale/non-image attachments,
+captions and mixed shapes were checked. At 1440 / 768 / 390 / 320, each tile
+opens its own photo; Previous / Next stop at the ends, Left / Right / Home /
+End / Escape work, Close and backdrop restore the exact opener, captions stay
+synchronized, one photo has no false controls, and no-script keeps only real
+previews with dead controls hidden. Logged-out visitor, new landlord, active
+landlord, past-due landlord, review staff and real Administrator received the
+same public gallery; the real landlord draft preview showed the same 10-photo
+order and kept its permission banner. `verify-photos.php` 42/0; 37/37 public
+browser checks, 4/4 boundary-focus checks and the landlord preview check; full
+23-suite `verify.bat` green.
+
+**Accepted 6 Oct 2026.** The reviewer wrote **100% OK**. H3 is included in
+this acceptance commit and is waiting for the user's push and live check.
+
+**Not in this task:** uploading/reordering photos, the ten-photo or 20 MB
+decision, listing cards, maps H4, empty states H5, or sign-in / sign-up H6.
+**You check as** Renter at 320 / 390 / 768 / 1440, keyboard-only and no-script,
+then landlord preview, Failed payment, staff and Administrator on the same
+property gallery.
+**Commit title.** `Property gallery: clear photo navigation at every width`
+
 ---
 
 ## 6. Requests register — nothing gets lost
@@ -1580,6 +1809,18 @@ password, key or EIN is written there, by rule 11.
 | R52 | Live SMS said "Not set up" to Rob: the Twilio lines in live `wp-config.php` sat inside the `/* … */` comment block they were copied with, so only `TDH_SMS_ENABLED` was read. Fixed on the server 27 Sep 2026 (comment and the duplicate `TDH_SMS_ENABLED` removed). The same day, Logs → System status was found still saying SMS "Not built yet" whatever the settings; it now reads them (0.24.5) | Rob's screenshot, 27 Sep | Fixed | Rob repeats the text-alert steps; his screenshot is criterion 6 |
 | R53 | Rob asked for the American spelling on the button: "inquiry", not "enquiry" (28 Sep 2026). Every word the site shows, sends or logs now says inquire / inquiry (form, button, emails, texts, dashboard, logs); internal CSS class names keep the old spelling | Rob, WhatsApp 28 Sep | Done (0.24.6 / 0.50.9) | — |
 | R54 | Rob asked for the shortest password to be 8 characters, not 12 (WhatsApp, 2 Oct 2026); the team lead agreed. One constant, `Accounts::MIN_PASSWORD`, now drives sign-up, reset, profile, the `minlength` and the "At least 8 characters" hint; sign-in throttling is unchanged | Rob, WhatsApp 2 Oct | Done (0.24.14) | — |
+| R68 | Team review 4 Oct 2026, design item 6: decide whether a new landlord meets sign-in or sign-up first from USA / Canada marketplace references, then show visual versions before code | Team lead, review 4 Oct | M2 design follow-up | H6 — waiting behind H1–H5 |
+| R67 | Team review 4 Oct 2026, design item 5: every empty list and missing image gets a designed state with a small icon, one friendly line and the next step; visual versions before code | Team lead, review 4 Oct | M2 design follow-up | H5 — waiting behind H1–H4 |
+| R66 | Team review 4 Oct 2026, design item 4: improve the list/search map and property-location map from referenced visual versions before code, without publishing an exact home point | Team lead, review 4 Oct | M2 design follow-up | H4 — waiting behind H1–H3 |
+| R65 | Team review 4 Oct 2026, design item 3: improve the property gallery from referenced visual versions before code, keeping every photo, keyboard navigation, focus return and the one-photo state | Team lead, review 4 Oct | M2 design follow-up | H3 — eight marketplace references reviewed; A Quiet cinematic cover, B Balanced marketplace mosaic, C Guided cover with filmstrip shown at desktop / 390px; reviewer selected B on 5 Oct 2026; built in theme 0.57.6 and approved on localhost 6 Oct 2026; included in the acceptance commit; awaiting user push/live check |
+| R64 | Team review 4 Oct 2026, design item 2: make listing cards clickable as a whole while keeping Save independent and preserving keyboard and screen-reader links; visual versions before code | Team lead, review 4 Oct | M2 design follow-up | H2 — Version B built locally, rejected by the reviewer 5 Oct 2026 and reverted to the live 0.57.5 card; nothing shipped |
+| R63 | Team review 4 Oct 2026, design item 1: the first phone screen shows real content. The first scoped screen is `/homes/`: shorten the banner/control stack while keeping keyword, Filters, one Show homes action, count, Sort by and List / Map | Team lead, review 4 Oct | M2 design follow-up | H1 — 12 USA / Canada references and three 390px versions shown; reviewer selected B, compact marketplace, 5 Oct 2026; approved on localhost in theme 0.57.5, including the 320px toolbar-alignment correction. First push stopped at CI run #114 before deployment because the new order assertion depended on rendered fixture state; the accepted follow-up checks the shared template instead and is ready for the user's repush and live check |
+| R62 | Team review 4 Oct 2026, task 5: bots (about 1,200 refused sign-ins every few minutes on 29 Sep). Cloudflare Turnstile on sign-in, sign-up, password reset, contact and inquiry (`TDH\Bot_Check`), keys `TDH_TURNSTILE_SITE_KEY` / `TDH_TURNSTILE_SECRET` in wp-config only; **off until both exist**, so nothing changes before then. Cloudflare unreachable lets the person through and logs it; a refusal keeps what was typed and says what to do; refusals are logged under Sign-in. Honeypots stay. A command-line run (WP-CLI, the suites) is never challenged, so the suites pass with or without keys; the verdict itself is `Bot_Check::judge()`. Wordfence is a separate install on live | Team lead, review 4 Oct | Done and live 5 Oct 2026 (0.24.22 / 0.57.1): widget "ThirtyDayHomes forms" created in Rob's Cloudflare (Managed, thirtydayhomes.com), both keys in live wp-config, cache purged; the box is on all five live forms and a real sign-in passed through it | Wordfence with Rob's go-ahead |
+| R61 | Team review 4 Oct 2026, task 4: the listing form was a separate bare page. It now sits inside the dashboard frame (`Account_Render::framed()`): the landlord's sidebar, top bar and phone tab bar, with My listings marked current; staff editing a home get the administrator frame the same way. Signed-out visitors still get the form's own sign-in gate. Address placeholder shortened to fit a phone | Team lead, review 4 Oct | Done (0.24.21) | — |
+| R60 | Team review 4 Oct 2026, task 3: choosing photos a second time replaced the first choice, and each photo could be up to 2 GB. The picker now keeps every choice (the same photo once), each photo has a × to take it out before uploading, refused photos are named ("larger than 20 MB", "the limit is 10 photos"), and the server refuses a photo over `Listing_Form::MAX_PHOTO_MB` (20) by name while the others upload. **Rob to choose 10 or 20 MB** | Team lead, review 4 Oct | Done (0.24.20 / 0.56.8) | Ask Rob: 10 or 20 MB |
+| R59 | Team review 4 Oct 2026, task 2: filters, sort, page numbers, filter labels and "clear" reloaded the whole page and dropped the renter at the top. Now only the results area refreshes (results.js fetches the same URL and swaps the [data-tdh-results] block), the address bar, Back and shared links still work, the page settles on the results, and empty fields are left out of the link. Map view still loads normally. The inquiry form now lands back on its own section ("Message sent" or what to fix in view) | Team lead, review 4 Oct | Done (0.24.19 / 0.56.7) | — |
+| R58 | Team review 4 Oct 2026, task 1: addresses were free text, so mistakes reached the map as "not found". The listing form's street box now offers Google's real addresses as you type (places.js, keyboard and touch); a pick fills street, ZIP, state, city and neighbourhood; the state is saved so an out-of-state pick is looked up there; staff's Set location gets "Search the address on Google" that fills the coordinates. Needs **Places API (New)** enabled on the browser key's Google project; until then the fields are the plain boxes they were | Team lead, review 4 Oct | Done (0.24.18 / 0.56.6; follow-up 0.57.1). Rob enabled Places API (New) and added it to the website key on 4 Oct 2026; checked on localhost with real answers: the list drops under the box (it covered it at first), addresses only (no shops or offices), a pick fills street, ZIP, city and state, a town not on our list resets City to Choose, staff search fills the coordinates | — |
+| R57 | Team lead: "fix mobile design on every page" (4 Oct 2026). Audit of 31 screens at 390 and 320 (renter, landlord, administrator): no sideways scrolling anywhere. Fixed: the administrator portal had NO navigation on a phone (sidebar hidden, no tab bar) — now a six-tab bottom bar and the logo, like the landlord's; a home's page now shows the price and fees before the inquiry form instead of after it; the facility form's 13px browser checkbox now matches the site | Team lead, WhatsApp 4 Oct | Done (0.24.17 / 0.56.5) | — |
 | R56 | Team lead: "Within" (distance) looked broken — it stayed locked after a hospital was chosen until Show homes was pressed (4 Oct 2026). It now unlocks the moment a hospital is chosen or a place typed, starts at the team's radius, locks again when both are cleared; screen readers hear why it is locked; no-script behaviour unchanged | Team lead, WhatsApp 4 Oct | Done (0.24.16 / 0.56.4) | — |
 | R55 | Rob asked to load his 14 real addresses so he can see the map and hospital distances working (WhatsApp, 2 Oct 2026). New Import Demo Content step "Homes from your address list" reads a private file uploaded next to wp-config.php (addresses never enter git) and makes one live home per address under his account, with sample rent, rooms and photo, each saying "Sample details"; Rob replaces them | Rob, WhatsApp 2 Oct; user 3 Oct | Done (0.24.15) | User uploads `rob/tdh-address-list.php` to live and runs the step; Rob's allowance raised to 15 |
 | R44 | **A ZIP or area search must return the nearest homes, not an empty page.** Rob typed 15226, which has no homes in it, and got "No homes matching 15226". This is not a new ask: it is R18 from 16 Aug, it is item 6 of the original feedback list, and the live Renter FAQ already tells renters "When you search by location or ZIP code, homes appear closest to farthest." C3 delivered the hospital sort and the register wrongly recorded R18 as covered by it. **A defect against our own published copy, not an extra** | Rob, WhatsApp 22 Sep; reviewer agreed the same night | M2 — fix | **Built 22 Sep** (C6), awaiting "100% OK" |
@@ -1715,8 +1956,12 @@ Update when a task changes state. Dates absolute.
 
 | G4b listing form | **Live** — batch 3 of 4, second half, committed `3c6d1a1` on the reviewer's "100% OK", pushed and deployed; theme 0.55.1 served with the stepper and review styles | 29 Sep 2026 | 29 Sep 2026 | 29 Sep 2026 | Design review part 3, the four steps of Add / Edit a home (plugin 0.24.11, theme 0.55.1). Nothing changes what is saved, what is required or what goes back to review. **Stepper:** 1 Basics · 2 Features · 3 Photos · 4 Review in place of the thin bar (`<ol class="lform-progress lform-steps">`, `aria-current="step"`, ticks on finished steps); finished steps are links only on the review page, where nothing unsaved can be skipped; on phones only the current step keeps its name. **Fields:** one column; only short related fields pair (`lform-field--half`: city + ZIP, bedrooms + bathrooms, the four money fields, square feet + rooms, mobile + preferred contact); "$" inside every amount, "/ month" after rent, "sq ft" after square feet (`.lform-unit`); helper text under its field at 14px; placeholders "e.g. …"; "Halves allowed, e.g. 1.5" under bathrooms. **Live or paused home:** the note is one line with "Which changes need a review?" opening the list; the main button says **Save and continue**. **Step 2:** a running amenity total beside the heading ("None selected yet", "1 selected", "12 selected"). **Step 3:** the live-home permission as an amber panel that turns green when ticked; a locked drop zone says "Tick the box above first…"; **Remove photo** in red; the cover reads "✓ Cover photo" as words; captions are two-line boxes; the drop zone says "Room for N more of 10"; the description counts "N of 1,500 characters" as it is typed; under five photos a nudge (never a rule). **Step 4:** the home's state as a pill (Draft · not on the site yet / Waiting for review / Live on the site / Paused / Changes requested / Hidden); the required gaps first, then a **Worth fixing** card (no mobile number while email is the contact, no amenities, no or under five photos, no or a very short description), each a link to its step; the cover photo, title and two lines of the description before the summary; buttons full width on phones with the main one on top. Not done, and why: steppers on bedrooms and bathrooms (the number fields take arrows and typing); a "save and stay" on steps 2–3 (the handler moves on; the next page confirms); hiding "Which utilities" for "Not included" (it would change what is saved). Tests: verify-listing-form +23, verify-listing-actions +3. Walk 36/36 through the real login at 320/390/768/1440 (a new draft, then Edit on a live home). 20 suites, 1,988 checks, log count unchanged (186 — the extra row is the reviewer's own sign-in) |
 
-| G5a administrator's portal screens | **Live** — batch 4 of 4, first half, committed `644f51d` on the reviewer's "100% OK", pushed and deployed; theme 0.56.0 served with the admin block, auth.js with the Add-panel code | 30 Sep 2026 | 30 Sep 2026 | 30 Sep 2026 | Design review part 3, the team's six portal screens (plugin 0.24.12, theme 0.56.0). Nothing changes who may do what or what any form saves. **One primary per screen** on the heading's line: Add listing, **Add member**, **Add facility** (the "+" cards are gone; the button opens the form panel with the cursor in Name, `?add=1` without a script, Cancel closes it). **Overview:** the pending tile first, tinted while there is work ("1 home waiting · Review now"), every tile a link to its filtered list; the queue rows carry Approve and Request changes (`mk_queue_row()`, shared with Listings); health figures in the sans face, "needs follow-up" beside Past due when above zero. **Listings:** the queue's Approve is a green outlined button (the header keeps the one filled navy); a waiting home is not listed again under All listings; each row's location sentence collapsed to the pill plus Set location, with one banner ("6 homes have no map point yet — they won't appear in distance search or be approved until they have one. Show them") and a **Needs location** chip (`?needs=location`); every chip counts (`wp_count_posts`); Edit and View/Preview at the end of each row; "No landlord yet"; the coordinates box says "e.g."; the reason waits inside the Set-location panel. **Members:** search (name, email, username) and status chips with counts; "7 members" / "3 members match 'jo'" / "No members match … Show all members"; plan slugs → "Standard plan", "Three-home plan" (a plan named only by its size is not repeated beside the usage); **No plan** neutral; **Over limit** beside "7 homes · plan covers 2"; round avatars from first and last initials; the email on its own line; the row is 2.75rem. **Facilities:** a pill only for no map point or **Hidden from search**; otherwise "Hospital campus · 320 E North Ave, Pittsburgh 15212" and "Shown on 4 property pages" (`Proximity::usage_counts()`, the pages' own answer). **Inquiries:** "4 messages · 3 unread · newest first"; each row one link, bold with a **New** pill when unread, the time on the right ("2 hours ago", "23 Sep"), no gold dot. **Listing setup:** one list (icon · name · "8 configured" · **Manage** → the term manager for whoever may edit terms, else "Changed by the site administrator"); no "Milestone 2" wording, no footer note; the hospitals form at 40rem with "facilities" and "miles" inside narrow fields; **Save hospital settings**. Not done, and why: the "Viewing as" persona on the review bar (a local review tool); the seed data ("Test Clinic", "fxnchf") — Rob's OK, Later list; the wp-admin screens — G5b. Tests: verify-portal +19 and two updated. Walk 43/43 through the real login at 320/390/768/1440. 20 suites, 2,007 checks, log count unchanged by the suites and walks (192 — the six rows since G4b are the reviewer's own sign-ins and address lookups). From the reviewer's walk the same day: the Members search icon centred on the field, the field tinted at rest and white on focus like every other field; the sidebar toggle's chevron centred in a square button (both portals); the Facilities list opens with "6 facilities · all shown in search". A richer row and then a card grid for Facilities were tried and taken out again at the reviewer's request — the plain rows stay. Walk 44/44 |
+| G5a administrator's portal screens | **Live** — batch 4 of 4, first half, committed `644f51d` on the reviewer's "100% OK", pushed and deployed; theme 0.56.0 served with the admin block, auth.js with the Add-panel code | 30 Sep 2026 | 30 Sep 2026 | 30 Sep 2026 | Design review part 3, the team's six portal screens (plugin 0.24.12, theme 0.56.0). Nothing changes who may do what or what any form saves. **One primary per screen** on the heading's line: Add listing, **Add member**, **Add facility** (the "+" cards are gone; the button opens the form panel with the cursor in Name, `?add=1` without a script, Cancel closes it). **Overview:** the pending tile first, tinted while there is work; follow-up `a225203` makes it say **Pending approval**, show the count once, and put **Review now** in its own button (no button at zero); every tile links to its filtered list; the queue rows carry Approve and Request changes (`mk_queue_row()`, shared with Listings); health figures in the sans face, "needs follow-up" beside Past due when above zero. **Listings:** the queue's Approve is a green outlined button (the header keeps the one filled navy); a waiting home is not listed again under All listings; each row's location sentence collapsed to the pill plus Set location, with one banner ("6 homes have no map point yet — they won't appear in distance search or be approved until they have one. Show them") and a **Needs location** chip (`?needs=location`); every chip counts (`wp_count_posts`); Edit and View/Preview at the end of each row; "No landlord yet"; the coordinates box says "e.g."; the reason waits inside the Set-location panel. **Members:** search (name, email, username) and status chips with counts; "7 members" / "3 members match 'jo'" / "No members match … Show all members"; plan slugs → "Standard plan", "Three-home plan" (a plan named only by its size is not repeated beside the usage); **No plan** neutral; **Over limit** beside "7 homes · plan covers 2"; round avatars from first and last initials; the email on its own line; the row is 2.75rem. **Facilities:** a pill only for no map point or **Hidden from search**; otherwise "Hospital campus · 320 E North Ave, Pittsburgh 15212" and "Shown on 4 property pages" (`Proximity::usage_counts()`, the pages' own answer). **Inquiries:** "4 messages · 3 unread · newest first"; each row one link, bold with a **New** pill when unread, the time on the right ("2 hours ago", "23 Sep"), no gold dot. **Listing setup:** one list (icon · name · "8 configured" · **Manage** → the term manager for whoever may edit terms, else "Changed by the site administrator"); no "Milestone 2" wording, no footer note; the hospitals form at 40rem with "facilities" and "miles" inside narrow fields; **Save hospital settings**. Not done, and why: the "Viewing as" persona on the review bar (a local review tool); the seed data ("Test Clinic", "fxnchf") — Rob's OK, Later list; the wp-admin screens — G5b. Tests: verify-portal +19 and two updated. Walk 43/43 through the real login at 320/390/768/1440. 20 suites, 2,007 checks, log count unchanged by the suites and walks (192 — the six rows since G4b are the reviewer's own sign-ins and address lookups). From the reviewer's walk the same day: the Members search icon centred on the field, the field tinted at rest and white on focus like every other field; the sidebar toggle's chevron centred in a square button (both portals); the Facilities list opens with "6 facilities · all shown in search". A richer row and then a card grid for Facilities were tried and taken out again at the reviewer's request — the plain rows stay. Walk 44/44 |
 
 | G5b wp-admin for the site administrator | **Live** — batch 4 of 4, second half; the last design task, committed `037f6aa` on the reviewer's "100% OK", pushed and deployed (run #101); the public pages answer 200 with no PHP output, wp-admin sends a signed-out visitor to the sign-in page, and the deployed `verify.bat` lists `verify-admin.php` | 30 Sep 2026 | 30 Sep 2026 | 30 Sep 2026 | Design review part 3, the two WordPress screens (plugin 0.24.13; the theme is untouched). Nothing changes what is logged, what a listing stores or who may do what. **Elementor's opt-in notice** dismissed once for the site (`Listing_Table::quiet_elementor()`, the option its own "No thanks" writes). **Logs:** the eleven feature tabs are six groups plus All and System status (`Log_Screen::groups()`: Homes & locations · Members & payments · Messages · Sign-in · Settings · System; a feature added by filter gets its own tab; `?tab=email` still works; `Log::query()` takes several features); on phones the groups are a **Section** select beside Show; **Show** defaults to warnings and errors when the period has any, with a lead line ("12 warnings and errors in the last 7 days. Show everything") and `?level=all` respected; warning and error rows carry an amber or red left edge as well as their pill; the Details column is gone — the line itself is the `<details>` and opens its context, with a chevron; times in Eastern Time named ("4:26 AM ET", `Log_Screen::zone()`, filter `tdh_log_timezone`), UTC on hover; stored keys in a message read as words (`words()`: past_due → past due, tdh_paused → paused…); "Sign-in · admin · admin" says the actor once. **Listings table** (`Admin\Listing_Table`): photo · Title · **Status** pill in the portal's words · **Landlord** (a name linking to their homes, or "No landlord") · **Rent** ($2,400, right-aligned, sorts as a number) · **Map point** (Set / Not found / Not set) · Property type · Neighborhood · **Updated** (one date, the time on hover); Author, Date and City gone; no " — Pending" after a title; on phones the photo stays beside the title and the status sits straight under it (WordPress's off-screen Edit / Trash links no longer reserve 70px of blank there); those links and the other columns show when the row is expanded with WordPress's own "Show more details". **Staff without manage_options** opening the WordPress table are sent to the portal's Listings (`staff_destination()`). Not done, and why: the other wp-admin screens (Email delivery, Payments, Security — each one form already); a WordPress-side "Assign a landlord" (the portal's job). Tests: new `verify-admin.php` (28), verify-log +9 and one updated; `verify.bat` runs 21 suites. Walk 18/18 through the real login at 1440 and 390, including a non-administrator staff member sent to the portal. 21 suites, 2,044 checks, log count unchanged (192) |
 
-Versions: plugin 0.24.16 · theme 0.56.4 (R56 Within unlocks at once, 4 Oct 2026; homes-list page numbers styled; R55 homes from the address list and R54 shortest password 8, 3 Oct 2026; theme 0.56.2 hospitals card, 30 Sep 2026)
+| H1 first phone screen | **Deployed by green workflow #115 — live cache purge / final public check remains** | 5 Oct 2026 | 5 Oct 2026 | — | Reviewer chose **B — Compact marketplace** from three referenced versions and approved it on localhost on 5 Oct 2026. On phone `/homes/`, the decorative banner becomes a short orientation; keyword, Filters / Show homes, count, Sort by and List / Map lead directly to the first home. With the local review strip, the first card begins at about y=416 at 390×844 and y=472 at 320×568; no horizontal overflow in default, one, zero-result, active-filter, 100-character, map, loading or no-script states. At 320px, wrapped Sort by and List / Map now begin at the same left edge as the result count. Filters opens, Escape closes and returns focus; Back restores the prior results. A forced-offline refresh keeps the typed place and current homes, removes busy, shows one alert and retries the exact URL; returning online completes it. Desktop and taxonomy archives stay unchanged. First push stopped before deployment at CI run #114; the fixture-independent correction passed deployment in workflow #115. A cache-miss request served theme 0.57.5/H1, while the ordinary public URL still served the older cached page at the last check, so the live gate remains open until LiteSpeed is purged and that URL is rechecked. H2–H6 are not included. |
+| H2 whole listing card | **Rejected and reverted — nothing shipped** | 5 Oct 2026 | — | — | Version B's **View this home** strip made the card foot too heavy beneath the beige hospital band. The reviewer asked for the previous live card, and the working code was discarded. Theme stays 0.57.5. |
+| H3 property gallery | **Approved and committed — waiting for user push/live check** | 6 Oct 2026 | 6 Oct 2026 | — | Version B: 60/40 desktop mosaic, cover plus two tablet previews, calm cover-only phone entry and navy focused viewer. Every valid photo stays in landlord order; count, captions, bounded Previous / Next, keyboard, Escape, exact focus return, no-script and one-photo behaviour passed locally. `verify-photos.php` 42/0; 37/37 public browser checks, 4/4 boundary-focus checks and the landlord draft-preview check; full 23-suite `verify.bat` green. Reviewer wrote "100% OK" on 6 Oct; not live until the user pushes and checks it. |
+
+Versions: plugin 0.24.23 · theme 0.57.6 (H3 Version B property gallery approved and committed 6 Oct 2026, awaiting user push/live check; H2 was rejected and reverted; H1 compact phone `/homes/`, 320px toolbar alignment and inline offline recovery, 5 Oct 2026; overview waiting-tile follow-up 0.24.23 / 0.57.2, 5 Oct 2026; R58 follow-up: suggestion list under the box, 5 Oct 2026; R62 bot check, 4 Oct 2026; R61 add-listing inside the dashboard, 4 Oct 2026; R60 photo picker keeps choices, 4 Oct 2026; R59 results refresh in place, 4 Oct 2026; R58 address suggestions, 4 Oct 2026; R57 phone fixes, 4 Oct 2026; R56 Within unlocks at once, 4 Oct 2026; homes-list page numbers styled; R55 homes from the address list and R54 shortest password 8, 3 Oct 2026; theme 0.56.2 hospitals card, 30 Sep 2026)

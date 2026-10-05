@@ -2092,6 +2092,8 @@ final class Render {
 								<input id="tdh-c-website" name="tdh_website" type="text" tabindex="-1" autocomplete="off">
 							</div>
 
+							<?php echo Bot_Check::field(); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped inside. ?>
+
 							<button class="gold-btn full contact-send" type="submit">
 								<?php esc_html_e( 'Send message', 'thirtydayhomes' ); ?>
 								<?php echo $icon( 'arrow-right', 17 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>

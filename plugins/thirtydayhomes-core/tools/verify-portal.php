@@ -232,6 +232,9 @@ if ( $staff && $landlord ) {
 
 	ok( 'the administrator sees the marketplace overview', str_contains( $mk, 'Marketplace overview' ) );
 	ok( 'and is never told to choose a plan', ! str_contains( $mk, 'No active plan' ) && ! str_contains( $mk, 'Choose plan' ) );
+	preg_match( '#<nav class="portal-tabs" aria-label="Administration sections">(.*?)</nav>#s', $mk, $atabs );
+	ok( 'phone: the administrator has a tab bar, six sections', isset( $atabs[1] ) && 6 === substr_count( $atabs[1], '<a ' ) );
+	ok( '...Overview marked as the current one, with the logo in the top bar', isset( $atabs[1] ) && (bool) preg_match( '#aria-current="page">\s*<svg[^>]*>.*?</svg>\s*<span>Overview</span>#s', $atabs[1] ) && str_contains( $mk, 'class="portal-top-brand"' ) );
 
 	foreach ( [ 'Active members', 'Live listings', 'Pending approval', 'Recent inquiries', 'Approval queue', 'Membership health', 'Past due', 'Site content', 'Public website' ] as $label ) {
 		ok( sprintf( '%-20s present', '"' . $label . '"' ), str_contains( $mk, $label ) );
@@ -283,7 +286,10 @@ if ( $staff && $landlord ) {
 	echo "\n=== G5a: the administrator's screens, design review ===\n";
 
 	$mk = TDH\Account_Render::dashboard();
-	ok( 'G5a: the overview tiles are links; the waiting one comes first, tinted, and says what to do', (bool) preg_match( '/<div class="portal-metrics">\s*<a class="portal-metric portal-metric--action is-waiting"/', $mk ) && str_contains( $mk, 'waiting · Review now' ) && str_contains( $mk, 'member_status=active' ) );
+	ok( 'G5a: the overview tiles are links; the waiting one comes first, tinted, and says what to do', (bool) preg_match( '/<div class="portal-metrics">\s*<a class="portal-metric portal-metric--action is-waiting"/', $mk ) && str_contains( $mk, 'class="portal-metric-go"' ) && str_contains( $mk, 'Review now' ) && str_contains( $mk, 'member_status=active' ) );
+	preg_match( '#<a class="portal-metric portal-metric--action is-waiting".*?</a>#s', $mk, $wt );
+	$wt = (string) ( $wt[0] ?? '' );
+	ok( '...in two lines and a button: the figure once, its words for screen readers, no third line', 1 === substr_count( $wt, '<small>' ) && 1 === preg_match_all( '#<b>\d+<span class="screen-reader-text"> homes? waiting</span></b>#', $wt ) && ! str_contains( $wt, '· Review now' ) && (bool) preg_match( '#</span>\s*<strong class="portal-metric-go">\s*<span>Review now</span>#', $wt ), $wt );
 	ok( 'G5a: the overview queue row carries Approve and Request changes', (bool) preg_match( '/id="queue-' . $queued . '"[\s\S]{0,3000}?listing_approve[\s\S]{0,1500}?Request changes/', $mk ) );
 
 	$_GET     = [ 'view' => 'listings' ];

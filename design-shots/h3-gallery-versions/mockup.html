@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en" data-version="b">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>ThirtyDayHomes H3 gallery versions</title>
+	<link rel="stylesheet" href="styles.css">
+	<script>
+		document.documentElement.dataset.version = ( location.hash.slice( 1 ) || 'b' ).toLowerCase();
+	</script>
+</head>
+<body>
+	<main class="board variant variant-a">
+		<header class="board-head">
+			<div><span class="version-chip">Version A</span><span class="source-note">Quiet cinematic cover</span></div>
+			<h1>One calm image leads the story</h1>
+			<p>A premium single-cover entry. The focused viewer keeps the count and navigation explicit.</p>
+		</header>
+		<div class="frames">
+			<section class="desktop-frame" aria-label="Desktop property page mockup">
+				<div class="frame-label">Desktop property page</div>
+				<div class="site-bar"><span class="brand-mark">◩</span><b>ThirtyDay<span>Homes</span></b><nav>Find a home&nbsp;&nbsp;&nbsp; How it works&nbsp;&nbsp;&nbsp; Pricing</nav></div>
+				<div class="property-shell">
+					<a class="back-link">← Back to homes</a>
+					<div class="property-heading"><div><small>FURNISHED MONTHLY RENTAL</small><h2>2-bedroom home on Oakglen St</h2><p>⌖ Pittsburgh · Available now</p></div><button class="save">♡ Save</button></div>
+					<div class="gallery-a preview-gallery">
+						<img src="../../plugins/thirtydayhomes-core/assets/seed-images/address-homes/sample-01.webp" alt="">
+						<span class="photo-position">1 of 8</span>
+						<button class="show-all">▦&nbsp; Show all 8 photos</button>
+					</div>
+					<div class="facts">2 bedrooms <i>·</i> 1 bathroom <i>·</i> Furnished <i>·</i> Pets considered</div>
+				</div>
+			</section>
+			<section class="phone-frame" aria-label="Phone viewer mockup">
+				<div class="frame-label">390px · viewer open</div>
+				<div class="phone-viewer viewer-light">
+					<header><button aria-label="Close photos">×</button><strong>Photo 1 of 8</strong><span></span></header>
+					<div class="phone-stage">
+						<img src="../../plugins/thirtydayhomes-core/assets/seed-images/address-homes/sample-01.webp" alt="">
+						<button class="previous" disabled aria-label="Previous photo">‹</button>
+						<button class="next" aria-label="Next photo">›</button>
+					</div>
+					<div class="viewer-copy"><small>2-bedroom home on Oakglen St</small><p>Bright living space with room to settle in.</p></div>
+				</div>
+			</section>
+		</div>
+		<footer class="board-foot"><b>One photo:</b> one full cover, with no count, arrows or false Show-all button. <b>Trade-off:</b> the desktop entry hides the other rooms until opened.</footer>
+	</main>
+
+	<main class="board variant variant-b">
+		<header class="board-head">
+			<div><span class="version-chip">Version B · Recommended</span><span class="source-note">Balanced marketplace mosaic</span></div>
+			<h1>Several rooms at a glance, one focused viewer</h1>
+			<p>A regular 60/40 preview inspired by current rental marketplaces, without narrow or oddly spanning tiles.</p>
+		</header>
+		<div class="frames">
+			<section class="desktop-frame" aria-label="Desktop property page mockup">
+				<div class="frame-label">Desktop property page</div>
+				<div class="site-bar"><span class="brand-mark">◩</span><b>ThirtyDay<span>Homes</span></b><nav>Find a home&nbsp;&nbsp;&nbsp; How it works&nbsp;&nbsp;&nbsp; Pricing</nav></div>
+				<div class="property-shell">
+					<a class="back-link">← Back to homes</a>
+					<div class="property-heading"><div><small>FURNISHED MONTHLY RENTAL</small><h2>2-bedroom home on Oakglen St</h2><p>⌖ Pittsburgh · Available now</p></div><button class="save">♡ Save</button></div>
+					<div class="gallery-b preview-gallery">
+						<img class="cover" src="../../plugins/thirtydayhomes-core/assets/seed-images/address-homes/sample-01.webp" alt="">
+						<img src="../../plugins/thirtydayhomes-core/assets/seed-images/address-homes/sample-02.webp" alt="">
+						<img src="../../plugins/thirtydayhomes-core/assets/seed-images/address-homes/sample-03.webp" alt="">
+						<img src="../../plugins/thirtydayhomes-core/assets/seed-images/address-homes/sample-04.webp" alt="">
+						<img src="../../plugins/thirtydayhomes-core/assets/seed-images/address-homes/sample-05.webp" alt="">
+						<button class="show-all">▦&nbsp; Show all 8 photos</button>
+					</div>
+					<div class="facts">2 bedrooms <i>·</i> 1 bathroom <i>·</i> Furnished <i>·</i> Pets considered</div>
+				</div>
+			</section>
+			<section class="phone-frame" aria-label="Phone viewer mockup">
+				<div class="frame-label">390px · viewer open</div>
+				<div class="phone-viewer viewer-dark">
+					<header><button aria-label="Close photos">×</button><strong>Photo 3 of 8</strong><span></span></header>
+					<div class="phone-stage">
+						<img src="../../plugins/thirtydayhomes-core/assets/seed-images/address-homes/sample-03.webp" alt="">
+						<button class="previous" aria-label="Previous photo">‹</button>
+						<button class="next" aria-label="Next photo">›</button>
+					</div>
+					<div class="viewer-copy"><small>2-bedroom home on Oakglen St</small><p>Dining area beside the furnished kitchen.</p><div class="progress"><i></i><i></i><i class="active"></i><i></i><i></i></div></div>
+				</div>
+			</section>
+		</div>
+		<footer class="board-foot"><b>One photo:</b> the mosaic becomes one complete cover and every viewer control disappears. <b>Why recommended:</b> broad desktop context, calm phone browsing, and little new state.</footer>
+	</main>
+
+	<main class="board variant variant-c">
+		<header class="board-head">
+			<div><span class="version-chip">Version C</span><span class="source-note">Guided cover with filmstrip</span></div>
+			<h1>Browse directly on the property page</h1>
+			<p>The active photo, arrows and thumbnail rail stay visible before opening the full viewer.</p>
+		</header>
+		<div class="frames">
+			<section class="desktop-frame" aria-label="Desktop property page mockup">
+				<div class="frame-label">Desktop property page</div>
+				<div class="site-bar"><span class="brand-mark">◩</span><b>ThirtyDay<span>Homes</span></b><nav>Find a home&nbsp;&nbsp;&nbsp; How it works&nbsp;&nbsp;&nbsp; Pricing</nav></div>
+				<div class="property-shell">
+					<a class="back-link">← Back to homes</a>
+					<div class="property-heading"><div><small>FURNISHED MONTHLY RENTAL</small><h2>2-bedroom home on Oakglen St</h2><p>⌖ Pittsburgh · Available now</p></div><button class="save">♡ Save</button></div>
+					<div class="gallery-c preview-gallery">
+						<div class="active-photo"><img src="../../plugins/thirtydayhomes-core/assets/seed-images/address-homes/sample-01.webp" alt=""><button class="previous" disabled>‹</button><button class="next">›</button><span class="photo-position">1 of 8</span></div>
+						<div class="filmstrip">
+							<button class="chosen"><img src="../../plugins/thirtydayhomes-core/assets/seed-images/address-homes/sample-01.webp" alt=""></button>
+							<button><img src="../../plugins/thirtydayhomes-core/assets/seed-images/address-homes/sample-02.webp" alt=""></button>
+							<button><img src="../../plugins/thirtydayhomes-core/assets/seed-images/address-homes/sample-03.webp" alt=""></button>
+							<button><img src="../../plugins/thirtydayhomes-core/assets/seed-images/address-homes/sample-04.webp" alt=""></button>
+							<button class="show-all">▦&nbsp; All 8 photos</button>
+						</div>
+					</div>
+					<div class="facts">2 bedrooms <i>·</i> 1 bathroom <i>·</i> Furnished <i>·</i> Pets considered</div>
+				</div>
+			</section>
+			<section class="phone-frame" aria-label="Phone gallery mockup">
+				<div class="frame-label">390px · property page</div>
+				<div class="phone-page">
+					<div class="mini-brand"><span class="brand-mark">◩</span><b>ThirtyDay<span>Homes</span></b><span>☰</span></div>
+					<div class="mobile-gallery"><img src="../../plugins/thirtydayhomes-core/assets/seed-images/address-homes/sample-01.webp" alt=""><button class="previous" disabled>‹</button><button class="next">›</button><span>1 / 8</span></div>
+					<div class="mobile-thumbs"><img class="active" src="../../plugins/thirtydayhomes-core/assets/seed-images/address-homes/sample-01.webp" alt=""><img src="../../plugins/thirtydayhomes-core/assets/seed-images/address-homes/sample-02.webp" alt=""><img src="../../plugins/thirtydayhomes-core/assets/seed-images/address-homes/sample-03.webp" alt=""><button>All 8</button></div>
+					<div class="mobile-copy"><small>FURNISHED MONTHLY RENTAL</small><h3>2-bedroom home on Oakglen St</h3><p>⌖ Pittsburgh · Available now</p></div>
+				</div>
+			</section>
+		</div>
+		<footer class="board-foot"><b>One photo:</b> arrows, count and filmstrip disappear. <b>Trade-off:</b> richest browsing, but it adds height, keyboard stops and JavaScript state to the main page.</footer>
+	</main>
+</body>
+</html>

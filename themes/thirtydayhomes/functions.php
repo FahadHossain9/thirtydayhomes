@@ -17,7 +17,7 @@ declare( strict_types = 1 );
 
 defined( 'ABSPATH' ) || exit;
 
-const TDH_THEME_VERSION = '0.56.4';
+const TDH_THEME_VERSION = '0.57.6';
 
 require_once get_template_directory() . '/inc/setup.php';
 require_once get_template_directory() . '/inc/icons.php';

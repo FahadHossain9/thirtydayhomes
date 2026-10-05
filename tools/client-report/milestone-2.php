@@ -39,6 +39,9 @@ return [
 		[ 'li', 'Photos: the landlord sets the order, chooses the cover photo and can describe each photo. Large phone photos are resized automatically, and their hidden location data is removed.' ],
 		[ 'li', 'The property page shows the photos in the landlord\'s order, with "Show all photos" to see every one.' ],
 		[ 'li', 'The listing form names its four steps (Basics, Features, Photos, Review), shows the $ sign inside every amount, and its last step lists what is worth improving before submitting.' ],
+		[ 'li', 'As a landlord types the street address, the form offers real addresses from Google to pick from. Picking one fills in the ZIP code and city, so the home is found on the map.' ],
+		[ 'li', 'Photos can be chosen in several goes: each choice is added to the others, any photo can be taken out before uploading, and one photo can be up to 20 MB.' ],
+		[ 'li', 'The listing form now opens inside the landlord\'s dashboard, with the menu beside it.' ],
 
 		[ 'h2', 'Managing homes from the dashboard' ],
 		[ 'li', 'The landlord\'s dashboard now explains each home\'s status in one line and shows one main button for the next step. A live home can be paused and resumed; resuming does not need a second review, unless its main details were changed while it was paused.' ],
@@ -59,10 +62,12 @@ return [
 		[ 'li', 'An email goes to the site\'s administration email address whenever a landlord submits or resubmits a home.' ],
 		[ 'li', 'Every home\'s address is now turned into a map location by itself, using your Google Maps account. If an address cannot be found, your team is told and can place the home by hand.' ],
 		[ 'li', 'A home is only approved once its address is found on the map, so every live home shows its distance to hospitals.' ],
-		[ 'li', 'Your Overview opens with the work: the first tile says "1 home waiting · Review now", and you can approve or request changes right there.' ],
+		[ 'li', 'Your Overview opens with the work: the first tile says "Pending approval", shows the number once, and has a separate "Review now" button. You can approve or request changes right there.' ],
 		[ 'li', 'On Listings every filter shows its count, homes without a map point are one "Needs location" filter with a note, and every row has Edit and View.' ],
 		[ 'li', 'Members can be searched by name or email and filtered by plan status. Plans read in words, such as "Standard plan", and a member with more homes than their plan covers shows "Over limit".' ],
 		[ 'li', 'Facilities show each hospital\'s address and how many property pages list it. Inquiries mark unread messages "New" and show when each arrived.' ],
+		[ 'li', 'When your team places a home on the map by hand, they can search the address on Google and the location fills in.' ],
+		[ 'li', 'On a phone, your team\'s screens now have a tab bar along the bottom too: Overview, Listings, Members, Inquiries, Facilities and Setup.' ],
 
 		[ 'h2', 'Your own homes on the map' ],
 		[ 'li', 'The 14 addresses you sent are now homes on the site, under your account, so you can see the map and the hospital distances working with your real places.' ],
@@ -81,6 +86,8 @@ return [
 		[ 'li', 'The filters chosen appear as labels above the results and can be removed one at a time or cleared all at once, and the heading counts what was found.' ],
 		[ 'li', 'A search that matches nothing says which filter caused it and offers to clear it, instead of quietly showing every home again.' ],
 		[ 'li', 'On a phone the filters open in a panel, so the list stays easy to read.' ],
+		[ 'li', 'Changing a filter, the order or the page now refreshes only the list of homes. The page no longer jumps back to the top.' ],
+		[ 'li', 'The distance box, "Within", switches on as soon as a hospital is chosen or a place is typed.' ],
 		[ 'li', 'The city, property type and neighbourhood pages now use the same filters and results. A page with no homes yet says so by name, for example "No homes in South Side yet".' ],
 		[ 'li', 'The move-in and move-out dates on the home page now work: a renter sees only the homes that are free for their whole stay and that accept a stay that long.' ],
 		[ 'li', 'Each of those homes says "Free for your dates", and its own page repeats the stay above the calendar with a tick or a cross.' ],
@@ -96,7 +103,8 @@ return [
 		[ 'h2', 'Inquiries and text alerts' ],
 		[ 'li', 'Renters can send an inquiry from a property page: name, email, phone if they want to be called, move-in date, how long they need the home, and a message. They must tick a box agreeing that their details go to the owner.' ],
 		[ 'li', 'The price and an "Ask the owner" button stay beside the renter as they read the page, and jump to the form. On a phone they sit in a bar along the bottom of the screen.' ],
-		[ 'li', 'After sending, the form is replaced by a confirmation naming the home, so nobody is left wondering whether it went.' ],
+		[ 'li', 'After sending, the form is replaced by a confirmation naming the home, and the page stays on it, so nobody is left wondering whether it went.' ],
+		[ 'li', 'On a phone, a home\'s price and fees now come before the inquiry form.' ],
 		[ 'li', 'Every inquiry is saved and appears under Inquiries for your team, with everything the renter typed and which version of the rules they agreed to.' ],
 		[ 'li', 'Pressing Send twice, or going back and forward in the browser, cannot send the same message twice.' ],
 		[ 'li', 'Landlords read their inquiries in their own dashboard, under Inquiries: unread ones stand out, and each can be archived.' ],
@@ -109,6 +117,7 @@ return [
 		[ 'h2', 'Accounts and payments' ],
 		[ 'li', 'Landlords can sign in with either their email address or their username.' ],
 		[ 'li', 'Passwords now need at least 8 characters, as you asked.' ],
+		[ 'li', 'The sign-in, sign-up, password reset, contact and inquiry forms are protected from robots by Cloudflare. Most people only see a small green tick.' ],
 		[ 'li', 'The sign-in page now says it is for landlords and tells renters they need no account. Every password field has a Show button, and the sign-up page states the price before anyone types.' ],
 		[ 'li', 'The pricing buttons say which plan they start and what it costs each month, and the page says what to do with more than three homes.' ],
 		[ 'li', 'New landlords confirm their email address with a link we send them. Until they do, they can look around their dashboard but cannot start a plan or submit a home, and a panel tells them so. Existing landlords are not asked.' ],
@@ -123,7 +132,7 @@ return [
 		[ 'li', 'In WordPress, the Listings table now shows each home\'s status, landlord, rent and map point, and the Logs page opens on the week\'s warnings.' ],
 		[ 'li', 'The Terms, Privacy and Fair Housing pages have a plain header, a "Last updated" date and clickable links. Notes meant for you, such as "prices not final", are now shown only when you are signed in.' ],
 
-		[ 'h1', 'How to check it yourself' ],
+		[ 'h1', 'How to check on the live site' ],
 		[ 'p', 'Three short walks: first as a renter, then as a landlord, then as your team. Each step says where to click and what you should see. Steps marked "Try it" are things that should not work.' ],
 		[ 'note', 'Before you start: press Ctrl + Shift + R on a page if it looks unchanged. Try things on a test home or a test landlord, never on a real landlord\'s home.' ],
 
@@ -131,7 +140,7 @@ return [
 
 		[ 'h2', 'Search and filters' ],
 		[ 'step', 'Open https://thirtydayhomes.com/homes/ — one panel holds the search box and the filters, with one Show homes button; below it, how many homes were found.' ],
-		[ 'step', 'Put 1000 in Min price and 2500 in Max price, then press Show homes. Only homes in that range are listed, with two labels above them.' ],
+		[ 'step', 'Put 1000 in Min price and 2500 in Max price, then press Show homes. Only homes in that range are listed, with two labels above them. The page does not reload: only the list changes.' ],
 		[ 'step', 'Press the small cross on a label to remove that filter, or Clear all to remove them all.' ],
 		[ 'step', 'Set Sort by, beside the count, to "Price: low to high". The cheapest home comes first and your filters stay.' ],
 		[ 'step', 'Try it: put 90000 in Min price. The page says no homes cost that much and offers to clear the filter. It never shows every home instead.' ],
@@ -163,6 +172,10 @@ return [
 
 		[ 'role', 'As a landlord|Sign in with a landlord account at https://thirtydayhomes.com/login/' ],
 
+		[ 'h2', 'Signing in' ],
+		[ 'step', 'Open https://thirtydayhomes.com/login/ — above the Sign in button a small Cloudflare box shows a green tick. It keeps robots out; you do not have to do anything.' ],
+		[ 'step', 'Sign in as usual.' ],
+
 		[ 'h2', 'Your homes' ],
 		[ 'step', 'Open https://thirtydayhomes.com/account/?view=listings — each home is a card with its photo, rent, neighbourhood, status in words and one main button.' ],
 		[ 'step', 'On a live home press Pause. It disappears for renters and the button becomes Resume. Press Resume and it is live again.' ],
@@ -173,6 +186,12 @@ return [
 		[ 'step', 'On the same page press Availability on a home. Enter a first and a last day and press Save availability. A message confirms it.' ],
 		[ 'step', 'Add a second period that overlaps the first and save. The message says the two were joined into one.' ],
 		[ 'step', 'Open the home\'s page. The calendar crosses those days out. Remove the periods again when you are done.' ],
+
+		[ 'h2', 'Adding a home' ],
+		[ 'step', 'Open https://thirtydayhomes.com/add-listing/ — the form opens inside your dashboard, with the menu beside it.' ],
+		[ 'step', 'In Street address, type the first part of an address, for example the number and street name. Pick your address from the list: the ZIP code and city fill in, and a green line says the address was found.' ],
+		[ 'step', 'On the Photos step choose two photos, then choose one more. All three are shown. Press the × on one to take it out before uploading.' ],
+		[ 'step', 'Try it: pick a street from the list that has no house number. The form asks for the exact address.' ],
 
 		[ 'h2', 'Editing a home' ],
 		[ 'step', 'Press Edit on a live home. Step 1 has "Rent & fees" and "Inquiries"; step 2 has Availability, Utilities and Pets; step 3 has the photos, with arrows to reorder and "Make cover"; step 4 shows the home\'s status, anything worth fixing, and every answer with an Edit link.' ],
@@ -198,7 +217,7 @@ return [
 		[ 'role', 'As your team|Sign in with your administrator account at https://thirtydayhomes.com/login/' ],
 
 		[ 'h2', 'Approving homes' ],
-		[ 'step', 'Open https://thirtydayhomes.com/account/ — the first tile says how many homes are waiting. Press it, or open https://thirtydayhomes.com/account/?view=listings — homes waiting for you are under "Waiting for approval". An email also arrives each time a home is submitted.' ],
+		[ 'step', 'Open https://thirtydayhomes.com/account/ — the first tile says "Pending approval" and shows how many homes are waiting. Press Review now, or open https://thirtydayhomes.com/account/?view=listings — homes waiting for you are under "Waiting for approval". An email also arrives each time a home is submitted.' ],
 		[ 'step', 'On a test home press Request changes, type what should change and press Send to landlord. Try it: an empty note is not accepted.' ],
 		[ 'step', 'The landlord sees your note in a pink box on their dashboard and can resubmit.' ],
 		[ 'step', 'A home whose address cannot be found on the map cannot be approved, and the page says why.' ],
@@ -217,16 +236,14 @@ return [
 		[ 'step', 'Open https://thirtydayhomes.com/account/?view=listing-setup — Manage opens each menu, and "Save hospital settings" saves how many hospitals each home lists and how far to look.' ],
 		[ 'step', 'Edit any page with Elementor and search the left panel for "Search results" or "Nearby hospitals". Drag one in to see real homes or hospitals.' ],
 
-		[ 'h1', 'Text messages' ],
+		[ 'h2', 'Text messages' ],
 		[ 'note', 'The phone carriers have approved the registration, and text alerts are switched on. We tested the whole flow on the live site with a US phone number: the confirmation code arrived, the number was confirmed, and an inquiry text arrived within seconds, with a link that opens that inquiry. Twilio, the text service, shows both texts as Delivered.' ],
 		[ 'p', 'Who gets the text: only the landlord who owns the home, and only after they switch on text alerts and confirm their number. The renter sees "Message sent" on the page. Your team sees every inquiry under Inquiries, marked "Emailed" and "Texted".' ],
-		[ 'p', 'To get texts on your own phone, three short steps:' ],
-		[ 'step', 'Sign in at https://thirtydayhomes.com/login/ with furnishedhomes26@gmail.com.' ],
-		[ 'step', 'Open https://thirtydayhomes.com/account/?view=profile — under "Text message alerts", type your mobile number, tick the box and press Send code.' ],
-		[ 'step', 'Type in the 6-digit code from the text and press Verify. From then on, every inquiry to your home sends you a text.' ],
+		[ 'p', 'You switched on text alerts on your own account, and your phone received the inquiry text for Shady Fun in the Sun. From now on every inquiry to your homes sends you a text.' ],
 
 		[ 'h1', 'Still to come in Milestone 2' ],
-		[ 'li', 'Switch on text alerts with the three steps above, send one inquiry to Shady Fun in the Sun, and send us a screenshot of the text.' ],
+		[ 'li', 'The compact phone version of Find a home passed deployment. The live cache still needs its final refresh and public check: Search, Filters, Sort and List / Map should stay aligned on the smallest phone width, with the first property in the opening screen.' ],
+		[ 'li', 'The property-gallery design is approved and waiting to be added to the live site. It keeps every photo and adds clear Previous / Next buttons, a photo count, keyboard controls and a clean one-photo view.' ],
 		[ 'li', 'Your walkthrough of the site, and your sign-off.' ],
 	],
 ];
